@@ -1,0 +1,72 @@
+# BFF contract: P1 resources (001-platform-crud)
+#
+# T001 drift check (2026-09-11): 29/29 referenced backend ops present in
+# bus_api docs/openapi.json — CLEAN, no drift.
+
+Dashboard screens call same-origin `/api/*` (P0 `[...proxy]` forwarder + P1 zod
+registry). Table maps each dashboard operation to its backend op, registry
+schema, and Arabic failure copy. `P` = platform path (no header),
+`T` = tenant path (`x-fleet-id` from fleet-scope cookie).
+
+## Fleets
+
+| Dashboard op | Backend op | Registry schema | Failures (Arabic) |
+|---|---|---|---|
+| List (search/active/load-more) | `GET /fleets?cursor=&limit=` (P) | query passthrough (`limit` default 20) | 401 → refresh flow (P0) |
+| Create | `POST /fleets` (P) | `CreateFleetSchema` (name 1–255, ownerId uuid, ownerRoleSlug opt) | 400/422 → field-mapped "راجع الحقول المطلوبة"; 409 `CONFLICT` → owner-link message |
+| Detail | `GET /fleets/{id}` (P) | uuid param | 404 → "العنصر مش موجود في الأسطول ده" |
+| Edit / activate toggle | `PATCH /fleets/{id}` (P) | `UpdateFleetSchema` (name 1–255 opt, isActive opt) | 404 Arabic; 400/422 field-mapped |
+| Delete (+confirm) | `DELETE /fleets/{id}` (P) | uuid param | 404 Arabic; 409 `CONFLICT` → fleet-referenced message (screen context) |
+
+## Buses
+
+| Dashboard op | Backend op | Registry schema | Failures (Arabic) |
+|---|---|---|---|
+| List per fleet | `GET /fleets/{fleetId}/buses?cursor=&limit=` (P) | fleet uuid + query | 404 Arabic (bad fleet) |
+| Register | `POST /fleets/{fleetId}/buses` (P) | `CreateBusSchema` (registrationNumber 1–50, capacity 1–300 int, plateNumber ≤50 opt) | 409 `CONFLICT` → "رقم التسجيل مستخدم قبل كده" |
+| Detail | `GET /fleets/{fleetId}/buses/{id}` (P) | uuids | 404/`RESOURCE_NOT_OWNED` Arabic |
+| Edit plate/capacity | `PATCH /fleets/{fleetId}/buses/{id}` (P) | `UpdateBusSchema` | 409 `CONFLICT` → registration-taken message |
+| Disable / reactivate | `POST /fleet/buses/{busId}/disable\|reactivate` (T) | bus uuid | 409 `BUS_ACTION_NOT_ALLOWED` → "العملية مرفوضة: الأتوبيس عليه رحلة شغالة (DEPARTED)" |
+| Assign / unassign driver | `POST\|DELETE /fleet/buses/{busId}/driver` (T) | `AssignDriverSchema` (driverUserId uuid) | 409 `DRIVER_ASSIGNMENT_NOT_ALLOWED` → "تعيين السواق مرفوض: مش نشط أو من أسطول تاني"; re-assign same → success |
+| Per-bus trips tab | `GET /fleet/buses/{busId}/trips?cursor=&limit=` (T) | bus uuid + query | 404 Arabic |
+
+## Trips
+
+| Dashboard op | Backend op | Registry schema | Failures (Arabic) |
+|---|---|---|---|
+| List per fleet (+filters) | `GET /fleets/{fleetId}/trips?cursor=&limit=` (P) | fleet uuid + query; status/route/date filters client-side (R4) | 404 Arabic |
+| Schedule | `POST /fleets/{fleetId}/trips` (P) | `CreateTripSchema` (busId uuid, origin/destination 1–255, departAt date-time, status opt) | cross-fleet bus → 404 Arabic; 400/422 field-mapped |
+| Detail | `GET /fleets/{fleetId}/trips/{id}` (P) | uuids | 404 Arabic |
+| Edit / status move / cancel | `PATCH /fleets/{fleetId}/trips/{id}` (P) | `UpdateTripSchema` (all opt; cancel = status CANCELLED) | 404 Arabic |
+| Delete (+confirm) | `DELETE /fleets/{fleetId}/trips/{id}` (P) | uuids | 404 Arabic |
+
+## Bookings
+
+| Dashboard op | Backend op | Registry schema | Failures (Arabic) |
+|---|---|---|---|
+| List per fleet (+filters) | `GET /fleets/{fleetId}/bookings?cursor=&limit=` (P) | fleet uuid + query; trip/status/payment/search client-side (R4) | 404 Arabic |
+| Create | `POST /fleets/{fleetId}/bookings` (P) | `CreateBookingSchema` (tripId uuid, passengerName 1–255, passengerPhone opt, status opt) | cross-fleet trip → 404 Arabic; missing name → "الحقل ده مطلوب" |
+| Detail | `GET /fleets/{fleetId}/bookings/{id}` (P) | uuids | 404 Arabic |
+| Edit / cancel (+confirm) | `PATCH /fleets/{fleetId}/bookings/{id}` (P) | `UpdateBookingSchema` (cancel = status CANCELLED) | 404 Arabic |
+| Delete (+confirm) | `DELETE /fleets/{fleetId}/bookings/{id}` (P) | uuids | 404 Arabic |
+
+## Members + drivers roster
+
+| Dashboard op | Backend op | Registry schema | Failures (Arabic) |
+|---|---|---|---|
+| List members | `GET /fleets/{fleetId}/members?cursor=&limit=` (P) | fleet uuid + query | 404 Arabic |
+| Add member | `POST /fleets/{fleetId}/members` (P) | `AddMemberSchema` (userId uuid, roleSlug/roleId opt, status opt) | 404 (user/role) Arabic; 409 `CONFLICT` → member-exists message |
+| Change role/status (+warning) | `PATCH /fleets/{fleetId}/members/{memberId}` (P) | `UpdateMemberSchema` | 404/409 Arabic |
+| Remove (+warning+confirm) | `DELETE /fleets/{fleetId}/members/{memberId}` (P) | uuids | 404 Arabic |
+| Drivers roster | `GET /fleet/drivers?cursor=&limit=` (T) | query | missing scope → "اختار الأسطول الأول" |
+| Invite driver | `POST /fleet/drivers` (T) | `AddDriverSchema` (userId XOR phone+name+password, roleSlug default driver) | 422 invalid combo → field-mapped; 409 non-driver role → driver message |
+| Driver detail/history | `GET /fleet/drivers/{driverId}` (T) | driver uuid | 404 Arabic |
+| Driver role/status (+warning) | `PATCH /fleet/drivers/{driverId}` (T) | `UpdateDriverSchema` | 404/409 Arabic |
+| Remove driver (+confirm) | `DELETE /fleet/drivers/{driverId}` (T) | driver uuid | 404 Arabic |
+
+## Shared rules (all P1 ops)
+
+- Envelope unwrapped once; `{items, nextCursor}` passed through, cursor opaque.
+- Mutations: `Origin` check (P0), `cache: no-store`, zod re-validation in proxy registry, `details.fields` → form fields.
+- Toast names the audited action (Principle VI); every screen stays behind the super_admin guard (Principle I).
+- Registry schemas live in `lib/schemas/p1.ts`; error keys in `contracts/error-map-additions.ar-EG.json` (merged into `error-map.ar-EG.json` at implement).

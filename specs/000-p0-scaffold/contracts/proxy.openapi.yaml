@@ -1,0 +1,70 @@
+openapi: 3.0.0
+info:
+  title: bus_dashboard BFF proxy surface (P0)
+  version: 0.0.0-p0
+  description: >-
+    Same-origin proxy. Browser NEVER calls BUS_API_URL directly. JWTs in
+    httpOnly cookies. Envelope {statusCode,data} unwrapped once server-side.
+    Cursor pages {items,nextCursor} passed through untouched. Backend source:
+    ../bus_api/docs/openapi.json (do not modify backend).
+servers:
+  - url: /api
+    description: Next.js BFF (same origin)
+paths:
+  /health:
+    get:
+      operationId: proxyHealth
+      summary: Proxied GET /health (liveness)
+      responses:
+        '200':
+          description: Backend {status:'ok'} passthrough
+  /auth/login:
+    post:
+      operationId: proxyLogin
+      summary: Proxied POST /auth/login + set httpOnly cookies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                rememberMe: { type: boolean }
+  /auth/refresh:
+    post:
+      operationId: proxyRefresh
+      summary: Single-flight refresh (server-side only; browser never sees tokens)
+      responses:
+        '200': { description: New pair issued, cookies rotated }
+        '401': { description: Clear cookies, client redirects /login }
+  /auth/logout:
+    post:
+      operationId: proxyLogout
+      summary: Proxied POST /auth/logout + clear cookies
+  /auth/me:
+    get:
+      operationId: proxyMe
+      summary: Session identity → zustand {id,email,appRole}
+  /reports/spike:
+    get:
+      operationId: spikePdf
+      summary: Dashboard-only pdfkit+Cairo+bidi-shaper proof (NOT a backend proxy)
+      responses:
+        '200':
+          description: application/pdf, filename تقرير-spike-<date>.pdf
+  /{proxy+}:
+    get:
+      operationId: genericProxyGet
+      summary: Generic forwarder (cache:no-store). P1+ consumes list/detail ops.
+    post:
+      operationId: genericProxyPost
+      summary: Generic forwarder with Origin check + zod re-validation.
+    patch:
+      operationId: genericProxyPatch
+      summary: Generic forwarder with Origin check + zod re-validation.
+    delete:
+      operationId: genericProxyDelete
+      summary: Generic forwarder with Origin check.

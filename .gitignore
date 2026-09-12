@@ -1,0 +1,16 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+build/
+tsconfig.tsbuildinfo
+
+# env (never commit secrets; .env.example is the contract)
+.env*
+!.env.example
+
+# logs / misc
+*.log
+.DS_Store

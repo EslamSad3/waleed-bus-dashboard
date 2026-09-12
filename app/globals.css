@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2f719e;
+  --color-secondary: #daeaf5;
+  --color-accent: #fff7e3;
+  --color-ink: #1a1a1a;
+  --color-mute: #919191;
+  --color-body: #606060;
+  --color-navy: #10153c;
+  --color-navy-deep: #0e0b2c;
+  --color-contact: #262626;
+  --color-card-amber: #fff7e3;
+  --color-card-blue: #daeaf5;
+  --color-card-blue-hover: #c4def3;
+  --radius-xl: 1rem;
+}
+
+:root {
+  --primary: #2f719e;
+  --secondary: #daeaf5;
+  --accent: #fff7e3;
+  --foreground: #1a1a1a;
+  --muted-foreground: #606060;
+  --radius: 1rem;
+}
+
+body {
+  color: var(--foreground);
+  background: linear-gradient(270deg, #e8e8ec 0%, #e9efff 50%, #fff 100%);
+  min-height: 100vh;
+}
+
+.dark body {
+  background: #000557;
+  color: #f3f4f6;
+}
+
+.page-bg {
+  background: linear-gradient(270deg, #e8e8ec 0%, #e9efff 50%, #fff 100%);
+  min-height: 100vh;
+}
+
+.title-grad {
+  background: linear-gradient(91deg, #3e95d1 0.74%, #204c6b 95.01%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.navy-band {
+  background: linear-gradient(
+    270deg,
+    #0a1020,
+    rgba(9, 17, 52, 0.85),
+    rgba(0, 30, 62, 0.82)
+  );
+}

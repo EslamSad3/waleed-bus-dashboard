@@ -1,0 +1,13 @@
+{
+  "_note": "P1 additions to specs/000-p0-scaffold/contracts/error-map.ar-EG.json. Code-keyed entries merge directly; CONTEXT_409_* entries are applied per-screen by the caller (bare 409s carry code CONFLICT — see research R3). Also fixes one dead P0 key.",
+  "BUS_ACCESS_DENIED": "العنصر مش موجود في الأسطول ده",
+  "BAD_REQUEST": "راجع الحقول المطلوبة",
+  "RATE_LIMITED": "محاولات كتير، حاول بعد شوية",
+  "FORBIDDEN": "مفيش صلاحية للعملية دي",
+  "CONFLICT": "البيانات متعارضة مع سجل موجود (راجع الحقول)",
+  "CONTEXT_409_REGISTRATION_TAKEN": "رقم التسجيل مستخدم قبل كده",
+  "CONTEXT_409_FLEET_REFERENCED": "الأسطول مرتبط بأتوبيسات أو رحلات أو حجوزات و مينفعش يتمسح",
+  "CONTEXT_409_MEMBER_EXISTS": "المستخدم ده عضو في الأسطول ده قبل كده",
+  "CONTEXT_409_OWNER_LINK": "مشكلة في ربط مالك الأسطول، راجع بيانات المالك",
+  "_fix_P0": "P0 key RATE_LIMITED_429 is dead (backend sends RATE_LIMITED; lib/api.ts synthesizes RATE_LIMITED_429 only for status-only 429s) — keep both keys after merge."
+}
