@@ -25,7 +25,8 @@ const NAV = [
   { href: "/trips", label: "الرحلات", icon: Route },
   { href: "/bookings", label: "الحجوزات", icon: Ticket },
   { href: "/reports", label: "التقارير", icon: ChartNoAxesCombined },
-  { href: "/roles-permissions", label: "الأدوار والصلاحيات", icon: KeyRound },
+  { href: "/roles", label: "مستويات الوصول", icon: UserRoundCog },
+  { href: "/permissions", label: "دليل المهام", icon: KeyRound },
 ] as const;
 
 export function Sidebar() {
