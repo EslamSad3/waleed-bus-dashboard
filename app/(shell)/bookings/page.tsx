@@ -33,17 +33,20 @@ export default function BookingsPage() {
 
   if (!fleetId) {
     return (
-      <div className="flex flex-col gap-2">
-        <h1 className="title-grad text-2xl font-extrabold">الحجوزات</h1>
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">اختار الأسطول الأول (x-fleet-id)</p>
+      <div className="dashboard-page">
+        <h1 className="page-title">الحجوزات</h1>
+        <p className="empty-state">اختار الأسطول الأول لعرض الحجوزات</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">الحجوزات</h1>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div>
+          <h1 className="page-title">الحجوزات</h1>
+          <p className="page-description">متابعة حجوزات الركاب والمقاعد وحالة كل حجز.</p>
+        </div>
         <Button asChild>
           <Link href="/bookings/new">حجز جديد</Link>
         </Button>
@@ -67,7 +70,7 @@ export default function BookingsPage() {
           keyOf={(b) => b.id}
           filter={predicate}
           filterBar={
-            <div className="flex flex-wrap gap-2">
+            <div className="contents">
               <Input
                 aria-label="بحث باسم الراكب أو موبايله"
                 placeholder="بحث باسم الراكب أو موبايله"
@@ -79,7 +82,7 @@ export default function BookingsPage() {
                 aria-label="الحالة"
                 value={status}
                 onChange={(e) => setListFilter("bookings", { status: e.target.value })}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="select-field"
               >
                 <option value="all">كل الحالات</option>
                 <option value="CONFIRMED">مؤكد</option>
@@ -91,14 +94,17 @@ export default function BookingsPage() {
           renderItem={(b) => (
             <Link
               href={`/bookings/${b.id}`}
-              className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow transition-colors hover:bg-[#daeaf5]"
+              className="list-card"
             >
               <span className="font-semibold text-[#1a1a1a]">
                 {b.passengerName}
                 {b.passengerPhone ? <span className="text-sm text-[#606060]"> · <span dir="ltr">{b.passengerPhone}</span></span> : null}
               </span>
-              <span className="text-sm text-[#606060]">
-                كراسي <span dir="ltr">{b.seats}</span> · {BOOKING_STATUS_AR[b.status]}
+              <span className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b78]">
+                <span>كراسي <span dir="ltr">{b.seats}</span></span>
+                <span className={b.status === "CONFIRMED" ? "status-pill" : "status-pill status-pill-muted"}>
+                  {BOOKING_STATUS_AR[b.status]}
+                </span>
               </span>
             </Link>
           )}

@@ -1,52 +1,82 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Bus,
   Route,
   Ticket,
   Users,
-  ShieldCheck,
-  FileText,
-  ScrollText,
-  Settings,
   Building2,
+  UserRoundCog,
+  KeyRound,
+  ChartNoAxesCombined,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "نظرة عامة", icon: LayoutDashboard },
+  { href: "/fleet-owners", label: "ملاك الأساطيل", icon: UserRoundCog },
   { href: "/fleets", label: "الأساطيل", icon: Building2 },
+  { href: "/drivers", label: "السواقين", icon: Users },
   { href: "/buses", label: "الأتوبيسات", icon: Bus },
   { href: "/trips", label: "الرحلات", icon: Route },
   { href: "/bookings", label: "الحجوزات", icon: Ticket },
-  { href: "/drivers", label: "السواقين والملاك", icon: Users },
-  { href: "/users", label: "المستخدمين", icon: Users },
-  { href: "/roles", label: "الأدوار والصلاحيات", icon: ShieldCheck },
-  { href: "/reports", label: "التقارير", icon: FileText },
-  { href: "/audit", label: "سجل التدقيق", icon: ScrollText },
-  { href: "/settings", label: "الإعدادات", icon: Settings },
-];
+  { href: "/reports", label: "التقارير", icon: ChartNoAxesCombined },
+  { href: "/roles-permissions", label: "الأدوار والصلاحيات", icon: KeyRound },
+] as const;
 
-export function Sidebar({ active }: { active: string }) {
+export function Sidebar() {
+  const active = usePathname();
+  const links = NAV.map(({ href, label, icon: Icon }) => {
+    const isActive = active === href || (href !== "/" && active.startsWith(`${href}/`));
+    return (
+      <Link
+        key={href}
+        href={href}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "group flex shrink-0 items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-[#edf6fc] hover:text-[#204c6b]",
+          isActive && "bg-[#daeaf5] text-[#204c6b] shadow-[inset_0_0_0_1px_rgba(47,113,158,.08)]",
+        )}
+      >
+        <span
+          className={cn(
+            "grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-500 transition-colors group-hover:bg-white group-hover:text-[#2f719e]",
+            isActive && "bg-white text-[#2f719e] shadow-sm",
+          )}
+        >
+          <Icon aria-hidden="true" className="size-[18px]" />
+        </span>
+        <span>{label}</span>
+      </Link>
+    );
+  });
+
   return (
-    <aside aria-label="التنقل الرئيسي" className="hidden w-64 shrink-0 flex-col gap-1 p-4 md:flex">
-      {NAV.map(({ href, label, icon: Icon }) => {
-        const isActive = active === href || (href !== "/" && active.startsWith(href));
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-[#1a1a1a] transition-colors hover:bg-[#daeaf5]",
-              isActive && "bg-[#daeaf5] text-[#2f719e]",
-            )}
-          >
-            <Icon aria-hidden="true" />
-            {label}
-          </Link>
-        );
-      })}
-    </aside>
+    <>
+      <aside
+        aria-label="التنقل الرئيسي"
+        className="sticky top-24 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-[1.75rem] border border-white/80 bg-white/75 p-3 shadow-[0_18px_55px_rgba(29,64,89,.08)] backdrop-blur-xl md:flex"
+      >
+        <div className="mb-3 flex items-center gap-2 rounded-2xl bg-[#10153c] px-4 py-3 text-white">
+          <Sparkles className="size-4 text-[#9ed0f0]" aria-hidden="true" />
+          <span className="text-xs font-bold">مساحة الإدارة</span>
+        </div>
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">{links}</nav>
+        <div className="mt-3 rounded-2xl bg-[#fff7e3] p-3 text-xs leading-6 text-[#5e6b78]">
+          إدارة الملاك والسواقين والأتوبيسات من مكان واحد.
+        </div>
+      </aside>
+
+      <nav
+        aria-label="التنقل الرئيسي للموبايل"
+        className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto border-y border-slate-200/70 bg-white/80 px-4 py-2 backdrop-blur-xl md:hidden"
+      >
+        {links}
+      </nav>
+    </>
   );
 }

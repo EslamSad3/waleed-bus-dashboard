@@ -20,6 +20,8 @@ import {
 import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
+import { Dialog } from "@/components/ui/dialog";
+import { Pencil, UserPlus } from "lucide-react";
 
 export default function BusDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -36,6 +38,8 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tripsFirst, setTripsFirst] = useState<{ key: string; items: TripRef[]; nextCursor: string | null } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   useEffect(() => {
     if (!fleetId) return;
@@ -84,6 +88,7 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
       capacity: capacity === "" ? undefined : Number(capacity),
     });
     note(r.ok, r.ok ? "اتحفظ بنجاح" : r.message, r.ok ? r.data : undefined);
+    if (r.ok) setEditOpen(false);
   }
 
   async function remove() {
@@ -117,7 +122,12 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
     }
     const r = await assignDriver(fleetId, id, { driverUserId: driverId });
     note(r.ok, r.ok ? "اتعين السواق" : r.message);
-    if (r.ok) setDriverId("");
+    if (r.ok) {
+      setAssignOpen(false);
+      setDriverId("");
+      const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId);
+      if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+    }
   }
 
   async function unassign() {
@@ -125,29 +135,39 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
     if (!window.confirm("تلغي تعيين السواق الحالي؟")) return;
     const r = await unassignDriver(fleetId, id);
     note(r.ok, r.ok ? "اتلغى التعيين" : r.message);
+    if (r.ok) {
+      const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId);
+      if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+    }
   }
 
   if (!fleetId) {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="title-grad text-2xl font-extrabold">الأتوبيس</h1>
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">اختار الأسطول الأول (x-fleet-id)</p>
+        <p className="empty-state">اختار الأسطول الأول لعرض بيانات الأتوبيس.</p>
       </div>
     );
   }
   if (failed && loadedKey === `${fleetId}/${id}`) return <p role="alert" className="text-sm text-red-600">{failed}</p>;
   if (!bus || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
+  const currentDriver = drivers.find((driver) => driver.assignments?.some((assignment) => assignment.busId === id && assignment.status === "ACTIVE"));
+  const eligibleDrivers = drivers.filter((driver) => {
+    const active = driver.assignments?.find((assignment) => assignment.status === "ACTIVE");
+    return !active || active.busId === id;
+  });
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold"><span dir="ltr">{bus.registrationNumber}</span></h1>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div><h1 className="page-title"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">بيانات الأتوبيس والحالة والسواق المعيّن وسجل الرحلات.</p></div>
         <span className={bus.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
           {bus.isActive ? "نشط" : "موقوف"}
         </span>
       </div>
 
-      <nav aria-label="تبويبات الأتوبيس" className="flex gap-2">
+      <nav aria-label="تبويبات الأتوبيس" className="flex gap-2 overflow-x-auto pb-1">
         {(["overview", "trips"] as const).map((t) => (
           <button
             key={t}
@@ -165,51 +185,37 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
       {status && <p role="status" className="text-sm text-green-700">{status}</p>}
 
       {tab === "overview" && (
-        <div className="grid max-w-3xl gap-4 md:grid-cols-2">
-          <div className="rounded-2xl bg-white p-6 shadow">
-            <h2 className="mb-3 font-bold">البيانات</h2>
-            <div className="space-y-3">
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">رقم اللوحة</span>
-                <Input dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value)} />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">السعة (1–300)</span>
-                <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
-              </label>
-              <div className="flex gap-2">
-                <Button type="button" onClick={save}>حفظ</Button>
-                <Button type="button" variant="destructive" onClick={remove}>مسح</Button>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="panel-card p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="section-title">البيانات</h2>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex gap-3"><dt className="text-[#687886]">رقم اللوحة</dt><dd dir="ltr" className="font-semibold">{bus.plateNumber ?? "—"}</dd></div>
+                  <div className="flex gap-3"><dt className="text-[#687886]">السعة</dt><dd className="font-semibold">{bus.capacity} مقعد</dd></div>
+                </dl>
               </div>
+              <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" aria-hidden="true" /> تعديل
+              </Button>
             </div>
           </div>
-          <div className="rounded-2xl bg-white p-6 shadow">
-            <h2 className="mb-3 font-bold">الحالة والسواق</h2>
+          <div className="panel-card p-5 sm:p-6">
+            <h2 className="section-title">الحالة والسواق</h2>
             <div className="flex flex-col gap-3">
+              <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
+                <span className="block text-[#606060]">السواق الحالي</span>
+                <strong>{currentDriver?.name ?? "لا يوجد سواق معين"}</strong>
+                {currentDriver?.phoneNumber ? <span className="mr-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span> : null}
+              </div>
               <div className="flex gap-2">
                 <Button type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>إيقاف</Button>
                 <Button type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>إعادة تشغيل</Button>
               </div>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">تعيين سواق</span>
-                <span className="flex gap-2">
-                  <select
-                    aria-label="اختار السواق"
-                    value={driverId}
-                    onChange={(e) => setDriverId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                  >
-                    <option value="">اختار السواق</option>
-                    {drivers.map((d) => (
-                      <option key={d.id} value={d.userId ?? d.id}>
-                        {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phone ? ` · ${d.phone}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <Button type="button" onClick={assign}>تعيين</Button>
-                </span>
-              </label>
-              <Button type="button" variant="secondary" onClick={unassign}>إلغاء التعيين</Button>
+              <Button type="button" onClick={() => setAssignOpen(true)}>
+                <UserPlus className="size-4" aria-hidden="true" /> تعيين سواق
+              </Button>
+              <Button type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>إلغاء التعيين</Button>
             </div>
           </div>
         </div>
@@ -232,7 +238,7 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
             keyOf={(t) => t.id}
             emptyMessage="لا توجد رحلات على الأتوبيس ده"
             renderItem={(t) => (
-              <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow">
+              <div className="list-card">
                 <span className="font-semibold">{t.origin} ← {t.destination}</span>
                 <span className="text-sm text-[#606060]">{t.status} · <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time></span>
               </div>
@@ -240,6 +246,46 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
           />
         )
       )}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title="تعديل الأتوبيس" description={`تحديث بيانات ${bus.registrationNumber}.`} size="sm">
+        <div className="space-y-4">
+          <label className="block text-sm">
+            <span className="mb-2 block font-bold text-[#334454]">رقم اللوحة</span>
+            <Input dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value)} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-2 block font-bold text-[#334454]">السعة (1–300)</span>
+            <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+          </label>
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">
+            <Button type="button" variant="destructive" onClick={remove}>مسح الأتوبيس</Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>إلغاء</Button>
+              <Button type="button" onClick={save}>حفظ التعديلات</Button>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen} title="تعيين سواق" description="اختار سواقًا متاحًا لتشغيل الأتوبيس." size="sm">
+        <div className="space-y-4">
+          <label className="block text-sm">
+            <span className="mb-2 block font-bold text-[#334454]">السواق</span>
+            <select aria-label="اختار السواق" value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
+              <option value="">اختار السواق</option>
+              {eligibleDrivers.map((d) => (
+                <option key={d.id} value={d.userId ?? d.id}>{d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}</option>
+              ))}
+            </select>
+          </label>
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4">
+            <Button type="button" variant="secondary" onClick={() => setAssignOpen(false)}>إلغاء</Button>
+            <Button type="button" onClick={assign}>تأكيد التعيين</Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

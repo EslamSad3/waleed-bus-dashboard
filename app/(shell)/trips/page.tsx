@@ -37,17 +37,20 @@ export default function TripsPage() {
 
   if (!fleetId) {
     return (
-      <div className="flex flex-col gap-2">
-        <h1 className="title-grad text-2xl font-extrabold">الرحلات</h1>
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">اختار الأسطول الأول (x-fleet-id)</p>
+      <div className="dashboard-page">
+        <h1 className="page-title">الرحلات</h1>
+        <p className="empty-state">اختار الأسطول الأول لعرض الرحلات</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">الرحلات</h1>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div>
+          <h1 className="page-title">الرحلات</h1>
+          <p className="page-description">جدولة الرحلات ومتابعة الخط والميعاد وحالة التشغيل.</p>
+        </div>
         <Button asChild>
           <Link href="/trips/new">رحلة جديدة</Link>
         </Button>
@@ -71,7 +74,7 @@ export default function TripsPage() {
           keyOf={(t) => t.id}
           filter={predicate}
           filterBar={
-            <div className="flex flex-wrap gap-2">
+            <div className="contents">
               <Input
                 aria-label="بحث بالمنشأ أو الوجهة"
                 placeholder="من / إلى"
@@ -83,7 +86,7 @@ export default function TripsPage() {
                 aria-label="الحالة"
                 value={status}
                 onChange={(e) => setListFilter("trips", { status: e.target.value })}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="select-field"
               >
                 <option value="all">كل الحالات</option>
                 <option value="SCHEDULED">مجدولة</option>
@@ -111,11 +114,14 @@ export default function TripsPage() {
           renderItem={(t) => (
             <Link
               href={`/trips/${t.id}`}
-              className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow transition-colors hover:bg-[#daeaf5]"
+              className="list-card"
             >
               <span className="font-semibold text-[#1a1a1a]">{t.origin} ← {t.destination}</span>
-              <span className="text-sm text-[#606060]">
-                {TRIP_STATUS_AR[t.status]} · <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time>
+              <span className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b78]">
+                <span className={t.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>
+                  {TRIP_STATUS_AR[t.status]}
+                </span>
+                <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time>
               </span>
             </Link>
           )}

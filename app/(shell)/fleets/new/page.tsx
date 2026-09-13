@@ -10,6 +10,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createFleet, fetchUserOptions } from "@/lib/actions/fleets";
+import { RouteDialog } from "@/components/ui/route-dialog";
 
 type Values = z.input<typeof createFleetSchema>;
 type Owner = { id: string; name?: string | null; email?: string | null; phone?: string | null };
@@ -53,9 +54,8 @@ export default function NewFleetPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="title-grad text-2xl font-extrabold">أسطول جديد</h1>
-      <div className="max-w-xl rounded-2xl bg-white p-6 shadow">
+    <RouteDialog title="أسطول جديد" description="أضف أسطولًا جديدًا واربطه بالمالك المسؤول." fallbackHref="/fleets" size="sm">
+      <div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <FormField
@@ -81,7 +81,7 @@ export default function NewFleetPage() {
                     <select
                       aria-label="اختار المالك"
                       {...field}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                      className="select-field w-full"
                     >
                       <option value="">اختار المالك</option>
                       {owners.map((o) => (
@@ -104,7 +104,7 @@ export default function NewFleetPage() {
                   <FormControl>
                     <Input
                       dir="ltr"
-                      placeholder="fleet-owner"
+                      placeholder="fleet_owner"
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value || undefined)}
                       onBlur={field.onBlur}
@@ -118,12 +118,12 @@ export default function NewFleetPage() {
             />
             {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
             {saved && <p role="status" className="text-sm text-green-700">{saved}</p>}
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button className="w-full sm:w-auto" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الأسطول"}
             </Button>
           </form>
         </Form>
       </div>
-    </div>
+    </RouteDialog>
   );
 }

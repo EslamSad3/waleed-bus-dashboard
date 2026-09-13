@@ -33,17 +33,20 @@ export default function BusesPage() {
 
   if (!fleetId) {
     return (
-      <div className="flex flex-col gap-2">
-        <h1 className="title-grad text-2xl font-extrabold">الأتوبيسات</h1>
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">اختار الأسطول الأول (x-fleet-id)</p>
+      <div className="dashboard-page">
+        <h1 className="page-title">الأتوبيسات</h1>
+        <p className="empty-state">اختار الأسطول الأول لعرض الأتوبيسات</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">الأتوبيسات</h1>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div>
+          <h1 className="page-title">الأتوبيسات</h1>
+          <p className="page-description">إدارة بيانات الأتوبيسات وحالتها وتعيين السواقين.</p>
+        </div>
         <Button asChild>
           <Link href="/buses/new">أتوبيس جديد</Link>
         </Button>
@@ -67,7 +70,7 @@ export default function BusesPage() {
           keyOf={(b) => b.id}
           filter={predicate}
           filterBar={
-            <div className="flex flex-wrap gap-2">
+            <div className="contents">
               <Input
                 aria-label="بحث برقم التسجيل أو اللوحة"
                 placeholder="بحث برقم التسجيل أو اللوحة"
@@ -79,7 +82,7 @@ export default function BusesPage() {
                 aria-label="الحالة"
                 value={status}
                 onChange={(e) => setListFilter("buses", { status: e.target.value })}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="select-field"
               >
                 <option value="all">الكل</option>
                 <option value="active">نشط</option>
@@ -91,7 +94,7 @@ export default function BusesPage() {
           renderItem={(b) => (
             <Link
               href={`/buses/${b.id}`}
-              className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow transition-colors hover:bg-[#daeaf5]"
+              className="list-card"
             >
               <span className="font-semibold text-[#1a1a1a]">
                 <span dir="ltr">{b.registrationNumber}</span>
@@ -99,7 +102,7 @@ export default function BusesPage() {
               </span>
               <span className="flex items-center gap-3 text-sm text-[#606060]">
                 <span>السعة <span dir="ltr">{b.capacity}</span></span>
-                <span className={b.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-slate-700"}>
+                <span className={b.isActive ? "status-pill" : "status-pill status-pill-muted"}>
                   {b.isActive ? "نشط" : "موقوف"}
                 </span>
               </span>

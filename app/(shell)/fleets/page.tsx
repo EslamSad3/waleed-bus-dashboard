@@ -28,9 +28,12 @@ export default function FleetsPage() {
     (status === "all" || (status === "active" ? fleet.isActive : !fleet.isActive));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">الأساطيل</h1>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div>
+          <h1 className="page-title">الأساطيل</h1>
+          <p className="page-description">كل الأساطيل المسجلة وحالة تشغيل كل أسطول.</p>
+        </div>
         <Button asChild>
           <Link href="/fleets/new">أسطول جديد</Link>
         </Button>
@@ -53,7 +56,7 @@ export default function FleetsPage() {
           keyOf={(fleet) => fleet.id}
           filter={predicate}
           filterBar={
-            <div className="flex flex-wrap gap-2">
+            <div className="contents">
               <Input
                 aria-label="دور باسم الأسطول"
                 placeholder="دور باسم الأسطول"
@@ -65,7 +68,7 @@ export default function FleetsPage() {
                 aria-label="الحالة"
                 value={status}
                 onChange={(e) => setListFilter("fleets", { status: e.target.value })}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="select-field"
               >
                 <option value="all">الكل</option>
                 <option value="active">نشط</option>
@@ -77,15 +80,15 @@ export default function FleetsPage() {
           renderItem={(fleet) => (
             <Link
               href={`/fleets/${fleet.id}`}
-              className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow transition-colors hover:bg-[#daeaf5]"
+              className="list-card"
             >
               <span className="font-semibold text-[#1a1a1a]">{fleet.name}</span>
-              <span className="flex items-center gap-3 text-sm text-[#606060]">
+              <span className="flex flex-wrap items-center gap-3 text-sm text-[#5e6b78]">
                 <span
                   className={
                     fleet.isActive
-                      ? "rounded-full bg-green-100 px-3 py-0.5 text-green-800"
-                      : "rounded-full bg-slate-200 px-3 py-0.5 text-slate-700"
+                      ? "status-pill"
+                      : "status-pill status-pill-muted"
                   }
                 >
                   {fleet.isActive ? "نشط" : "موقوف"}

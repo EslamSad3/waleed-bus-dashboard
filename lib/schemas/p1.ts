@@ -13,6 +13,12 @@ const name255 = z.string("الحقل ده مطلوب").min(1, "الحقل ده �
 const egyptPhone = z
   .string()
   .regex(/^(\+20|0)1[0-9]{9}$/, "رقم الموبايل لازم يبقى 11 رقم يبدأ بـ 01");
+const password = z.string("كلمة السر لازم تبقى 8 حروف على الأقل").min(8, "كلمة السر لازم تبقى 8 حروف على الأقل").max(128);
+const nickname = z.string("اسم الشهرة مطلوب").min(1, "اسم الشهرة مطلوب").max(100);
+const nationalId = z
+  .union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")])
+  .optional()
+  .transform((value) => value || undefined);
 const capacity = z
   .number("السعة من 1 لـ 300")
   .int("السعة من 1 لـ 300")
@@ -25,6 +31,25 @@ const datetime = z
 const memberStatus = z.enum(["ACTIVE", "SUSPENDED", "REVOKED"]);
 const tripStatus = z.enum(["SCHEDULED", "DEPARTED", "COMPLETED", "CANCELLED"]);
 const bookingStatus = z.enum(["CONFIRMED", "CANCELLED"]);
+
+// ---- Fleet-owner onboarding (platform) ----
+export const createFleetOwnerSchema = z.object({
+  name: name255,
+  nickname,
+  phone: egyptPhone,
+  password,
+  picture: z.string().max(1024).optional(),
+  nationalId,
+  fleetName: name255,
+});
+export const updateFleetOwnerSchema = z.object({
+  name: name255.optional(),
+  nickname: nickname.optional(),
+  phone: egyptPhone.optional(),
+  picture: z.string().max(1024).optional(),
+  nationalId: z.union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")]).optional(),
+  isActive: z.boolean().optional(),
+});
 
 // ---- Fleets ----
 export const createFleetSchema = z.object({
@@ -98,15 +123,18 @@ const driverFromUser = z.object({
   password: z.string().optional(),
   roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
 });
-const driverFresh = z.object({
+export const driverFreshSchema = z.object({
   userId: z.undefined().optional(),
   name: z.string("الحقل ده مطلوب").min(1, "الحقل ده مطلوب").max(255),
+  nickname,
   phone: egyptPhone,
-  password: z.string("كلمة السر لازم تبقى 8 حروف على الأقل").min(8, "كلمة السر لازم تبقى 8 حروف على الأقل").max(128),
+  password,
+  picture: z.string().max(1024).optional(),
+  nationalId,
   roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
 });
 /** Backend: either userId OR phone+name+password (else 422). */
-export const addDriverSchema = z.union([driverFromUser, driverFresh]);
+export const addDriverSchema = z.union([driverFromUser, driverFreshSchema]);
 export const updateDriverSchema = z.object({
   roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
   status: memberStatus.optional(),
@@ -125,6 +153,8 @@ export type RegistryEntry = {
 const SEG = "[^/]+";
 
 export const P1_REGISTRY: RegistryEntry[] = [
+  { method: "POST", pattern: /^\/fleet-owners$/, schema: createFleetOwnerSchema },
+  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/${SEG}$`), schema: updateFleetOwnerSchema },
   { method: "POST", pattern: /^\/fleets$/, schema: createFleetSchema, conflictKey: "OWNER_LINK" },
   { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}$`), schema: updateFleetSchema },
   { method: "POST", pattern: new RegExp(`^/fleets/${SEG}/buses$`), schema: createBusSchema, conflictKey: "REGISTRATION_TAKEN" },
@@ -145,6 +175,8 @@ export function findRegistryEntry(method: string, pathname: string): RegistryEnt
 }
 
 export type CreateFleetInput = z.infer<typeof createFleetSchema>;
+export type CreateFleetOwnerInput = z.infer<typeof createFleetOwnerSchema>;
+export type UpdateFleetOwnerInput = z.infer<typeof updateFleetOwnerSchema>;
 export type CreateBusInput = z.infer<typeof createBusSchema>;
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;

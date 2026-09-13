@@ -40,7 +40,7 @@ export default function NewBookingPage() {
   async function onSubmit(values: Values) {
     setFormError(null);
     if (!fleetId) {
-      setFormError("اختار الأسطول الأول (x-fleet-id)");
+      setFormError("اختار الأسطول الأول قبل إضافة الحجز.");
       return;
     }
     setFleetId(fleetId);
@@ -62,9 +62,9 @@ export default function NewBookingPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="title-grad text-2xl font-extrabold">حجز جديد</h1>
-      <div className="max-w-xl rounded-2xl bg-white p-6 shadow">
+    <div className="dashboard-page">
+      <div><h1 className="page-title">حجز جديد</h1><p className="page-description">سجّل بيانات الراكب واربط الحجز بالرحلة المطلوبة.</p></div>
+      <div className="form-card max-w-xl">
         <div className="mb-4">
           <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("tripId", ""); }} />
         </div>
@@ -77,7 +77,7 @@ export default function NewBookingPage() {
                 <FormItem>
                   <FormLabel>الرحلة (من نفس الأسطول)</FormLabel>
                   <FormControl>
-                    <select aria-label="اختار الرحلة" {...field} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select aria-label="اختار الرحلة" {...field} className="select-field w-full">
                       <option value="">اختار الرحلة</option>
                       {trips.map((t) => (
                         <option key={t.id} value={t.id}>{t.origin} ← {t.destination}</option>
@@ -124,7 +124,7 @@ export default function NewBookingPage() {
               )}
             />
             {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button className="w-full sm:w-auto" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الحجز"}
             </Button>
           </form>

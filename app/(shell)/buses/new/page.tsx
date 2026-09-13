@@ -13,6 +13,7 @@ import { createBus } from "@/lib/actions/buses";
 import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
+import { RouteDialog } from "@/components/ui/route-dialog";
 
 type Values = z.input<typeof createBusSchema>;
 
@@ -30,7 +31,7 @@ export default function NewBusPage() {
   async function onSubmit(values: Values) {
     setFormError(null);
     if (!fleetId) {
-      setFormError("اختار الأسطول الأول (x-fleet-id)");
+      setFormError("اختار الأسطول الأول قبل إضافة الأتوبيس.");
       return;
     }
     setFleetId(fleetId);
@@ -52,9 +53,8 @@ export default function NewBusPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="title-grad text-2xl font-extrabold">أتوبيس جديد</h1>
-      <div className="max-w-xl rounded-2xl bg-white p-6 shadow">
+    <RouteDialog title="أتوبيس جديد" description="سجّل الأتوبيس داخل أسطوله، وبعدها عيّن السواق من صفحة التفاصيل." fallbackHref="/buses" size="sm">
+      <div>
         <div className="mb-4">
           <FleetPicker value={fleetId} onChange={setLocalFleetId} />
         </div>
@@ -116,12 +116,12 @@ export default function NewBusPage() {
               )}
             />
             {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button className="w-full sm:w-auto" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الأتوبيس"}
             </Button>
           </form>
         </Form>
       </div>
-    </div>
+    </RouteDialog>
   );
 }

@@ -65,13 +65,13 @@ export function CursorList<T>({
 
   return (
     <div className="flex flex-col gap-3">
-      {filterBar}
+      {filterBar ? <div className="filter-panel">{filterBar}</div> : null}
       {visible.length === 0 ? (
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">
+        <p className="empty-state">
           {emptyMessage}
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2.5">
           {visible.map((item, i) => (
             <li key={keyOf(item, i)}>{renderItem(item, i)}</li>
           ))}
@@ -83,7 +83,7 @@ export function CursorList<T>({
           type="button"
           onClick={more}
           disabled={loading}
-          className="self-center rounded-xl bg-[#daeaf5] px-6 py-2 text-sm font-semibold text-[#2f719e] transition-colors hover:bg-[#c4def3] disabled:opacity-60"
+          className="self-center rounded-xl bg-[#daeaf5] px-6 py-2.5 text-sm font-bold text-[#204c6b] transition-colors hover:bg-[#c4def3] disabled:opacity-60"
         >
           {loading ? "جاري التحميل…" : "عرض المزيد"}
         </button>

@@ -23,7 +23,7 @@ export function SignOutButton() {
   return (
     <Button variant="ghost" size="sm" onClick={signOut} disabled={busy} aria-label="تسجيل الخروج">
       <LogOut aria-hidden="true" />
-      {busy ? "جاري الخروج…" : "خروج"}
+      <span className="hidden sm:inline">{busy ? "جاري الخروج…" : "خروج"}</span>
     </Button>
   );
 }

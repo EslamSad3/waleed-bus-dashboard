@@ -79,7 +79,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="flex flex-col gap-2">
         <h1 className="title-grad text-2xl font-extrabold">الرحلة</h1>
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">اختار الأسطول الأول (x-fleet-id)</p>
+        <p className="empty-state">اختار الأسطول الأول لعرض بيانات الرحلة.</p>
       </div>
     );
   }
@@ -87,20 +87,20 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   if (!trip || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">{trip.origin} ← {trip.destination}</h1>
-        <span className="rounded-full bg-[#daeaf5] px-3 py-0.5 text-sm text-[#2f719e]">{TRIP_STATUS_AR[trip.status]}</span>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div><h1 className="page-title">{trip.origin} ← {trip.destination}</h1><p className="page-description">تفاصيل الخط والميعاد وحالة الرحلة.</p></div>
+        <span className={trip.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>{TRIP_STATUS_AR[trip.status]}</span>
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {note && <p role="status" className="text-sm text-green-700">{note}</p>}
 
-      <div className="grid max-w-3xl gap-4 md:grid-cols-2">
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="mb-3 font-bold">الخط والميعاد</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="panel-card p-5 sm:p-6">
+          <h2 className="section-title">الخط والميعاد</h2>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">من</span>
                 <Input value={origin} onChange={(e) => setOrigin(e.target.value)} />
@@ -121,8 +121,8 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </div>
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="mb-3 font-bold">الحالة</h2>
+        <div className="panel-card p-5 sm:p-6">
+          <h2 className="section-title">الحالة</h2>
           <div className="flex flex-wrap gap-2">
             {(["SCHEDULED", "DEPARTED", "COMPLETED"] as const).map((s) => (
               <Button

@@ -6,6 +6,8 @@
  */
 export const AR_ERROR_MAP: Record<string, string> = {
   AUTHENTICATION_FAILED: "بيانات الدخول غير صحيحة",
+  ACCOUNT_ALREADY_EXISTS: "رقم الموبايل أو الرقم القومي مستخدم قبل كده",
+  ROLE_CONFIGURATION_INVALID: "إعدادات دور مالك الأسطول غير مكتملة",
   BUS_ACTION_NOT_ALLOWED: "العملية مرفوضة: الأتوبيس عليه رحلة شغالة (DEPARTED)",
   DRIVER_ASSIGNMENT_NOT_ALLOWED: "تعيين السواق مرفوض: مش نشط أو من أسطول تاني",
   RESOURCE_NOT_OWNED: "العنصر مش موجود في الأسطول ده",

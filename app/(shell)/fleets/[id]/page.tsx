@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MembersTab } from "@/components/fleets/members-tab";
+import { FleetBookingsTab, FleetBusesTab, FleetReportsTab, FleetTripsTab } from "@/components/fleets/fleet-detail-listings";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { deleteFleet, fetchFleet, updateFleet, type Fleet } from "@/lib/actions/fleets";
 import { useFilterStore } from "@/stores/filters";
+import { Dialog } from "@/components/ui/dialog";
+import { Pencil } from "lucide-react";
 
 const TABS = [
   { key: "overview", label: "نظرة عامة" },
@@ -29,6 +32,7 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
   const [isActive, setIsActive] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     fetchFleet(id).then((r) => {
@@ -40,11 +44,10 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
     });
   }, [id]);
 
-  function goScoped(href: string) {
+  useEffect(() => {
     setFleetId(id);
     setFleetScopeCookie(id);
-    router.push(href);
-  }
+  }, [id, setFleetId]);
 
   async function save() {
     setError(null);
@@ -56,6 +59,7 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
     }
     setFleet(r.data);
     setStatus("اتحفظ بنجاح");
+    setEditOpen(false);
   }
 
   async function remove() {
@@ -75,15 +79,15 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
   if (!fleet) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">{fleet.name}</h1>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div><h1 className="page-title">{fleet.name}</h1><p className="page-description">إدارة بيانات الأسطول والأعضاء والتشغيل المرتبط به.</p></div>
         <span className={fleet.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
           {fleet.isActive ? "نشط" : "موقوف"}
         </span>
       </div>
 
-      <nav aria-label="تبويبات الأسطول" className="flex flex-wrap gap-2">
+      <nav aria-label="تبويبات الأسطول" className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -98,42 +102,47 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
       </nav>
 
       {tab === "overview" && (
-        <div className="max-w-xl rounded-2xl bg-white p-6 shadow">
-          <div className="space-y-4">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">اسم الأسطول</span>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-[#2f719e]" />
-              نشط
-            </label>
-            {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-            {status && <p role="status" className="text-sm text-green-700">{status}</p>}
-            <div className="flex gap-2">
-              <Button type="button" onClick={save}>حفظ</Button>
-              <Button type="button" variant="destructive" onClick={remove}>مسح الأسطول</Button>
+        <div className="panel-card max-w-xl p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold text-[#71808d]">اسم الأسطول</p>
+              <p className="mt-1 text-lg font-bold text-[#17212b]">{fleet.name}</p>
+              <span className={`mt-3 ${fleet.isActive ? "status-pill" : "status-pill status-pill-muted"}`}>{fleet.isActive ? "نشط" : "موقوف"}</span>
             </div>
+            <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" aria-hidden="true" /> تعديل
+            </Button>
           </div>
         </div>
       )}
 
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title="تعديل الأسطول" description="حدّث الاسم أو حالة تشغيل الأسطول." size="sm">
+        <div className="space-y-4">
+          <label className="block text-sm">
+            <span className="mb-2 block font-bold text-[#334454]">اسم الأسطول</span>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm">
+            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-[#2f719e]" />
+            الأسطول نشط
+          </label>
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">
+            <Button type="button" variant="destructive" onClick={remove}>مسح الأسطول</Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>إلغاء</Button>
+              <Button type="button" onClick={save}>حفظ التعديلات</Button>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+
       {tab === "members" && <MembersTab fleetId={id} />}
 
-      {tab !== "overview" && tab !== "members" && tab !== "reports" && (
-        <div className="rounded-2xl bg-white p-6 text-center shadow">
-          <p className="text-sm text-[#606060]">إدارة {TABS.find((t) => t.key === tab)?.label} الخاصة بالأسطول ده</p>
-          <Button asChild className="mt-3">
-            <button type="button" onClick={() => goScoped(`/${tab}`)}>فتح {TABS.find((t) => t.key === tab)?.label} (بنطاق الأسطول)</button>
-          </Button>
-        </div>
-      )}
-
-      {tab === "reports" && (
-        <div className="rounded-2xl bg-[#daeaf5] p-6 text-center shadow">
-          <p className="text-sm text-[#1a1a1a]">تقارير الأسطول (PDF) — قريبا في P3</p>
-        </div>
-      )}
+      {tab === "buses" && <FleetBusesTab fleetId={id} />}
+      {tab === "trips" && <FleetTripsTab fleetId={id} />}
+      {tab === "bookings" && <FleetBookingsTab fleetId={id} />}
+      {tab === "reports" && <FleetReportsTab fleetId={id} />}
     </div>
   );
 }

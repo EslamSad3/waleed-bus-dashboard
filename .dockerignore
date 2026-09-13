@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+build
+.git
+.env*
+graphify-out
+*.log
+.DS_Store
