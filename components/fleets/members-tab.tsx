@@ -87,16 +87,16 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl bg-white p-6 shadow">
-        <h2 className="mb-3 font-bold">إضافة عضو</h2>
+      <div className="panel-card p-5 sm:p-6">
+        <h2 className="section-title">إضافة عضو</h2>
         <div className="flex flex-wrap items-end gap-2">
           <label className="block text-sm">
             <span className="mb-1 block font-medium">معرف المستخدم</span>
-            <Input dir="ltr" placeholder="user uuid" value={userId} onChange={(e) => setUserId(e.target.value)} className="w-64" />
+            <Input dir="ltr" placeholder="user uuid" value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full sm:w-64" />
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium">الدور</span>
-            <select aria-label="اختار الدور" value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+            <select aria-label="اختار الدور" value={roleSlug} onChange={(e) => setRoleSlug(e.target.value)} className="select-field w-full">
               <option value="">الدور الافتراضي</option>
               {roles.map((r) => (
                 <option key={r.id} value={r.slug}>{r.slug}</option>
@@ -127,7 +127,7 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
           keyOf={(m) => m.id}
           emptyMessage="لا يوجد أعضاء في الأسطول ده"
           renderItem={(m) => (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white px-4 py-3 shadow">
+            <div className="list-card">
               <span className="text-sm text-[#1a1a1a]">
                 <span dir="ltr">{m.userId.slice(0, 8)}…</span>
                 <span className="text-[#606060]"> · انضم <time dateTime={m.joinedAt}>{new Date(m.joinedAt).toLocaleDateString("en-EG")}</time></span>
@@ -137,7 +137,7 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
                   aria-label="حالة العضو"
                   value={m.status}
                   onChange={(e) => changeStatus(m, e.target.value as Member["status"])}
-                  className="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm"
+                  className="select-field py-1"
                 >
                   {(Object.keys(MEMBER_STATUS_AR) as Member["status"][]).map((s) => (
                     <option key={s} value={s}>{MEMBER_STATUS_AR[s]}</option>

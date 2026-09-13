@@ -68,7 +68,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     return (
       <div className="flex flex-col gap-2">
         <h1 className="title-grad text-2xl font-extrabold">الحجز</h1>
-        <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-[#606060]">اختار الأسطول الأول (x-fleet-id)</p>
+        <p className="empty-state">اختار الأسطول الأول لعرض بيانات الحجز.</p>
       </div>
     );
   }
@@ -76,18 +76,18 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   if (!booking || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="title-grad text-2xl font-extrabold">{booking.passengerName}</h1>
-        <span className="rounded-full bg-[#daeaf5] px-3 py-0.5 text-sm text-[#2f719e]">{BOOKING_STATUS_AR[booking.status]}</span>
+    <div className="dashboard-page">
+      <div className="page-heading">
+        <div><h1 className="page-title">{booking.passengerName}</h1><p className="page-description">بيانات الراكب والرحلة والدفع وحالة الحجز.</p></div>
+        <span className={booking.status === "CONFIRMED" ? "status-pill" : "status-pill status-pill-muted"}>{BOOKING_STATUS_AR[booking.status]}</span>
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {note && <p role="status" className="text-sm text-green-700">{note}</p>}
 
-      <div className="grid max-w-3xl gap-4 md:grid-cols-2">
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="mb-3 font-bold">بيانات الراكب</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="panel-card p-5 sm:p-6">
+          <h2 className="section-title">بيانات الراكب</h2>
           <div className="space-y-3">
             <label className="block text-sm">
               <span className="mb-1 block font-medium">اسم الراكب</span>
@@ -103,8 +103,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
         </div>
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <h2 className="mb-3 font-bold">الرحلة والدفع</h2>
+        <div className="panel-card p-5 sm:p-6">
+          <h2 className="section-title">الرحلة والدفع</h2>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-[#606060]">الرحلة</dt><dd dir="ltr">{booking.tripId.slice(0, 8)}…</dd></div>
             <div className="flex justify-between"><dt className="text-[#606060]">الكراسي</dt><dd dir="ltr">{booking.seats}</dd></div>

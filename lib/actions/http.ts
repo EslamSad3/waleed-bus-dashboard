@@ -54,7 +54,7 @@ export async function apiGet<T>(path: string, fleetId?: string | null): Promise<
 
 export async function apiSend<T>(
   path: string,
-  method: "POST" | "PATCH" | "DELETE",
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown,
   conflictKey?: ConflictKey,
   fleetId?: string | null,

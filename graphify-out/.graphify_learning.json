@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-09-13T21:44:22.684110+00:00",
+  "nodes": {
+    "app_api_proxy_route": {
+      "code_fingerprint": "667124a097f1a30a17154af19cb8895e0af8a1004c0567000d50f17e36a9c7b0",
+      "label": "[...proxy]/route.ts",
+      "last": "2026-09-13T18:41:09.133117+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T18:41:09.133117+00:00",
+          "outcome": "useful",
+          "q": "Why does fleet-owner creation show ممنوع?"
+        }
+      ],
+      "score": 0.997064445,
+      "source_file": "app/api/[...proxy]/route.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_auth_login_page": {
+      "code_fingerprint": "563aaac3def367cbad621b7f5c0b04f03e6b44d1b3acb1ff3feb7d55276c3dfa",
+      "label": "login/page.tsx",
+      "last": "2026-09-13T21:39:09.139548+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:39:09.139548+00:00",
+          "outcome": "useful",
+          "q": "input direction is wrong, the website is on arabic, mean rtl not ltr and thr pass eye should be rtl too so to be at the too way left"
+        },
+        {
+          "date": "2026-09-13T21:36:58.312138+00:00",
+          "outcome": "useful",
+          "q": "inputs are seems not correct also make sure remember me works correctly logic"
+        }
+      ],
+      "score": 1.99979733,
+      "source_file": "app/(auth)/login/page.tsx",
+      "status": "preferred",
+      "uses": 2
+    },
+    "app_shell_layout": {
+      "code_fingerprint": "c83f13abff77733e79610692443d91ed69b69598b9766e6bc70cb39614a389b5",
+      "label": "(shell)/layout.tsx",
+      "last": "2026-09-13T21:41:53.442885+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:41:53.442885+00:00",
+          "outcome": "useful",
+          "q": "side menu selection not synced with the selected page"
+        }
+      ],
+      "score": 0.999960091,
+      "source_file": "app/(shell)/layout.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "components_shell_sidebar": {
+      "code_fingerprint": "6c61e73775618e48710822f9e316dd9e8e788b9d3ca57b305d97ecf650a4de67",
+      "label": "sidebar.tsx",
+      "last": "2026-09-13T21:41:53.442885+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:41:53.442885+00:00",
+          "outcome": "useful",
+          "q": "side menu selection not synced with the selected page"
+        }
+      ],
+      "score": 0.999960091,
+      "source_file": "components/shell/sidebar.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "components_shell_sidebar_sidebar": {
+      "code_fingerprint": "6c61e73775618e48710822f9e316dd9e8e788b9d3ca57b305d97ecf650a4de67",
+      "label": "Sidebar()",
+      "last": "2026-09-13T21:41:53.442885+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:41:53.442885+00:00",
+          "outcome": "useful",
+          "q": "side menu selection not synced with the selected page"
+        }
+      ],
+      "score": 0.999960091,
+      "source_file": "components/shell/sidebar.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "components_ui_input_input": {
+      "code_fingerprint": "f07a845fa78e4a9470f5a96cd1e3e3521852707a492de8e8c7d069da3bf3f45b",
+      "label": "Input",
+      "last": "2026-09-13T21:39:09.139548+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:39:09.139548+00:00",
+          "outcome": "useful",
+          "q": "input direction is wrong, the website is on arabic, mean rtl not ltr and thr pass eye should be rtl too so to be at the too way left"
+        },
+        {
+          "date": "2026-09-13T21:36:58.312138+00:00",
+          "outcome": "useful",
+          "q": "inputs are seems not correct also make sure remember me works correctly logic"
+        }
+      ],
+      "score": 1.99979733,
+      "source_file": "components/ui/input.tsx",
+      "status": "preferred",
+      "uses": 2
+    },
+    "lib_auth": {
+      "code_fingerprint": "62ec0b26a836de04d9e1735ccc573be3940d12c723e38db6d1074798a2f73562",
+      "label": "lib/auth.ts",
+      "last": "2026-09-13T21:36:58.312138+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:36:58.312138+00:00",
+          "outcome": "useful",
+          "q": "inputs are seems not correct also make sure remember me works correctly logic"
+        }
+      ],
+      "score": 0.999881174,
+      "source_file": "lib/auth.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "lib_auth_refreshsession": {
+      "code_fingerprint": "62ec0b26a836de04d9e1735ccc573be3940d12c723e38db6d1074798a2f73562",
+      "label": "refreshSession()",
+      "last": "2026-09-13T21:36:58.312138+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:36:58.312138+00:00",
+          "outcome": "useful",
+          "q": "inputs are seems not correct also make sure remember me works correctly logic"
+        }
+      ],
+      "score": 0.999881174,
+      "source_file": "lib/auth.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "lib_auth_setsessioncookies": {
+      "code_fingerprint": "62ec0b26a836de04d9e1735ccc573be3940d12c723e38db6d1074798a2f73562",
+      "label": "setSessionCookies()",
+      "last": "2026-09-13T21:36:58.312138+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:36:58.312138+00:00",
+          "outcome": "useful",
+          "q": "inputs are seems not correct also make sure remember me works correctly logic"
+        }
+      ],
+      "score": 0.999881174,
+      "source_file": "lib/auth.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "lib_errors": {
+      "code_fingerprint": "facc092992ab2e82f7d1b55ae5405c96c3318fae37862c366238095973c17c49",
+      "label": "errors.ts",
+      "last": "2026-09-13T18:41:09.133117+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T18:41:09.133117+00:00",
+          "outcome": "useful",
+          "q": "Why does fleet-owner creation show ممنوع?"
+        }
+      ],
+      "score": 0.997064445,
+      "source_file": "lib/errors.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "proxy": {
+      "code_fingerprint": "8ba4c8f886d8c241f27327aedfc895f090c91a60bc13bffb5036200664941e83",
+      "label": "proxy.ts",
+      "last": "2026-09-13T21:36:58.312138+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-13T21:36:58.312138+00:00",
+          "outcome": "useful",
+          "q": "inputs are seems not correct also make sure remember me works correctly logic"
+        }
+      ],
+      "score": 0.999881174,
+      "source_file": "proxy.ts",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
+  "version": 1
+}

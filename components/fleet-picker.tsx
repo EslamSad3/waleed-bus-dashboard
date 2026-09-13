@@ -36,7 +36,7 @@ export function FleetPicker({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={!loaded}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+        className="select-field w-full"
       >
         <option value="">اختار الأسطول</option>
         {fleets.map((f) => (

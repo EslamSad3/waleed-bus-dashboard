@@ -1,27 +1,66 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ACCESS_COOKIE } from "@/lib/auth";
+import {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  REMEMBER_COOKIE,
+  deleteSessionCookies,
+  fetchIdentity,
+  rotateRefreshToken,
+  writeSessionCookies,
+} from "@/lib/auth";
 
 /**
- * Optimistic shell guard (Principle I, first layer). Next.js 16 `proxy.ts`
- * convention (renamed from `middleware.ts`; behavior identical).
- * Cookie presence only — the JWT is backend-signed so this layer CANNOT verify
- * the role; `(shell)/layout.tsx` performs the authoritative
- * `appRole === 'super_admin'` check via GET /auth/me.
+ * Session edge guard (Principle I, first layer). It restores an expired access
+ * cookie from the rotating refresh token before the protected request reaches
+ * the shell. The shell layout still performs the authoritative role check.
  */
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const hasSession = Boolean(req.cookies.get(ACCESS_COOKIE)?.value);
+  const accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
+  const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
+  const remembered = req.cookies.get(REMEMBER_COOKIE)?.value === "1";
 
   if (pathname === "/login") {
-    if (hasSession) return NextResponse.redirect(new URL("/", req.url));
+    if (accessToken) {
+      const identity = await fetchIdentity(accessToken);
+      if (identity?.appRole === "super_admin") {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+    }
+
+    if (refreshToken) {
+      const rotated = await rotateRefreshToken(refreshToken);
+      if (rotated) {
+        const response = NextResponse.redirect(new URL("/", req.url));
+        writeSessionCookies(response.cookies, rotated.accessToken, rotated.refreshToken, remembered);
+        return response;
+      }
+    }
+
+    if (accessToken || refreshToken) {
+      const response = NextResponse.next();
+      deleteSessionCookies(response.cookies);
+      return response;
+    }
     return NextResponse.next();
   }
 
-  if (!hasSession) return NextResponse.redirect(new URL("/login", req.url));
+  if (!accessToken) {
+    if (refreshToken) {
+      const rotated = await rotateRefreshToken(refreshToken);
+      if (rotated) {
+        const response = NextResponse.redirect(req.nextUrl);
+        writeSessionCookies(response.cookies, rotated.accessToken, rotated.refreshToken, remembered);
+        return response;
+      }
+    }
 
-  const headers = new Headers(req.headers);
-  headers.set("x-pathname", pathname);
-  return NextResponse.next({ request: { headers } });
+    const response = NextResponse.redirect(new URL("/login", req.url));
+    deleteSessionCookies(response.cookies);
+    return response;
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

@@ -40,7 +40,7 @@ export default function NewTripPage() {
   async function onSubmit(values: Values) {
     setFormError(null);
     if (!fleetId) {
-      setFormError("اختار الأسطول الأول (x-fleet-id)");
+      setFormError("اختار الأسطول الأول قبل إضافة الرحلة.");
       return;
     }
     setFleetId(fleetId);
@@ -62,9 +62,9 @@ export default function NewTripPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="title-grad text-2xl font-extrabold">رحلة جديدة</h1>
-      <div className="max-w-xl rounded-2xl bg-white p-6 shadow">
+    <div className="dashboard-page">
+      <div><h1 className="page-title">رحلة جديدة</h1><p className="page-description">اختر الأتوبيس وحدد خط الرحلة وميعاد المغادرة.</p></div>
+      <div className="form-card max-w-xl">
         <div className="mb-4">
           <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("busId", ""); }} />
         </div>
@@ -77,7 +77,7 @@ export default function NewTripPage() {
                 <FormItem>
                   <FormLabel>الأتوبيس (من نفس الأسطول)</FormLabel>
                   <FormControl>
-                    <select aria-label="اختار الأتوبيس" {...field} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select aria-label="اختار الأتوبيس" {...field} className="select-field w-full">
                       <option value="">اختار الأتوبيس</option>
                       {buses.map((b) => (
                         <option key={b.id} value={b.id}>{b.registrationNumber}</option>
@@ -88,7 +88,7 @@ export default function NewTripPage() {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="origin"
@@ -130,7 +130,7 @@ export default function NewTripPage() {
               )}
             />
             {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button className="w-full sm:w-auto" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الرحلة"}
             </Button>
           </form>

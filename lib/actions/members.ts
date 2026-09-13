@@ -23,11 +23,14 @@ export type DriverRow = {
   id: string;
   userId?: string;
   name?: string | null;
-  phone?: string | null;
+  nickname?: string | null;
+  phoneNumber?: string | null;
+  picture?: string | null;
+  nationalId?: string | null;
   status: string;
   roleSlug?: string | null;
   joinedAt?: string;
-  assignments?: { id: string; busId?: string; status: string }[];
+  assignments?: { id: string; busId: string; registrationNumber: string; status: string; createdAt: string; endedAt: string | null }[];
 };
 
 export function fetchMembersPage(fleetId: string, cursor: string | null): Promise<ActionResult<MemberPage>> {

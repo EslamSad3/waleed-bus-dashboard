@@ -7,6 +7,8 @@ import { cookies } from "next/headers";
  */
 export const ACCESS_COOKIE = "sa_access";
 export const REFRESH_COOKIE = "sa_refresh";
+/** Server-only persistence marker; lets refresh rotation preserve remember-me. */
+export const REMEMBER_COOKIE = "sa_remember";
 /** Access JWT lifetime (~15m). */
 export const ACCESS_MAX_AGE = 900;
 /** Refresh persistence when "تذكرني" is checked — capped at the backend 7-day window. */
@@ -27,32 +29,95 @@ function busApiUrl(): string {
 
 const secure = process.env.NODE_ENV === "production";
 
+type CookieOptions = {
+  httpOnly: true;
+  secure: boolean;
+  sameSite: "lax";
+  path: "/";
+  maxAge?: number;
+};
+
+type CookieWriter = {
+  set(name: string, value: string, options: CookieOptions): unknown;
+  delete(name: string): unknown;
+};
+
+const baseCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure,
+  sameSite: "lax",
+  path: "/",
+};
+
+/** Works with both Next's cookie store and NextResponse.cookies. */
+export function writeSessionCookies(
+  target: CookieWriter,
+  accessToken: string,
+  refreshToken: string,
+  rememberMe: boolean,
+): void {
+  target.set(ACCESS_COOKIE, accessToken, {
+    ...baseCookieOptions,
+    maxAge: ACCESS_MAX_AGE,
+  });
+  target.set(REFRESH_COOKIE, refreshToken, {
+    ...baseCookieOptions,
+    ...(rememberMe ? { maxAge: REFRESH_MAX_AGE } : {}),
+  });
+
+  if (rememberMe) {
+    target.set(REMEMBER_COOKIE, "1", {
+      ...baseCookieOptions,
+      maxAge: REFRESH_MAX_AGE,
+    });
+  } else {
+    target.delete(REMEMBER_COOKIE);
+  }
+}
+
+export function deleteSessionCookies(target: CookieWriter): void {
+  target.delete(ACCESS_COOKIE);
+  target.delete(REFRESH_COOKIE);
+  target.delete(REMEMBER_COOKIE);
+}
+
 export async function setSessionCookies(
   accessToken: string,
   refreshToken: string,
   rememberMe: boolean,
 ): Promise<void> {
   const store = await cookies();
-  store.set(ACCESS_COOKIE, accessToken, {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: ACCESS_MAX_AGE,
-  });
-  store.set(REFRESH_COOKIE, refreshToken, {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    ...(rememberMe ? { maxAge: REFRESH_MAX_AGE } : {}),
-  });
+  writeSessionCookies(store, accessToken, refreshToken, rememberMe);
 }
 
 export async function clearSessionCookies(): Promise<void> {
   const store = await cookies();
-  store.delete(ACCESS_COOKIE);
-  store.delete(REFRESH_COOKIE);
+  deleteSessionCookies(store);
+}
+
+export async function rotateRefreshToken(
+  refreshToken: string,
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+  try {
+    const res = await fetch(`${busApiUrl()}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+
+    const body = (await res.json()) as {
+      data?: { accessToken?: string; refreshToken?: string };
+    };
+    if (!body?.data?.accessToken || !body.data.refreshToken) return null;
+    return {
+      accessToken: body.data.accessToken,
+      refreshToken: body.data.refreshToken,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Direct backend call — no proxy recursion (used by route handlers only). */
@@ -94,29 +159,13 @@ export function refreshSession(): Promise<boolean> {
           await clearSessionCookies();
           return false;
         }
-        const res = await fetch(`${busApiUrl()}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-          cache: "no-store",
-        });
-        if (!res.ok) {
+        const rotated = await rotateRefreshToken(refreshToken);
+        if (!rotated) {
           await clearSessionCookies();
           return false;
         }
-        const body = (await res.json()) as {
-          data?: { accessToken?: string; refreshToken?: string };
-        };
-        if (!body?.data?.accessToken || !body?.data?.refreshToken) {
-          await clearSessionCookies();
-          return false;
-        }
-        // Preserve persistence choice: keep Max-Age iff the incoming cookie had one.
-        const incoming = store.get(REFRESH_COOKIE);
-        const persistent = Boolean(
-          incoming && (incoming as { maxAge?: number }).maxAge,
-        );
-        await setSessionCookies(body.data.accessToken, body.data.refreshToken, persistent);
+        const persistent = store.get(REMEMBER_COOKIE)?.value === "1";
+        await setSessionCookies(rotated.accessToken, rotated.refreshToken, persistent);
         return true;
       } catch {
         await clearSessionCookies().catch(() => undefined);
