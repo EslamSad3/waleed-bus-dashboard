@@ -8,11 +8,9 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { FleetPicker } from "@/components/fleet-picker";
+import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
 import { inviteDriver } from "@/lib/actions/members";
 import { driverFreshSchema } from "@/lib/schemas/p1";
-import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
-import { useFilterStore } from "@/stores/filters";
 import { RouteDialog } from "@/components/ui/route-dialog";
 
 const formSchema = driverFreshSchema.extend({
@@ -25,8 +23,7 @@ type Values = z.input<typeof formSchema>;
 
 export default function NewDriverPage() {
   const router = useRouter();
-  const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
-  const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
+  const [fleetId, setFleetId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const form = useForm<Values>({
     resolver: zodResolver(formSchema),
@@ -36,11 +33,9 @@ export default function NewDriverPage() {
   async function submit(values: Values) {
     setError(null);
     if (!fleetId) {
-      setError("اختار الأسطول الأول");
+      setError("اختار مالك الأسطول ثم الأسطول المطلوب");
       return;
     }
-    setFleetId(fleetId);
-    setFleetScopeCookie(fleetId);
     const result = await inviteDriver(fleetId, {
       name: values.name,
       nickname: values.nickname,
@@ -56,7 +51,7 @@ export default function NewDriverPage() {
       setError(result.message);
       return;
     }
-    router.push(`/drivers/${result.data.id}`);
+    router.push(`/drivers/${result.data.id}?fleetId=${fleetId}`);
     router.refresh();
   }
 
@@ -71,9 +66,9 @@ export default function NewDriverPage() {
   ];
 
   return (
-    <RouteDialog title="إضافة سواق" description="الحساب وعضوية الأسطول بيتعملوا مع بعض." fallbackHref="/drivers" size="lg">
+    <RouteDialog title="إضافة سواق" description="اختر مالك الأسطول أولًا. تعيين الأتوبيس يتم لاحقًا من إدارة الأتوبيسات." fallbackHref="/drivers" size="lg">
       <div>
-        <div className="mb-5"><FleetPicker value={fleetId} onChange={setLocalFleetId} /></div>
+        <div className="mb-5"><FleetOwnerFleetPicker fleetId={fleetId} onFleetChange={setFleetId} /></div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(submit)} className="grid gap-4 md:grid-cols-2" noValidate>
             {fields.map((item) => <FormField key={item.name} control={form.control} name={item.name} render={({ field }) => (

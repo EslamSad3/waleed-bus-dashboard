@@ -1,110 +1,112 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CursorList } from "@/components/tables/cursor-list";
-import { fetchDriversPage } from "@/lib/actions/members";
-import type { DriverRow } from "@/lib/actions/members";
-import { useFilterStore } from "@/stores/filters";
+import { fetchSystemDriversPage, MEMBER_STATUS_AR, type SystemDriverRow } from "@/lib/actions/members";
 
 export default function DriversPage() {
-  const { fleetId, listFilters, setListFilter } = useFilterStore();
-  const [first, setFirst] = useState<{ key: string; items: DriverRow[]; nextCursor: string | null } | null>(null);
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
-  const f = listFilters["drivers"] ?? {};
+  const [drivers, setDrivers] = useState<SystemDriverRow[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
 
-  function reload() {
-    if (!fleetId) return;
-    fetchDriversPage(fleetId, null).then((r) => {
-      if (r.ok) setFirst({ key: fleetId, items: r.data.items, nextCursor: r.data.nextCursor });
-      else setFailed({ key: fleetId, message: r.message });
-    });
+  async function load(cursor: string | null = null) {
+    cursor ? setLoadingMore(true) : setLoading(true);
+    setError(null);
+    const result = await fetchSystemDriversPage(cursor);
+    if (!result.ok) {
+      setError(result.message);
+    } else {
+      setDrivers((current) => cursor ? [...current, ...result.data.items] : result.data.items);
+      setNextCursor(result.data.nextCursor);
+    }
+    cursor ? setLoadingMore(false) : setLoading(false);
   }
 
   useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fleetId]);
+    void load();
+  }, []);
 
-  const loading = !first || first.key !== fleetId;
-  const showFailed = failed && failed.key === fleetId ? failed.message : null;
-
-  const q = (f.q ?? "").trim();
-  const status = f.status ?? "all";
-  const predicate = (d: DriverRow) =>
-    (!q || (d.name ?? "").includes(q) || (d.phoneNumber ?? "").includes(q)) &&
-    (status === "all" || d.status === status);
-
-  if (!fleetId) {
-    return (
-      <div className="dashboard-page">
-        <h1 className="page-title">السواقين</h1>
-        <p className="empty-state">اختار الأسطول الأول لعرض السواقين</p>
-      </div>
-    );
-  }
+  const visibleDrivers = useMemo(() => {
+    const term = query.trim().toLocaleLowerCase("ar-EG");
+    return drivers.filter((driver) => {
+      const matchesSearch = !term || [
+        driver.name,
+        driver.phoneNumber,
+        driver.fleet.name,
+        driver.fleetOwner.name,
+        driver.fleetOwner.phoneNumber,
+        driver.assignedBus?.registrationNumber,
+      ].some((value) => value?.toLocaleLowerCase("ar-EG").includes(term));
+      return matchesSearch && (status === "all" || driver.status === status);
+    });
+  }, [drivers, query, status]);
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div><h1 className="page-title">السواقين</h1><p className="page-description">إدارة حسابات السواقين وعضوية الأسطول وسجل التعيينات.</p></div>
-        <Link href="/drivers/new" className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2f719e] px-5 text-sm font-bold text-white shadow-lg shadow-[#2f719e]/15 transition hover:-translate-y-0.5 hover:bg-[#275e83]">إضافة سواق</Link>
+        <div>
+          <h1 className="page-title">السواقين</h1>
+          <p className="page-description">كل حسابات السواقين في النظام، مع الأسطول ومالك الأسطول والأتوبيس المعيّن حاليًا.</p>
+        </div>
+        <Button asChild><Link href="/drivers/new">إضافة سواق</Link></Button>
       </div>
 
-      {showFailed ? (
-        <p role="alert" className="text-sm text-red-600">{showFailed}</p>
-      ) : loading || !first ? (
-        <p className="text-sm text-[#606060]">جاري التحميل…</p>
-      ) : (
-        <CursorList<DriverRow>
-          key={fleetId}
-          initialItems={first.items}
-          initialCursor={first.nextCursor}
-          loadMore={(cursor) =>
-            fetchDriversPage(fleetId, cursor).then((r) => {
-              if (!r.ok) throw new Error(r.message);
-              return { items: r.data.items, nextCursor: r.data.nextCursor };
-            })
-          }
-          keyOf={(d) => d.id}
-          filter={predicate}
-          filterBar={
-            <div className="contents">
-              <Input
-                aria-label="بحث بالاسم أو الموبايل"
-                placeholder="بحث بالاسم أو الموبايل"
-                value={f.q ?? ""}
-                onChange={(e) => setListFilter("drivers", { q: e.target.value })}
-                className="max-w-xs bg-white"
-              />
-              <select
-                aria-label="الحالة"
-                value={status}
-                onChange={(e) => setListFilter("drivers", { status: e.target.value })}
-                className="select-field"
-              >
-                <option value="all">كل الحالات</option>
-                <option value="ACTIVE">نشط</option>
-                <option value="SUSPENDED">موقوف</option>
-                <option value="REVOKED">ملغي الصلاحية</option>
-              </select>
-            </div>
-          }
-          emptyMessage="لا يوجد سواقين في الأسطول ده"
-          renderItem={(d) => (
-            <Link
-              href={`/drivers/${d.id}`}
-              className="list-card"
-            >
-              <span className="font-semibold text-[#1a1a1a]">
-                {d.name ?? <span dir="ltr">{(d.userId ?? d.id).slice(0, 8)}…</span>}
-                {d.phoneNumber ? <span className="text-sm text-[#606060]"> · <span dir="ltr">{d.phoneNumber}</span></span> : null}
-              </span>
-              <span className={d.status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{d.status === "ACTIVE" ? "نشط" : d.status}</span>
-            </Link>
-          )}
-        />
+      <div className="panel-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <Input aria-label="بحث في السواقين" placeholder="اسم السواق، الموبايل، المالك أو الأتوبيس" value={query} onChange={(event) => setQuery(event.target.value)} className="max-w-md bg-white" />
+        <select aria-label="حالة السواق" value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full sm:w-auto">
+          <option value="all">كل الحالات</option>
+          <option value="ACTIVE">نشط</option>
+          <option value="SUSPENDED">موقوف</option>
+          <option value="REVOKED">ملغي الصلاحية</option>
+        </select>
+      </div>
+
+      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+      {loading ? <p className="text-sm text-[#606060]">جاري تحميل السواقين…</p> : (
+        <div className="panel-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[940px] text-right text-sm">
+              <thead className="border-b border-[#e4ecf2] bg-[#f8fbfd] text-[#5e6b78]">
+                <tr>
+                  <th className="px-5 py-4 font-bold">السواق</th>
+                  <th className="px-5 py-4 font-bold">الأسطول</th>
+                  <th className="px-5 py-4 font-bold">مالك الأسطول</th>
+                  <th className="px-5 py-4 font-bold">الأتوبيس المعيّن</th>
+                  <th className="px-5 py-4 font-bold">الحالة</th>
+                  <th className="px-5 py-4 font-bold"><span className="sr-only">إدارة السواق</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edf2f6]">
+                {visibleDrivers.map((driver) => (
+                  <tr key={driver.id} className="transition hover:bg-[#f8fbfd]">
+                    <td className="px-5 py-4">
+                      <p className="font-bold text-[#1a1a1a]">{driver.name || "بدون اسم"}</p>
+                      <p dir="ltr" className="mt-1 text-xs text-[#606060]">{driver.phoneNumber || "—"}</p>
+                    </td>
+                    <td className="px-5 py-4 font-medium text-[#334454]">{driver.fleet.name}</td>
+                    <td className="px-5 py-4">
+                      <p className="font-medium text-[#334454]">{driver.fleetOwner.name || "بدون اسم"}</p>
+                      <p dir="ltr" className="mt-1 text-xs text-[#606060]">{driver.fleetOwner.phoneNumber || "—"}</p>
+                    </td>
+                    <td className="px-5 py-4">
+                      {driver.assignedBus ? <span className="font-medium text-[#334454]" dir="ltr">{driver.assignedBus.registrationNumber}</span> : <span className="text-[#8895a3]">غير معيّن</span>}
+                    </td>
+                    <td className="px-5 py-4"><span className={driver.status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[driver.status as keyof typeof MEMBER_STATUS_AR] ?? driver.status}</span></td>
+                    <td className="px-5 py-4"><Button asChild size="sm" variant="secondary"><Link href={`/drivers/${driver.id}?fleetId=${driver.fleet.id}`}>إدارة</Link></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {visibleDrivers.length === 0 ? <p className="p-6 text-center text-sm text-[#606060]">لا يوجد سواقون مطابقون للبحث.</p> : null}
+          {nextCursor ? <div className="border-t border-[#e4ecf2] p-4 text-center"><Button type="button" variant="secondary" onClick={() => void load(nextCursor)} disabled={loadingMore}>{loadingMore ? "جاري التحميل…" : "تحميل المزيد"}</Button></div> : null}
+        </div>
       )}
     </div>
   );

@@ -34,6 +34,6 @@ export function deleteFleet(id: string): Promise<ActionResult<null>> {
 }
 
 /** Owner picker (read-only reuse of GET /users per research R7). */
-export function fetchUserOptions(): Promise<ActionResult<{ items: { id: string; name?: string | null; email?: string | null; phone?: string | null }[] }>> {
+export function fetchUserOptions(): Promise<ActionResult<{ items: { id: string; name?: string | null; email?: string | null; phone?: string | null; phoneNumber?: string | null }[] }>> {
   return apiGet("/api/users?limit=100");
 }

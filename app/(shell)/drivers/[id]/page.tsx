@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   fetchDriver,
@@ -13,6 +13,8 @@ import {
 } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
+import { FleetPicker } from "@/components/fleet-picker";
+import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { Pencil } from "lucide-react";
 
 const REVOKE_WARNING = "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟";
@@ -20,7 +22,10 @@ const REVOKE_WARNING = "الإجراء ده هيقفل جلسات المستخد
 export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const fleetId = useFilterStore((s) => s.fleetId);
+  const searchParams = useSearchParams();
+  const scopedFleetId = useFilterStore((s) => s.fleetId);
+  const fleetId = searchParams.get("fleetId") || scopedFleetId;
+  const setFleetId = useFilterStore((s) => s.setFleetId);
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
@@ -73,11 +78,21 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     router.refresh();
   }
 
+  function selectFleet(nextFleetId: string) {
+    setFleetId(nextFleetId || null);
+    setFleetScopeCookie(nextFleetId || null);
+  }
+
   if (!fleetId) {
     return (
-      <div className="flex flex-col gap-2">
-        <h1 className="title-grad text-2xl font-extrabold">السواق</h1>
-        <p className="empty-state">اختار الأسطول الأول لعرض بيانات السواق.</p>
+      <div className="dashboard-page max-w-xl">
+        <div>
+          <h1 className="page-title">إدارة السواق</h1>
+          <p className="page-description">اختار الأسطول الذي يتبعه السواق لعرض بياناته وإدارتها.</p>
+        </div>
+        <div className="panel-card p-5 sm:p-6">
+          <FleetPicker value="" onChange={selectFleet} label="اختار الأسطول" />
+        </div>
       </div>
     );
   }
@@ -103,7 +118,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <span className={status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[status]}</span>
             <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" aria-hidden="true" /> تعديل العضوية
+              <Pencil className="size-4" aria-hidden="true" /> تعديل أو حذف
             </Button>
           </div>
         </div>
@@ -124,7 +139,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen} title="تعديل السواق" description="غيّر حالة عضوية السواق في الأسطول." size="sm">
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title="إدارة السواق" description="يمكنك إيقاف حساب السواق أو إعادة تفعيله. الحذف ينهي تعيينه الحالي أيضًا." size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">الحالة</span>
@@ -141,7 +156,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">
-            <Button type="button" variant="destructive" onClick={remove}>مسح السواق</Button>
+            <Button type="button" variant="destructive" onClick={remove}>حذف السواق</Button>
             <div className="flex gap-2">
               <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>إلغاء</Button>
               <Button type="button" onClick={save}>حفظ التعديلات</Button>
