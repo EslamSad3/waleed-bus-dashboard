@@ -13,17 +13,39 @@ export function busApiUrl(): string {
 }
 
 /**
- * Validates that an incoming mutation request originates from the same host,
+ * Resolves the canonical external origin of the dashboard (e.g. http://localhost:3000
+ * or https://dashboard.waleedbus.com).
+ */
+export function dashboardOrigin(): string | null {
+  const origin = process.env.DASHBOARD_ORIGIN;
+  return origin ? origin.replace(/\/$/, "") : null;
+}
+
+/**
+ * Validates that an incoming mutation request originates from the trusted canonical origin,
  * preventing cross-site state-changing POST/PATCH/DELETE requests.
+ *
+ * When DASHBOARD_ORIGIN is configured, it strictly validates new URL(origin).origin against it.
+ * In environments where DASHBOARD_ORIGIN is not set, it falls back to comparing against
+ * Host / X-Forwarded-Host.
  */
 export function originAllowed(req: Request): boolean {
   const origin = req.headers.get("origin");
-  if (!origin) return true; // Same-origin navigations or curl have no Origin
+  if (!origin) return true; // Same-origin navigations or non-browser agents have no Origin
 
-  // `req.nextUrl` reflects the container's internal address when Next runs
-  // behind Docker or a reverse proxy. Compare the browser Origin with the
-  // externally visible request host instead, preferring the proxy-standard
-  // forwarded header and falling back to Host for direct deployments.
+  let requestOrigin: string;
+  try {
+    requestOrigin = new URL(origin).origin;
+  } catch {
+    return false;
+  }
+
+  const configured = dashboardOrigin();
+  if (configured) {
+    return requestOrigin === configured;
+  }
+
+  // Fallback when DASHBOARD_ORIGIN is unset (e.g. local dev):
   const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const requestHost = forwardedHost || req.headers.get("host");
   if (!requestHost) return false;
