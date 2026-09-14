@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { useFilterStore } from "@/stores/filters";
+import { FleetPicker } from "@/components/fleet-picker";
+import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
+import { Building2 } from "lucide-react";
 
 export default function TripsPage() {
-  const { fleetId, listFilters, setListFilter } = useFilterStore();
+  const { fleetId, setFleetId, listFilters, setListFilter } = useFilterStore();
   const [first, setFirst] = useState<{ key: string; items: Trip[]; nextCursor: string | null } | null>(null);
   const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
   const f = listFilters["trips"] ?? {};
@@ -37,9 +40,26 @@ export default function TripsPage() {
 
   if (!fleetId) {
     return (
-      <div className="dashboard-page">
+      <div className="dashboard-page space-y-4">
         <h1 className="page-title">الرحلات</h1>
-        <p className="empty-state">اختار الأسطول الأول لعرض الرحلات</p>
+        <div className="panel-card max-w-md p-6 text-center space-y-4 mx-auto my-8">
+          <Building2 className="size-12 mx-auto text-[#2f719e] opacity-80" />
+          <div>
+            <h2 className="text-lg font-bold text-[#10153c]">اختار الأسطول لعرض الرحلات</h2>
+            <p className="text-xs text-[#5e6b78] mt-1">
+              اختار الأسطول من شريط التنقل العلوي أو حدد الأسطول أدناه:
+            </p>
+          </div>
+          <FleetPicker
+            value=""
+            onChange={(id) => {
+              if (!id) return;
+              setFleetId(id);
+              setFleetScopeCookie(id);
+            }}
+            label="اختر أسطولاً للبدء"
+          />
+        </div>
       </div>
     );
   }
