@@ -14,22 +14,27 @@ type ListingState<T> = { items: T[]; nextCursor: string | null };
 type FetchPage<T> = (fleetId: string, cursor: string | null) => Promise<ActionResult<CursorPage<T>>>;
 
 function useFleetListing<T>(fleetId: string, fetchPage: FetchPage<T>) {
-  const [first, setFirst] = useState<ListingState<T> | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<{ fleetId: string; first: ListingState<T> | null; error: string | null }>({
+    fleetId,
+    first: null,
+    error: null,
+  });
 
   useEffect(() => {
     let active = true;
-    setFirst(null);
-    setError(null);
     fetchPage(fleetId, null).then((result) => {
       if (!active) return;
-      if (result.ok) setFirst(result.data);
-      else setError(result.message);
+      if (result.ok) setState({ fleetId, first: result.data, error: null });
+      else setState({ fleetId, first: null, error: result.message });
     });
     return () => { active = false; };
   }, [fleetId, fetchPage]);
 
-  return { first, error };
+  const isCurrent = state.fleetId === fleetId;
+  return {
+    first: isCurrent ? state.first : null,
+    error: isCurrent ? state.error : null,
+  };
 }
 
 function ListingShell({
@@ -140,20 +145,25 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
 }
 
 export function FleetReportsTab({ fleetId }: { fleetId: string }) {
-  const [data, setData] = useState<FleetReports | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<{ fleetId: string; data: FleetReports | null; error: string | null }>({
+    fleetId,
+    data: null,
+    error: null,
+  });
 
   useEffect(() => {
     let active = true;
-    setData(null);
-    setError(null);
     fetchFleetReports(fleetId).then((result) => {
       if (!active) return;
-      if (result.ok) setData(result.data);
-      else setError(result.message);
+      if (result.ok) setState({ fleetId, data: result.data, error: null });
+      else setState({ fleetId, data: null, error: result.message });
     });
     return () => { active = false; };
   }, [fleetId]);
+
+  const isCurrent = state.fleetId === fleetId;
+  const data = isCurrent ? state.data : null;
+  const error = isCurrent ? state.error : null;
 
   return (
     <section className="panel-card p-5 sm:p-6">

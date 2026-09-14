@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { busApiUrl } from "./config";
 
 /**
  * Server-only session helpers (httpOnly cookies, Principle II).
@@ -20,12 +21,6 @@ export type SessionIdentity = {
   /** CurrentUserDto.appRole — the ONLY role source the dashboard trusts. */
   appRole: string;
 };
-
-function busApiUrl(): string {
-  const base = process.env.BUS_API_URL;
-  if (!base) throw new Error("BUS_API_URL is not configured");
-  return base.replace(/\/$/, "");
-}
 
 const secure = process.env.NODE_ENV === "production";
 

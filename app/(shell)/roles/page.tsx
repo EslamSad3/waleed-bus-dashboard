@@ -21,15 +21,21 @@ export default function RolesPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  function reload() {
-    setError(null);
+  useEffect(() => {
+    let cancelled = false;
     fetchRolesPage(null).then((result) => {
-      if (result.ok) setFirst(result.data);
-      else setError(result.message);
+      if (cancelled) return;
+      if (result.ok) {
+        setFirst(result.data);
+        setError(null);
+      } else {
+        setError(result.message);
+      }
     });
-  }
-
-  useEffect(() => { reload(); }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function save() {
     if (!name.trim()) {
