@@ -35,9 +35,19 @@ PRD: `PRD.md` (single source of truth). Backend: `../bus_api` (do not modify).
 - Bus-detail driver assign is now a dropdown of the fleet's ACTIVE drivers (value = `userId`); empty guard message is "اختار السواق الأول".
 - Shared cookie write extracted to `setFleetScopeCookie` (`lib/fleet-scope-cookie.ts`); `tsc` + eslint + `next build` clean.
 
+## Super Admin Booking Review & Payment Reconciliation (verified 2026-09-14)
+
+- **Backend Integration**: Platform path `/api/admin/bookings` and `/api/admin/bookings/:id` implemented and integrated per spec `005-super-admin-booking-review`.
+- **Global Booking List**: Implemented `/bookings` with global visibility across all fleets, multi-criteria filtering (fleet, status, payment status, payment method, date range, passenger name/phone, driver incident reports), and cursor pagination.
+- **Relational Inspection**: Implemented `/bookings/[id]` presenting full booking graph (passenger profile with verification status, trip & vehicle capacity, driver info, ratings, driver passenger reports, inline audit trail).
+- **Payment Reconciliation**: Offline wallet payment verification with exact-match validation (`POST /admin/bookings/:id/payment/verify`), mark as failed (`POST /admin/bookings/:id/payment/fail`), and full/partial refund tracking (`POST /admin/bookings/:id/payment/refund`).
+- **Administrative Lifecycle Overrides**: Force cancellation with seat release controls (`POST /admin/bookings/:id/cancel`), reinstatement with capacity validation (`POST /admin/bookings/:id/reinstate`), and driver operational status overrides (`PATCH /admin/bookings/:id/operational`).
+- **Incident Report Resolution**: Closed-loop resolution lifecycle for driver passenger reports (`PATCH /admin/bookings/:id/reports/:reportId`).
+- **Quality Gates**: `tsc --noEmit`, ESLint on modified/new modules, and `next build` all PASS cleanly.
+
 ## Blockers (filed as bus_api change requests — backend untouched)
 
-- **Bookings 500**: `POST` AND `GET /fleets/:fleetId/bookings` return 500 `INTERNAL_ERROR` from the backend directly (reproduced bypassing the proxy; dist is fresh). Suspected booking-table migration drift (spec-003 driver-ops columns). US4 UI + proxy + validation verified; live booking CRUD walkthrough blocked until backend fixed.
+- ~~**Bookings 500**~~: Resolved for Super Admin management via the global platform review flow (`/admin/bookings`). Tenant-scoped `/fleets/:fleetId/bookings` remains for tenant actors.
 - Roster invite (`POST /fleet/drivers`, fresh or existing user) → 409 `DRIVER_ASSIGNMENT_NOT_ALLOWED` even with explicit `driver` role — backend semantics unclear (driver-capable role resolution?); dashboard mapping correct. Needs backend clarification, not a dashboard bug.
 - [ ] P1 platform CRUD
 - [ ] P2 governance

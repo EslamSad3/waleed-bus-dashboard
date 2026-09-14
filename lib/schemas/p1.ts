@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  adminVerifyPaymentSchema,
+  adminFailPaymentSchema,
+  adminRefundPaymentSchema,
+  adminForceCancelSchema,
+  adminReinstateSchema,
+  adminOperationalOverrideSchema,
+  adminResolveReportSchema,
+} from "./admin-bookings";
 
 /**
  * P1 per-resource zod schemas + proxy registry (research R2).
@@ -168,6 +177,14 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "POST", pattern: new RegExp(`^/fleet/buses/${SEG}/driver$`), schema: assignDriverSchema },
   { method: "POST", pattern: /^\/fleet\/drivers$/, schema: addDriverSchema, conflictKey: "MEMBER_EXISTS" },
   { method: "PATCH", pattern: new RegExp(`^/fleet/drivers/${SEG}$`), schema: updateDriverSchema },
+  // ---- Super Admin Booking Review & Payment Reconciliation ----
+  { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/payment/verify$`), schema: adminVerifyPaymentSchema },
+  { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/payment/fail$`), schema: adminFailPaymentSchema },
+  { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/payment/refund$`), schema: adminRefundPaymentSchema },
+  { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/cancel$`), schema: adminForceCancelSchema },
+  { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/reinstate$`), schema: adminReinstateSchema },
+  { method: "PATCH", pattern: new RegExp(`^/admin/bookings/${SEG}/operational$`), schema: adminOperationalOverrideSchema },
+  { method: "PATCH", pattern: new RegExp(`^/admin/bookings/${SEG}/reports/${SEG}$`), schema: adminResolveReportSchema },
 ];
 
 export function findRegistryEntry(method: string, pathname: string): RegistryEntry | undefined {
