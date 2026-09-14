@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { loginSchema } from "@/lib/schemas/auth";
 import { clearSessionCookies, fetchIdentity, setSessionCookies } from "@/lib/auth";
+import { busApiUrl, originAllowed } from "@/lib/config";
 import { toArabicError } from "@/lib/errors";
-
-function busApiUrl(): string {
-  const base = process.env.BUS_API_URL;
-  if (!base) throw new Error("BUS_API_URL is not configured");
-  return base.replace(/\/$/, "");
-}
 
 /**
  * POST /api/auth/login — validates (trust boundary), forwards WITHOUT loginType
@@ -15,6 +10,13 @@ function busApiUrl(): string {
  * and admits ONLY super_admin (anyone else gets the generic error).
  */
 export async function POST(req: Request) {
+  if (!originAllowed(req)) {
+    return NextResponse.json(
+      { statusCode: 403, code: "FORBIDDEN", message: "ممنوع" },
+      { status: 403 },
+    );
+  }
+
   let raw: unknown;
   try {
     raw = await req.json();

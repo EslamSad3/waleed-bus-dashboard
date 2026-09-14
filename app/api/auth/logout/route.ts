@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ACCESS_COOKIE, clearSessionCookies } from "@/lib/auth";
-
-function busApiUrl(): string {
-  return (process.env.BUS_API_URL ?? "").replace(/\/$/, "");
-}
+import { busApiUrl } from "@/lib/config";
 
 /** POST /api/auth/logout — best-effort backend revocation, then clear cookies. */
 export async function POST() {

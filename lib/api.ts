@@ -1,16 +1,11 @@
 import { cookies } from "next/headers";
 import { ACCESS_COOKIE, clearSessionCookies, refreshSession } from "./auth";
+import { busApiUrl } from "./config";
 import type { BackendFailure } from "./errors";
 
 export type BusResult<T> =
   | { ok: true; status: number; data: T }
   | { ok: false; status: number; code: string; details?: BackendFailure["details"] };
-
-function busApiUrl(): string {
-  const base = process.env.BUS_API_URL;
-  if (!base) throw new Error("BUS_API_URL is not configured");
-  return base.replace(/\/$/, "");
-}
 
 type BusFetchOptions = {
   method?: string;
