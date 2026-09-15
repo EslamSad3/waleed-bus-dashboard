@@ -14,20 +14,22 @@ import { apiGet } from "@/lib/actions/http";
 import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
+import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 
 type Values = z.input<typeof createTripSchema>;
-type BusOpt = { id: string; registrationNumber: string };
+type BusOpt = { id: string; registrationNumber: string; lineId?: string | null; line?: { id: string; name: string; code: string } | null };
 
 export default function NewTripPage() {
   const router = useRouter();
   const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
   const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
   const [buses, setBuses] = useState<BusOpt[]>([]);
+  const [tripLines, setTripLines] = useState<TripLine[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(createTripSchema),
-    defaultValues: { busId: "", origin: "", destination: "", departAt: "" },
+    defaultValues: { busId: "", origin: "", destination: "", departAt: "", routeId: undefined },
   });
 
   useEffect(() => {
@@ -37,10 +39,31 @@ export default function NewTripPage() {
     });
   }, [fleetId]);
 
+  useEffect(() => { fetchTripLines().then((result) => { if (result.ok) setTripLines(result.data.filter((line) => line.isActive)); }); }, []);
+
+  const selectedBus = buses.find((bus) => bus.id === form.watch("busId"));
+  const selectedLine = selectedBus?.lineId ? tripLines.find((line) => line.id === selectedBus.lineId) : undefined;
+  function selectDirection(routeId: string) {
+    const direction = selectedLine?.directions.find((item) => item.id === routeId);
+    form.setValue("routeId", routeId || undefined, { shouldValidate: true });
+    if (direction) {
+      form.setValue("origin", direction.origin, { shouldValidate: true });
+      form.setValue("destination", direction.destination, { shouldValidate: true });
+    }
+  }
+
   async function onSubmit(values: Values) {
     setFormError(null);
     if (!fleetId) {
       setFormError("اختار الأسطول الأول قبل إضافة الرحلة.");
+      return;
+    }
+    if (!selectedBus?.lineId) {
+      setFormError("عيّن خط رحلة للأتوبيس أولًا من صفحة الأتوبيس.");
+      return;
+    }
+    if (!values.routeId) {
+      setFormError("اختر اتجاه الرحلة: ذهاب أو عودة.");
       return;
     }
     setFleetId(fleetId);
@@ -66,7 +89,7 @@ export default function NewTripPage() {
       <div><h1 className="page-title">رحلة جديدة</h1><p className="page-description">اختر الأتوبيس وحدد خط الرحلة وميعاد المغادرة.</p></div>
       <div className="form-card max-w-xl">
         <div className="mb-4">
-          <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("busId", ""); }} />
+          <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("busId", ""); form.setValue("routeId", undefined); }} />
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -77,7 +100,7 @@ export default function NewTripPage() {
                 <FormItem>
                   <FormLabel>الأتوبيس (من نفس الأسطول)</FormLabel>
                   <FormControl>
-                    <select aria-label="اختار الأتوبيس" {...field} className="select-field w-full">
+                    <select aria-label="اختار الأتوبيس" {...field} onChange={(event) => { field.onChange(event); form.setValue("routeId", undefined); form.setValue("origin", ""); form.setValue("destination", ""); }} className="select-field w-full">
                       <option value="">اختار الأتوبيس</option>
                       {buses.map((b) => (
                         <option key={b.id} value={b.id}>{b.registrationNumber}</option>
@@ -88,6 +111,8 @@ export default function NewTripPage() {
                 </FormItem>
               )}
             />
+            {selectedBus && !selectedLine && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">هذا الأتوبيس لا يحمل خط رحلة بعد. ارجع إلى صفحة الأتوبيس وعيّن له خطًا أولًا.</p>}
+            {selectedLine && <label className="block text-sm"><span className="mb-2 block font-bold">اتجاه الرحلة</span><select aria-label="اختار اتجاه الرحلة" value={form.watch("routeId") ?? ""} onChange={(event) => selectDirection(event.target.value)} className="select-field w-full"><option value="">اختار الذهاب أو العودة</option>{selectedLine.directions.map((direction) => <option key={direction.id} value={direction.id}>{direction.direction === "OUTBOUND" ? "ذهاب" : "عودة"} · {direction.origin} ← {direction.destination}</option>)}</select></label>}
             <div className="grid gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -96,7 +121,7 @@ export default function NewTripPage() {
                   <FormItem>
                     <FormLabel>من</FormLabel>
                     <FormControl>
-                      <Input placeholder="القاهرة" {...field} />
+                      <Input placeholder="اختر اتجاه الرحلة" readOnly {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -109,7 +134,7 @@ export default function NewTripPage() {
                   <FormItem>
                     <FormLabel>إلى</FormLabel>
                     <FormControl>
-                      <Input placeholder="الإسكندرية" {...field} />
+                      <Input placeholder="اختر اتجاه الرحلة" readOnly {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

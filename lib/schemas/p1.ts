@@ -81,6 +81,7 @@ export const createTripSchema = z.object({
   origin: name255,
   destination: name255,
   departAt: datetime,
+  routeId: uuid.optional(),
   status: tripStatus.optional(),
 });
 export const updateTripSchema = z.object({
@@ -119,7 +120,10 @@ export const updateMemberSchema = z.object({
 const driverFromUser = z.object({
   userId: uuid,
   name: z.string().max(255).optional(),
+  nickname: z.string().max(100).optional(),
   phone: z.string().optional(),
+  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم").optional(),
+  picture: z.string().max(1024).optional(),
   password: z.string().optional(),
   roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
 });
@@ -138,6 +142,35 @@ export const addDriverSchema = z.union([driverFromUser, driverFreshSchema]);
 export const updateDriverSchema = z.object({
   roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
   status: memberStatus.optional(),
+});
+
+// ---- Stop points and trip lines (platform) ----
+const latitude = z.number("خط العرض غير صحيح").min(-90, "خط العرض غير صحيح").max(90, "خط العرض غير صحيح");
+const longitude = z.number("خط الطول غير صحيح").min(-180, "خط الطول غير صحيح").max(180, "خط الطول غير صحيح");
+export const createStopSchema = z.object({
+  name: name255,
+  address: z.string("العنوان مطلوب").min(1, "العنوان مطلوب").max(500),
+  latitude,
+  longitude,
+  isActive: z.boolean().optional(),
+});
+export const updateStopSchema = z.object({
+  name: name255.optional(), address: z.string().min(1, "العنوان مطلوب").max(500).optional(),
+  latitude: latitude.optional(), longitude: longitude.optional(), isActive: z.boolean().optional(),
+});
+const tripLineStop = z.object({ stopId: uuid, estimatedStopMinutes: z.number().int().min(0).optional() });
+export const createTripLineSchema = z.object({
+  name: name255, code: z.string("كود الخط مطلوب").min(1, "كود الخط مطلوب").max(50),
+  outboundStops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل في اتجاه الذهاب"),
+  returnStops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل في اتجاه العودة"),
+  isActive: z.boolean().optional(),
+});
+export const updateTripLineSchema = z.object({
+  name: name255.optional(), code: z.string().min(1, "كود الخط مطلوب").max(50).optional(),
+  isActive: z.boolean().optional(),
+});
+export const updateDirectionStopsSchema = z.object({
+  stops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل"),
 });
 
 // ---- Registry ----
@@ -168,6 +201,11 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "POST", pattern: new RegExp(`^/fleet/buses/${SEG}/driver$`), schema: assignDriverSchema },
   { method: "POST", pattern: /^\/fleet\/drivers$/, schema: addDriverSchema, conflictKey: "MEMBER_EXISTS" },
   { method: "PATCH", pattern: new RegExp(`^/fleet/drivers/${SEG}$`), schema: updateDriverSchema },
+  { method: "POST", pattern: /^\/stops$/, schema: createStopSchema },
+  { method: "PATCH", pattern: new RegExp(`^/stops/${SEG}$`), schema: updateStopSchema },
+  { method: "POST", pattern: /^\/trip-lines$/, schema: createTripLineSchema },
+  { method: "PATCH", pattern: new RegExp(`^/trip-lines/${SEG}$`), schema: updateTripLineSchema },
+  { method: "PATCH", pattern: new RegExp(`^/trip-lines/${SEG}/directions/${SEG}/stops$`), schema: updateDirectionStopsSchema },
 ];
 
 export function findRegistryEntry(method: string, pathname: string): RegistryEntry | undefined {

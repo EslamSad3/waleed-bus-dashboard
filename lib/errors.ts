@@ -12,7 +12,7 @@ export const AR_ERROR_MAP: Record<string, string> = {
   DRIVER_ASSIGNMENT_NOT_ALLOWED: "تعيين السواق مرفوض: مش نشط أو من أسطول تاني",
   RESOURCE_NOT_OWNED: "العنصر مش موجود في الأسطول ده",
   BUS_ACCESS_DENIED: "العنصر مش موجود في الأسطول ده",
-  NOT_FOUND: "العنصر مش موجود في الأسطول ده",
+  NOT_FOUND: "العنصر غير موجود",
   CONFLICTING_ASSIGNMENT: "البيانات متعارضة مع سجل موجود (راجع الحقول)",
   /** Bare 409s (Prisma P2002/P2003 → codeless ConflictException) mapped per-screen. */
   CONFLICT: "البيانات متعارضة مع سجل موجود (راجع الحقول)",
