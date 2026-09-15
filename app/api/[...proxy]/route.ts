@@ -1,28 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { busFetch } from "@/lib/api";
+import { originAllowed } from "@/lib/config";
 import { toArabicError } from "@/lib/errors";
 import { findRegistryEntry } from "@/lib/schemas/p1";
 
 type Ctx = { params: Promise<{ proxy: string[] }> };
-
-function originAllowed(req: NextRequest): boolean {
-  const origin = req.headers.get("origin");
-  if (!origin) return true; // same-origin navigations / curl have no Origin
-
-  // `req.nextUrl` reflects the container's internal address when Next runs
-  // behind Docker or a reverse proxy. Compare the browser Origin with the
-  // externally visible request host instead, preferring the proxy-standard
-  // forwarded header and falling back to Host for direct deployments.
-  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const requestHost = forwardedHost || req.headers.get("host");
-  if (!requestHost) return false;
-
-  try {
-    return new URL(origin).host === requestHost;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Generic BFF forwarder (clarification Q2: full forwarder in P0).

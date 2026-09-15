@@ -1,3 +1,4 @@
+import { FleetScopeSelect } from "@/components/fleet-scope-select";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { BusFront, ShieldCheck } from "lucide-react";
 
@@ -18,6 +19,11 @@ export function Topbar({ email }: { email: string | null }) {
               لوحة المشرف العام
             </div>
           </div>
+        </div>
+
+        {/* Global Fleet Scope Selector */}
+        <div className="flex items-center">
+          <FleetScopeSelect />
         </div>
 
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,8 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
   const [note, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  function load() {
-    setError(null);
-    Promise.all([fetchRole(id), fetchPermissionCatalog()]).then(([roleResult, permissionsResult]) => {
+  const load = useCallback(() => {
+    return Promise.all([fetchRole(id), fetchPermissionCatalog()]).then(([roleResult, permissionsResult]) => {
       if (!roleResult.ok) {
         setError(roleResult.message);
         return;
@@ -32,6 +31,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
         setError(permissionsResult.message);
         return;
       }
+      setError(null);
       setRole(roleResult.data);
       setPermissions(permissionsResult.data);
       setSelected(roleResult.data.rolePermissions.map((item) => item.permission.key));
@@ -39,9 +39,11 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
       setDescription(roleResult.data.description ?? "");
       setActive(roleResult.data.isActive);
     });
-  }
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const permissionsByGroup = useMemo(() => permissions.reduce<Record<string, Permission[]>>((groups, permission) => {
     const group = presentPermission(permission).group;
