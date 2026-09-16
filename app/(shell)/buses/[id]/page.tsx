@@ -13,6 +13,8 @@ import {
   fetchBusTripsPage,
   reactivateBus,
   unassignDriver,
+  assignTripLine,
+  unassignTripLine,
   updateBus,
   type Bus,
   type TripRef,
@@ -21,6 +23,7 @@ import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
+import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { Pencil, UserPlus } from "lucide-react";
 
 export default function BusDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +43,9 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
   const [tripsFirst, setTripsFirst] = useState<{ key: string; items: TripRef[]; nextCursor: string | null } | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [lineOpen, setLineOpen] = useState(false);
+  const [tripLines, setTripLines] = useState<TripLine[]>([]);
+  const [tripLineId, setTripLineId] = useState("");
 
   useEffect(() => {
     if (!fleetId) return;
@@ -61,6 +67,8 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
       if (r.ok) setDrivers(r.data.items.filter((d) => d.status === "ACTIVE"));
     });
   }, [fleetId]);
+
+  useEffect(() => { fetchTripLines().then((r) => { if (r.ok) setTripLines(r.data.filter((line) => line.isActive)); }); }, []);
 
   useEffect(() => {
     if (tab !== "trips" || !fleetId) return;
@@ -141,6 +149,19 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
     }
   }
 
+  async function assignLine() {
+    if (!fleetId || !tripLineId) { setError("اختار خط الرحلة الأول"); return; }
+    const r = await assignTripLine(fleetId, id, tripLineId);
+    if (!r.ok) { setError(r.message); return; }
+    setBus(r.data); setLineOpen(false); setTripLineId(""); setStatus("اتعيّن خط الرحلة للأتوبيس");
+  }
+  async function clearLine() {
+    if (!fleetId) return;
+    const r = await unassignTripLine(fleetId, id);
+    if (!r.ok) { setError(r.message); return; }
+    setBus((current) => current ? { ...current, lineId: null, line: null } : current); setStatus("اتشال خط الرحلة من الأتوبيس");
+  }
+
   if (!fleetId) {
     return (
       <div className="flex flex-col gap-2">
@@ -153,10 +174,10 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
   if (!bus || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   const currentDriver = drivers.find((driver) => driver.assignments?.some((assignment) => assignment.busId === id && assignment.status === "ACTIVE"));
-  const eligibleDrivers = drivers.filter((driver) => {
-    const active = driver.assignments?.find((assignment) => assignment.status === "ACTIVE");
-    return !active || active.busId === id;
-  });
+  // A driver has one active bus at a time. The API ends that assignment and
+  // moves the driver when another bus is selected, so do not hide drivers
+  // already operating a different bus.
+  const eligibleDrivers = drivers;
 
   return (
     <div className="dashboard-page">
@@ -208,6 +229,11 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
                 <strong>{currentDriver?.name ?? "لا يوجد سواق معين"}</strong>
                 {currentDriver?.phoneNumber ? <span className="mr-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span> : null}
               </div>
+              <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
+                <span className="block text-[#606060]">خط الرحلة الحالي</span>
+                <strong>{bus.line ? bus.line.name : "لا يوجد خط معيّن"}</strong>
+                {bus.line ? <span dir="ltr" className="mr-2 text-[#606060]">{bus.line.code}</span> : null}
+              </div>
               <div className="flex gap-2">
                 <Button type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>إيقاف</Button>
                 <Button type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>إعادة تشغيل</Button>
@@ -216,6 +242,8 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
                 <UserPlus className="size-4" aria-hidden="true" /> تعيين سواق
               </Button>
               <Button type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>إلغاء التعيين</Button>
+              <Button type="button" variant="secondary" onClick={() => setLineOpen(true)}>تعيين خط رحلة</Button>
+              <Button type="button" variant="secondary" onClick={clearLine} disabled={!bus.lineId}>إلغاء خط الرحلة</Button>
             </div>
           </div>
         </div>
@@ -268,23 +296,33 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </Dialog>
 
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen} title="تعيين سواق" description="اختار سواقًا متاحًا لتشغيل الأتوبيس." size="sm">
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen} title="تعيين سواق" description="اختار السواق لتشغيل الأتوبيس. لو هو معيّن على أتوبيس آخر، هيتنقل هنا تلقائيًا." size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">السواق</span>
             <select aria-label="اختار السواق" value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
               <option value="">اختار السواق</option>
-              {eligibleDrivers.map((d) => (
-                <option key={d.id} value={d.userId ?? d.id}>{d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}</option>
-              ))}
+              {eligibleDrivers.map((d) => {
+                const assignment = d.assignments?.find((item) => item.status === "ACTIVE");
+                const assignedElsewhere = assignment && assignment.busId !== id;
+                return (
+                  <option key={d.id} value={d.userId ?? d.id}>
+                    {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? ` · معيّن حاليًا على ${assignment.registrationNumber}` : ""}
+                  </option>
+                );
+              })}
             </select>
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">لا يوجد سواقون نشطون في هذا الأسطول بعد. أضف سواقًا من صفحة السواقين أولًا.</p>}
           <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="secondary" onClick={() => setAssignOpen(false)}>إلغاء</Button>
-            <Button type="button" onClick={assign}>تأكيد التعيين</Button>
+            <Button type="button" onClick={assign} disabled={!driverId}>تأكيد التعيين</Button>
           </div>
         </div>
+      </Dialog>
+      <Dialog open={lineOpen} onOpenChange={setLineOpen} title="تعيين خط رحلة" description="الخطوط من الكتالوج المركزي ومتاحة لكل الأساطيل." size="sm">
+        <div className="space-y-4"><select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full"><option value="">اختار خط الرحلة</option>{tripLines.map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}</select>{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<div className="flex justify-end gap-2 border-t pt-4"><Button variant="secondary" onClick={() => setLineOpen(false)}>إلغاء</Button><Button onClick={assignLine}>تأكيد التعيين</Button></div></div>
       </Dialog>
     </div>
   );

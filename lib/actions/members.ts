@@ -33,6 +33,13 @@ export type DriverRow = {
   assignments?: { id: string; busId: string; registrationNumber: string; status: string; createdAt: string; endedAt: string | null }[];
 };
 
+/** Platform roster row: one driver membership plus its fleet ownership and active bus context. */
+export type SystemDriverRow = DriverRow & {
+  fleet: { id: string; name: string };
+  fleetOwner: { id: string; name: string | null; phoneNumber: string | null };
+  assignedBus: { id: string; registrationNumber: string; plateNumber: string | null } | null;
+};
+
 export function fetchMembersPage(fleetId: string, cursor: string | null): Promise<ActionResult<MemberPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
   return apiGet<MemberPage>(`/api/fleets/${fleetId}/members${q}`);
@@ -54,6 +61,11 @@ export function removeMember(fleetId: string, memberId: string): Promise<ActionR
 export function fetchDriversPage(fleetId: string, cursor: string | null): Promise<ActionResult<CursorPage<DriverRow>>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
   return apiGet(`/api/fleet/drivers${q}`, fleetId);
+}
+
+export function fetchSystemDriversPage(cursor: string | null): Promise<ActionResult<CursorPage<SystemDriverRow>>> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet(`/api/drivers${q}`);
 }
 
 export function inviteDriver(fleetId: string, input: AddDriverInput): Promise<ActionResult<DriverRow>> {

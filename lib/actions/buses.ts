@@ -7,6 +7,8 @@ export type Bus = {
   registrationNumber: string;
   plateNumber?: string | null;
   capacity: number;
+  lineId?: string | null;
+  line?: { id: string; name: string; code: string } | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +53,14 @@ export function assignDriver(fleetId: string, busId: string, input: AssignDriver
 
 export function unassignDriver(fleetId: string, busId: string): Promise<ActionResult<null>> {
   return apiSend<null>(`/api/fleet/buses/${busId}/driver`, "DELETE", undefined, undefined, fleetId);
+}
+
+export function assignTripLine(fleetId: string, busId: string, tripLineId: string): Promise<ActionResult<Bus>> {
+  return apiSend<Bus>(`/api/fleet/buses/${busId}/trip-line`, "POST", { tripLineId }, undefined, fleetId);
+}
+
+export function unassignTripLine(fleetId: string, busId: string): Promise<ActionResult<null>> {
+  return apiSend<null>(`/api/fleet/buses/${busId}/trip-line`, "DELETE", undefined, undefined, fleetId);
 }
 
 export function fetchBusTripsPage(fleetId: string, busId: string, cursor: string | null): Promise<ActionResult<CursorPage<TripRef>>> {
