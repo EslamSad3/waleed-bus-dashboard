@@ -134,8 +134,8 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
           emptyMessage="لا توجد حجوزات مسجلة في هذا الأسطول"
           renderItem={(booking) => (
             <Link href={`/bookings/${booking.id}`} className="list-card">
-              <span className="font-semibold text-[#1a1a1a]">{booking.passengerName}{booking.passengerPhone ? <span className="text-sm text-[#606060]"> · <span dir="ltr">{booking.passengerPhone}</span></span> : null}</span>
-              <span className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b78]"><span>كراسي <span dir="ltr">{booking.seats}</span></span><span className={booking.status === "CONFIRMED" ? "status-pill" : "status-pill status-pill-muted"}>{BOOKING_STATUS_AR[booking.status]}</span></span>
+              <span className="min-w-0"><strong className="block truncate text-[#1a1a1a]">{booking.passengerName}</strong>{booking.originName && booking.destinationName ? <small className="mt-1 block truncate text-[#5e6b78]">{booking.originName} ← {booking.destinationName}</small> : null}</span>
+              <span className="flex shrink-0 flex-col items-end gap-1.5 text-xs text-[#5e6b78]"><span>{booking.seats} {booking.seats === 1 ? "مقعد" : "مقاعد"}</span><span className={booking.status === "CONFIRMED" ? "status-pill" : "status-pill status-pill-muted"}>{BOOKING_STATUS_AR[booking.status]}</span></span>
             </Link>
           )}
         />}

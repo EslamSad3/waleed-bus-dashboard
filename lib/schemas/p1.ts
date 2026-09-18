@@ -158,16 +158,17 @@ const latitude = z.number("خط العرض غير صحيح").min(-90, "خط ال
 const longitude = z.number("خط الطول غير صحيح").min(-180, "خط الطول غير صحيح").max(180, "خط الطول غير صحيح");
 export const createStopSchema = z.object({
   name: name255,
-  address: z.string("العنوان مطلوب").min(1, "العنوان مطلوب").max(500),
+  address: z.string().min(1).max(500).optional(),
   latitude,
   longitude,
+  governorateId: uuid,
   isActive: z.boolean().optional(),
 });
 export const updateStopSchema = z.object({
-  name: name255.optional(), address: z.string().min(1, "العنوان مطلوب").max(500).optional(),
-  latitude: latitude.optional(), longitude: longitude.optional(), isActive: z.boolean().optional(),
+  name: name255.optional(), address: z.string().min(1).max(500).nullable().optional(),
+  latitude: latitude.optional(), longitude: longitude.optional(), governorateId: uuid.optional(), isActive: z.boolean().optional(),
 });
-const tripLineStop = z.object({ stopId: uuid, estimatedStopMinutes: z.number().int().min(0).optional() });
+const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING", "BOTH"]).optional(), estimatedStopMinutes: z.number().int().min(0).optional() });
 export const createTripLineSchema = z.object({
   name: name255, code: z.string("كود الخط مطلوب").min(1, "كود الخط مطلوب").max(50),
   outboundStops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل في اتجاه الذهاب"),
