@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { isValidElement, useState, type ReactNode } from "react";
+import Link from "next/link";
+import type { ICellRendererParams } from "ag-grid-community";
+import { AgGridTable } from "./ag-grid-table";
+import { arabicGridHeaders } from "./ag-grid-locale";
+import type { CommunityColumnDef } from "./ag-grid-types";
 
 export type CursorPage<T> = { items: T[]; nextCursor: string | null };
 
@@ -14,6 +19,7 @@ type Props<T> = {
   /** Client-side predicate over accumulated items (research R4). */
   filter?: (item: T) => boolean;
   filterBar?: ReactNode;
+  columnDefs?: CommunityColumnDef<T>[];
   emptyMessage: string;
 };
 
@@ -30,6 +36,7 @@ export function CursorList<T>({
   renderItem,
   filter,
   filterBar,
+  columnDefs: providedColumnDefs,
   emptyMessage,
 }: Props<T>) {
   const [items, setItems] = useState<T[]>(initialItems);
@@ -63,31 +70,65 @@ export function CursorList<T>({
     }
   }
 
+  const sample = visible[0] as Record<string, unknown> | undefined;
+  const valueColumns: CommunityColumnDef<T>[] = providedColumnDefs ?? (sample
+    ? Object.keys(sample)
+        .filter((field) => {
+          const value = sample[field];
+          return value === null || ["string", "number", "boolean"].includes(typeof value);
+        })
+        .map((field) => ({
+          field: field as CommunityColumnDef<T>["field"],
+          headerName: arabicGridHeaders[field] ?? field,
+          hide: field === "id" || field.endsWith("Id") || field === "picture",
+          exportable: field !== "id" && !field.endsWith("Id") && field !== "picture",
+          cellDataType: typeof sample[field] === "boolean" ? "text" : undefined,
+          filter: (typeof sample[field] === "number" ? "agNumberColumnFilter" : "agTextColumnFilter") as CommunityColumnDef<T>["filter"],
+          valueFormatter: (params) => {
+            if (params.value == null) return "";
+            if (typeof params.value === "boolean") return params.value ? "نشط" : "موقوف";
+            if (field.endsWith("At")) return new Date(String(params.value)).toLocaleString("ar-EG");
+            return String(params.value);
+          },
+        } as CommunityColumnDef<T>))
+    : []);
+
+  const columns: CommunityColumnDef<T>[] = [
+    ...valueColumns,
+    {
+      headerName: "إجراءات",
+      pinned: "right",
+      sortable: false,
+      filter: false,
+      exportable: false,
+      minWidth: 220,
+      cellRenderer: (params: ICellRendererParams<T>) => {
+        if (!params.data) return null;
+        const rendered = renderItem(params.data, visible.indexOf(params.data));
+        if (isValidElement<{ href?: string }>(rendered) && typeof rendered.props.href === "string") {
+          return <Link href={rendered.props.href} className="ag-grid-row-action">فتح</Link>;
+        }
+        return rendered;
+      },
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-3">
-      {filterBar ? <div className="filter-panel">{filterBar}</div> : null}
-      {visible.length === 0 ? (
-        <p className="empty-state">
-          {emptyMessage}
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-2.5">
-          {visible.map((item, i) => (
-            <li key={keyOf(item, i)}>{renderItem(item, i)}</li>
-          ))}
-        </ul>
-      )}
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {cursor && (
-        <button
-          type="button"
-          onClick={more}
-          disabled={loading}
-          className="self-center rounded-xl bg-[#daeaf5] px-6 py-2.5 text-sm font-bold text-[#204c6b] transition-colors hover:bg-[#c4def3] disabled:opacity-60"
-        >
-          {loading ? "جاري التحميل…" : "عرض المزيد"}
-        </button>
-      )}
-    </div>
+    <AgGridTable<T>
+      gridId="cursor-list"
+      rows={visible}
+      columnDefs={columns}
+      nextCursor={cursor}
+      loadMore={async (nextCursor) => {
+        const page = await loadMore(nextCursor);
+        return { ...page, items: filter ? page.items.filter(filter) : page.items };
+      }}
+      loading={loading}
+      errorMessage={error}
+      emptyMessage={emptyMessage}
+      toolbar={filterBar ? <div className="contents">{filterBar}</div> : undefined}
+      showSearch={!filterBar}
+      getRowId={(item) => keyOf(item, items.indexOf(item))}
+    />
   );
 }

@@ -16,8 +16,11 @@ import { Dialog } from "@/components/ui/dialog";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { Pencil } from "lucide-react";
+import { AgGridTable } from "@/components/tables/ag-grid-table";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 
 const REVOKE_WARNING = "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟";
+type DriverAssignment = NonNullable<DriverRow["assignments"]>[number];
 
 export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -99,6 +102,11 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   if (failed && loadedKey === `${fleetId}/${id}`) return <p role="alert" className="text-sm text-red-600">{failed}</p>;
   if (!driver || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
+  const assignmentColumns: CommunityColumnDef<DriverAssignment>[] = [
+    { field: "registrationNumber", headerName: "رقم التسجيل", filter: "agTextColumnFilter" },
+    { field: "status", headerName: "الحالة", filter: "agTextColumnFilter" },
+  ];
+
   return (
     <div className="dashboard-page">
       <div><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات الأتوبيسات.</p></div>
@@ -124,18 +132,13 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         </div>
         <div className="panel-card p-5 sm:p-6">
           <h2 className="section-title">سجل التعيينات</h2>
-          {!driver.assignments || driver.assignments.length === 0 ? (
-            <p className="text-sm text-[#606060]">لا توجد تعيينات مسجلة</p>
-          ) : (
-            <ul className="flex flex-col gap-2 text-sm">
-              {driver.assignments.map((a) => (
-                <li key={a.id} className="flex flex-wrap justify-between gap-2 rounded-xl border border-slate-100 bg-[#f8fbfd] px-3 py-2.5">
-                  <span dir="ltr">{a.registrationNumber}</span>
-                  <span className="text-[#606060]">{a.status}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <AgGridTable<DriverAssignment>
+            gridId={`driver-assignments-${driver.id}`}
+            rows={driver.assignments ?? []}
+            columnDefs={assignmentColumns}
+            emptyMessage="لا توجد تعيينات مسجلة"
+            getRowId={(assignment) => assignment.id}
+          />
         </div>
       </div>
 

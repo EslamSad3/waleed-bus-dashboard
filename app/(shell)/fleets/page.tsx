@@ -5,27 +5,49 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
-import { fetchFleetsPage, type Fleet } from "@/lib/actions/fleets";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { fetchFleetsPage, fetchUserOptions, type Fleet } from "@/lib/actions/fleets";
 import { useFilterStore } from "@/stores/filters";
 
+type FleetRow = Fleet & { ownerName: string };
+
+async function withOwnerNames(page: { items: Fleet[]; nextCursor: string | null }): Promise<{ items: FleetRow[]; nextCursor: string | null }> {
+  const users = await fetchUserOptions();
+  const ownerNames = users.ok
+    ? new Map(users.data.items.map((user) => [user.id, user.name || user.email || user.phone || user.phoneNumber || "غير معروف"]))
+    : new Map<string, string>();
+  return {
+    nextCursor: page.nextCursor,
+    items: page.items.map((fleet) => ({ ...fleet, ownerName: ownerNames.get(fleet.ownerId) ?? "غير معروف" })),
+  };
+}
+
 export default function FleetsPage() {
-  const [first, setFirst] = useState<{ items: Fleet[]; nextCursor: string | null } | null>(null);
+  const [first, setFirst] = useState<{ items: FleetRow[]; nextCursor: string | null } | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const { listFilters, setListFilter } = useFilterStore();
   const f = listFilters["fleets"] ?? {};
 
   useEffect(() => {
-    fetchFleetsPage(null).then((r) => {
-      if (r.ok) setFirst({ items: r.data.items, nextCursor: r.data.nextCursor });
+    fetchFleetsPage(null).then(async (r) => {
+      if (r.ok) setFirst(await withOwnerNames(r.data));
       else setFailed(r.message);
     });
   }, []);
 
   const q = (f.q ?? "").trim();
   const status = f.status ?? "all";
-  const predicate = (fleet: Fleet) =>
-    (!q || fleet.name.includes(q)) &&
+  const predicate = (fleet: FleetRow) =>
+    (!q || fleet.name.includes(q) || fleet.ownerName.includes(q)) &&
     (status === "all" || (status === "active" ? fleet.isActive : !fleet.isActive));
+
+  const columns: CommunityColumnDef<FleetRow>[] = [
+    { field: "name", headerName: "الأسطول", filter: "agTextColumnFilter" },
+    { field: "ownerName", headerName: "مالك الأسطول", filter: "agTextColumnFilter" },
+    { field: "isActive", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? "نشط" : "موقوف" },
+    { field: "createdAt", headerName: "تاريخ الإنشاء", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
+    { field: "updatedAt", headerName: "آخر تحديث", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
+  ];
 
   return (
     <div className="dashboard-page">
@@ -44,22 +66,23 @@ export default function FleetsPage() {
       ) : !first ? (
         <p className="text-sm text-[#606060]">جاري التحميل…</p>
       ) : (
-        <CursorList<Fleet>
+        <CursorList<FleetRow>
           initialItems={first.items}
           initialCursor={first.nextCursor}
           loadMore={(cursor) =>
-            fetchFleetsPage(cursor).then((r) => {
+            fetchFleetsPage(cursor).then(async (r) => {
               if (!r.ok) throw new Error(r.message);
-              return { items: r.data.items, nextCursor: r.data.nextCursor };
+              return withOwnerNames(r.data);
             })
           }
           keyOf={(fleet) => fleet.id}
           filter={predicate}
+          columnDefs={columns}
           filterBar={
             <div className="contents">
               <Input
-                aria-label="دور باسم الأسطول"
-                placeholder="دور باسم الأسطول"
+                aria-label="دور باسم الأسطول أو المالك"
+                placeholder="دور باسم الأسطول أو المالك"
                 value={f.q ?? ""}
                 onChange={(e) => setListFilter("fleets", { q: e.target.value })}
                 className="max-w-xs bg-white"
@@ -82,7 +105,10 @@ export default function FleetsPage() {
               href={`/fleets/${fleet.id}`}
               className="list-card"
             >
-              <span className="font-semibold text-[#1a1a1a]">{fleet.name}</span>
+              <span>
+                <span className="block font-semibold text-[#1a1a1a]">{fleet.name}</span>
+                <span className="mt-1 block text-xs text-[#606060]">المالك: {fleet.ownerName}</span>
+              </span>
               <span className="flex flex-wrap items-center gap-3 text-sm text-[#5e6b78]">
                 <span
                   className={

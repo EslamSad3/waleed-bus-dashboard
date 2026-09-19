@@ -18,6 +18,18 @@ PRD: `PRD.md` (single source of truth). Backend: `../bus_api` (do not modify).
 - [x] P1 implement: DONE — 14 routes + 5 action modules + registry + scope selector, verified live (gates below)
 - [ ] P2 governance
 
+## AG Grid Community tables (2026-09-19)
+
+- Shared Community grid added for shell collection views with Arabic search,
+	column filters, client pagination, CSV export, cursor load-more, and responsive
+	RTL styling.
+- Primary and detail collection views migrated; native table/card collection
+	renderers were removed from the in-scope routes.
+- `pnpm typecheck`, `pnpm lint`, and `pnpm build` pass. ESLint retains one
+	pre-existing React Hook Form compiler warning in `app/(shell)/trips/new/page.tsx`.
+- Manual browser walkthrough remains to be completed against the operator's live
+	authenticated session.
+
 ## P1 gate evidence (verified 2026-09-11, dashboard :3101 → api :3000)
 
 - Fleet create → bus create → trip create → reverse-delete chain all 200; deleted fleet → 404 "العنصر مش موجود في الأسطول ده".- Registry validation live: bad bus body → 400 `VALIDATION_FAILED` + `details.fields` (Arabic, per-field).

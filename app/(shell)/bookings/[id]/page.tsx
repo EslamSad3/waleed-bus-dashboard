@@ -4,6 +4,8 @@ import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { AgGridTable } from "@/components/tables/ag-grid-table";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import {
   fetchAdminBookingDetail,
   BOOKING_STATUS_AR,
@@ -47,6 +49,8 @@ import {
   Settings2,
 } from "lucide-react";
 
+type AuditLog = AdminBookingDetail["auditTrail"][number];
+
 export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -69,6 +73,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   });
 
   const [reloadKey, setReloadKey] = useState(0);
+
+  const auditColumns: CommunityColumnDef<AuditLog>[] = [
+    { field: "createdAt", headerName: "التاريخ والتوقيت", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+    { field: "action", headerName: "العملية الإدارية", filter: "agTextColumnFilter" },
+    { field: "actorUserId", headerName: "المشرف / الفاعل", valueFormatter: (params) => params.value ? `${String(params.value).slice(0, 8)}…` : "نظام" },
+    { field: "metadata", headerName: "التفاصيل والبيانات الوصفية", valueFormatter: (params) => params.value ? JSON.stringify(params.value) : "—" },
+  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -645,46 +656,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <h2 className="text-lg font-bold text-[#10153c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
         </div>
 
-        {booking.auditTrail.length === 0 ? (
-          <p className="text-center py-6 text-sm text-[#5e6b78]">لا توجد عمليات تدقيق مسجلة حتى الآن.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-[#e4ecf2] text-[#5e6b78]">
-                  <th className="pb-2 font-semibold">التاريخ والتوقيت</th>
-                  <th className="pb-2 font-semibold">العملية الإدارية</th>
-                  <th className="pb-2 font-semibold">المشرف / الفاعل</th>
-                  <th className="pb-2 font-semibold">التفاصيل والبيانات الوصفية</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f0f4f8]">
-                {booking.auditTrail.map((log) => (
-                  <tr key={log.id} className="hover:bg-[#f8fbfd]">
-                    <td className="py-2.5 text-[#5e6b78]">
-                      <time dateTime={log.createdAt}>{new Date(log.createdAt).toLocaleString("ar-EG")}</time>
-                    </td>
-                    <td className="py-2.5 font-bold text-[#204c6b]">
-                      <span className="font-mono text-xs">{log.action}</span>
-                    </td>
-                    <td className="py-2.5 font-mono text-xs text-[#5e6b78]" dir="ltr">
-                      {log.actorUserId ? `${log.actorUserId.slice(0, 8)}…` : "نظام"}
-                    </td>
-                    <td className="py-2.5">
-                      {log.metadata ? (
-                        <div className="font-mono text-xs text-[#606060] max-w-md truncate" dir="ltr">
-                          {JSON.stringify(log.metadata)}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <AgGridTable<AuditLog>
+          gridId={`booking-audit-${booking.id}`}
+          rows={booking.auditTrail}
+          columnDefs={auditColumns}
+          emptyMessage="لا توجد عمليات تدقيق مسجلة حتى الآن."
+          getRowId={(log) => log.id}
+        />
       </div>
 
       {/* Action Dialogs */}

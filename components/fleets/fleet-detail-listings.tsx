@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CursorList } from "@/components/tables/cursor-list";
+import { AgGridTable } from "@/components/tables/ag-grid-table";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { fetchBookingsPage, BOOKING_STATUS_AR, type Booking } from "@/lib/actions/bookings";
@@ -12,6 +14,7 @@ import type { ActionResult, CursorPage } from "@/lib/actions/http";
 
 type ListingState<T> = { items: T[]; nextCursor: string | null };
 type FetchPage<T> = (fleetId: string, cursor: string | null) => Promise<ActionResult<CursorPage<T>>>;
+type FleetReport = FleetReports["reports"][number];
 
 function useFleetListing<T>(fleetId: string, fetchPage: FetchPage<T>) {
   const [state, setState] = useState<{ fleetId: string; first: ListingState<T> | null; error: string | null }>({
@@ -164,6 +167,10 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
   const isCurrent = state.fleetId === fleetId;
   const data = isCurrent ? state.data : null;
   const error = isCurrent ? state.error : null;
+  const reportColumns: CommunityColumnDef<FleetReport>[] = [
+    { field: "note", headerName: "ملاحظة البلاغ", filter: "agTextColumnFilter" },
+    { field: "createdAt", headerName: "التاريخ", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+  ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
@@ -175,7 +182,13 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
             <div className="rounded-xl bg-[#edf6fc] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم السائق</dt><dd className="mt-1 text-xl font-bold text-[#204c6b]">{data.ratingSummary.driverAvg?.toFixed(1) ?? "—"}</dd></div>
             <div className="rounded-xl bg-[#edf6fc] p-4"><dt className="text-sm text-[#5e6b78]">الحجوزات المُقيّمة</dt><dd className="mt-1 text-xl font-bold text-[#204c6b]">{data.ratingSummary.count}</dd></div>
           </dl>
-          {data.reports.length === 0 ? <p className="empty-state">لا توجد بلاغات ركاب لهذا الأسطول</p> : <ul className="flex flex-col gap-2.5">{data.reports.map((report) => <li key={report.id} className="list-card block"><p className="font-semibold text-[#1a1a1a]">بلاغ راكب</p><p className="mt-1 text-sm text-[#5e6b78]">{report.note}</p><time className="mt-2 block text-xs text-[#71808d]" dateTime={report.createdAt}>{new Date(report.createdAt).toLocaleString("en-EG")}</time></li>)}</ul>}
+          <AgGridTable<FleetReport>
+            gridId={`fleet-reports-${fleetId}`}
+            rows={data.reports}
+            columnDefs={reportColumns}
+            emptyMessage="لا توجد بلاغات ركاب لهذا الأسطول"
+            getRowId={(report) => report.id}
+          />
         </div>}
       </ListingShell>
     </section>
