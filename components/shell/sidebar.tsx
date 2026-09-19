@@ -27,6 +27,7 @@ const NAV = [
   { href: "/trip-lines", label: "خطوط الرحلات", icon: Route },
   { href: "/trips", label: "الرحلات", icon: Route },
   { href: "/bookings", label: "الحجوزات", icon: Ticket },
+  { href: "/users", label: "مستخدمو الإدارة", icon: Users },
   { href: "/reports", label: "التقارير", icon: ChartNoAxesCombined },
   { href: "/roles", label: "مستويات الوصول", icon: UserRoundCog },
   { href: "/permissions", label: "دليل المهام", icon: KeyRound },

@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MembersTab } from "@/components/fleets/members-tab";
 import { FleetBookingsTab, FleetBusesTab, FleetReportsTab, FleetTripsTab } from "@/components/fleets/fleet-detail-listings";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { deleteFleet, fetchFleet, updateFleet, type Fleet } from "@/lib/actions/fleets";
@@ -16,7 +15,6 @@ const TABS = [
   { key: "overview", label: "نظرة عامة" },
   { key: "buses", label: "الأتوبيسات" },
   { key: "trips", label: "الرحلات" },
-  { key: "members", label: "الأعضاء" },
   { key: "bookings", label: "الحجوزات" },
   { key: "reports", label: "التقارير" },
 ] as const;
@@ -81,7 +79,7 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div><h1 className="page-title">{fleet.name}</h1><p className="page-description">إدارة بيانات الأسطول والأعضاء والتشغيل المرتبط به.</p></div>
+        <div><h1 className="page-title">{fleet.name}</h1><p className="page-description">إدارة الأتوبيسات والرحلات والحجوزات والتشغيل المرتبط بالأسطول.</p></div>
         <span className={fleet.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
           {fleet.isActive ? "نشط" : "موقوف"}
         </span>
@@ -136,8 +134,6 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </Dialog>
-
-      {tab === "members" && <MembersTab fleetId={id} />}
 
       {tab === "buses" && <FleetBusesTab fleetId={id} />}
       {tab === "trips" && <FleetTripsTab fleetId={id} />}

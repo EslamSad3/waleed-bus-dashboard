@@ -1,15 +1,79 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RouteDialog } from "@/components/ui/route-dialog";
-import { createStop } from "@/lib/actions/trip-lines";
+import { createStop, fetchGovernorates, type Governorate } from "@/lib/actions/trip-lines";
+
+function coordinatesFromLink(value: string) {
+  const match = value.match(/[?&]q=([-+]?\d+(?:\.\d+)?),\s*([-+]?\d+(?:\.\d+)?)/)
+    ?? value.match(/@([-+]?\d+(?:\.\d+)?),\s*([-+]?\d+(?:\.\d+)?)/)
+    ?? value.match(/([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)/);
+  return match ? { latitude: match[1], longitude: match[2] } : null;
+}
 
 export default function NewStopPage() {
   const router = useRouter();
-  const [name, setName] = useState(""); const [address, setAddress] = useState(""); const [latitude, setLatitude] = useState(""); const [longitude, setLongitude] = useState(""); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
-  async function submit(event: React.FormEvent) { event.preventDefault(); setError(null); if (!name.trim() || !address.trim() || latitude === "" || longitude === "") { setError("أكمل الاسم والعنوان والإحداثيات."); return; } setSaving(true); const result = await createStop({ name: name.trim(), address: address.trim(), latitude: Number(latitude), longitude: Number(longitude), isActive: true }); setSaving(false); if (!result.ok) { setError(result.message); return; } router.push(`/stops/${result.data.id}`); router.refresh(); }
-  return <RouteDialog title="نقطة توقف جديدة" description="سجّل المكان مرة واحدة، ثم استخدمه في أي خط على مستوى النظام." fallbackHref="/stops" size="sm"><form className="space-y-4" onSubmit={submit}><label className="block text-sm"><span className="mb-1 block font-medium">اسم النقطة</span><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثل: ميدان رمسيس"/></label><label className="block text-sm"><span className="mb-1 block font-medium">العنوان</span><Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ميدان رمسيس، القاهرة"/></label><div className="grid grid-cols-2 gap-3"><label className="block text-sm"><span className="mb-1 block font-medium">Latitude</span><Input dir="ltr" inputMode="decimal" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="30.0626"/></label><label className="block text-sm"><span className="mb-1 block font-medium">Longitude</span><Input dir="ltr" inputMode="decimal" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="31.2467"/></label></div><p className="text-xs text-slate-500">استخدم إحداثيات المكان الفعلية حتى تظهر النقطة بدقة على الخريطة لاحقًا.</p>{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<Button type="submit" disabled={saving} className="w-full">{saving ? "جاري الحفظ…" : "حفظ نقطة التوقف"}</Button></form></RouteDialog>;
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [mapLink, setMapLink] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [governorates, setGovernorates] = useState<Governorate[]>([]);
+  const [governorateId, setGovernorateId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchGovernorates().then((result) => {
+      if (result.ok) setGovernorates(result.data);
+      else setError(result.message);
+    });
+  }, []);
+
+  function readMapLink(value: string) {
+    setMapLink(value);
+    const coordinates = coordinatesFromLink(value);
+    if (!coordinates) return;
+    setLatitude(coordinates.latitude);
+    setLongitude(coordinates.longitude);
+    setError(null);
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    if (!name.trim() || !governorateId || !latitude || !longitude) {
+      setError("أكمل اسم النقطة والمحافظة ورابط الموقع.");
+      return;
+    }
+    setSaving(true);
+    const result = await createStop({
+      name: name.trim(),
+      address: address.trim() || undefined,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      governorateId,
+      isActive: true,
+    });
+    setSaving(false);
+    if (!result.ok) return setError(result.message);
+    router.push(`/stops/${result.data.id}`);
+    router.refresh();
+  }
+
+  return <RouteDialog title="نقطة توقف جديدة" description="اختر المحافظة ثم الصق رابط الموقع من خرائط Google لقراءة الإحداثيات تلقائيًا." fallbackHref="/stops" size="sm">
+    <form className="space-y-4" onSubmit={submit}>
+      <label className="block text-sm"><span className="mb-1 block font-medium">اسم النقطة</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="مثل: ميدان رمسيس" /></label>
+      <label className="block text-sm"><span className="mb-1 block font-medium">المحافظة</span><select value={governorateId} onChange={(event) => setGovernorateId(event.target.value)} className="select-field w-full"><option value="">اختر المحافظة…</option>{governorates.map((governorate) => <option key={governorate.id} value={governorate.id}>{governorate.nameAr} · {governorate.nameEn}</option>)}</select></label>
+      <label className="block text-sm"><span className="mb-1 block font-medium">العنوان <span className="font-normal text-slate-400">(اختياري)</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="ميدان رمسيس، القاهرة" /></label>
+      <label className="block text-sm"><span className="mb-1 block font-medium">رابط موقع Google Maps</span><Input dir="ltr" value={mapLink} onChange={(event) => readMapLink(event.target.value)} placeholder="maps.google.com/?q=29.953140,31.104898" /></label>
+      {latitude && longitude && <p dir="ltr" className="rounded-xl bg-[#edf6fc] p-3 text-sm font-semibold text-[#204c6b]">{latitude}, {longitude}</p>}
+      <p className="text-xs text-slate-500">لا تحتاج إلى إدخال خطوط الطول والعرض يدويًا.</p>
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      <Button type="submit" disabled={saving || governorates.length === 0} className="w-full">{saving ? "جاري الحفظ…" : "حفظ نقطة التوقف"}</Button>
+    </form>
+  </RouteDialog>;
 }

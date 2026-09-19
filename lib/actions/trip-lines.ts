@@ -1,11 +1,20 @@
 import { apiGet, apiSend, type ActionResult } from "@/lib/actions/http";
 
+export type Governorate = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+};
+
 export type Stop = {
   id: string;
   name: string;
-  address: string;
+  address?: string | null;
   latitude: number;
   longitude: number;
+  governorateId: string;
+  governorate: Governorate;
   isActive: boolean;
 };
 
@@ -13,6 +22,7 @@ export type TripLineStop = {
   id: string;
   stopOrder: number;
   estimatedStopMinutes?: number | null;
+  stopType: "BOARDING" | "LANDING" | "BOTH";
   station: Stop;
 };
 
@@ -28,16 +38,18 @@ export type TripLine = {
 };
 
 export const fetchStops = () => apiGet<Stop[]>("/api/stops");
+export const fetchGovernorates = () => apiGet<Governorate[]>("/api/governorates");
 export const fetchStop = (id: string) => apiGet<Stop>(`/api/stops/${id}`);
-export const createStop = (input: Omit<Stop, "id">) => apiSend<Stop>("/api/stops", "POST", input);
-export const updateStop = (id: string, input: Partial<Omit<Stop, "id">>) => apiSend<Stop>(`/api/stops/${id}`, "PATCH", input);
+export type StopInput = Omit<Stop, "id" | "governorate">;
+export const createStop = (input: StopInput) => apiSend<Stop>("/api/stops", "POST", input);
+export const updateStop = (id: string, input: Partial<StopInput>) => apiSend<Stop>(`/api/stops/${id}`, "PATCH", input);
 export const deleteStop = (id: string) => apiSend<null>(`/api/stops/${id}`, "DELETE");
 
 export const fetchTripLines = () => apiGet<TripLine[]>("/api/trip-lines");
 export const fetchTripLine = (id: string) => apiGet<TripLine>(`/api/trip-lines/${id}`);
-export const createTripLine = (input: { name: string; code: string; isActive?: boolean; outboundStops: { stopId: string; estimatedStopMinutes?: number }[]; returnStops: { stopId: string; estimatedStopMinutes?: number }[] }) => apiSend<TripLine>("/api/trip-lines", "POST", input);
+export const createTripLine = (input: { name: string; code: string; isActive?: boolean; outboundStops: { stopId: string; stopType: "BOARDING" | "LANDING" | "BOTH"; estimatedStopMinutes?: number }[]; returnStops: { stopId: string; stopType: "BOARDING" | "LANDING" | "BOTH"; estimatedStopMinutes?: number }[] }) => apiSend<TripLine>("/api/trip-lines", "POST", input);
 export const updateTripLine = (id: string, input: { name?: string; code?: string; isActive?: boolean }) => apiSend<TripLine>(`/api/trip-lines/${id}`, "PATCH", input);
-export const updateTripLineDirectionStops = (lineId: string, directionId: string, stops: { stopId: string; estimatedStopMinutes?: number }[]) => apiSend<TripLine>(`/api/trip-lines/${lineId}/directions/${directionId}/stops`, "PATCH", { stops });
+export const updateTripLineDirectionStops = (lineId: string, directionId: string, stops: { stopId: string; stopType: "BOARDING" | "LANDING" | "BOTH"; estimatedStopMinutes?: number }[]) => apiSend<TripLine>(`/api/trip-lines/${lineId}/directions/${directionId}/stops`, "PATCH", { stops });
 export const deleteTripLine = (id: string) => apiSend<null>(`/api/trip-lines/${id}`, "DELETE");
 
 export type { ActionResult };
