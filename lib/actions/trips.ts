@@ -1,5 +1,6 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import type { CreateTripInput } from "@/lib/schemas/p1";
+import { fetchFleetsPage } from "@/lib/actions/fleets";
 
 export type Trip = {
   id: string;
@@ -29,6 +30,21 @@ export function fetchTripsPage(fleetId: string, cursor: string | null): Promise<
 
 export function fetchTrip(fleetId: string, id: string): Promise<ActionResult<Trip>> {
   return apiGet<Trip>(`/api/fleets/${fleetId}/trips/${id}`);
+}
+
+export async function findTripAcrossFleets(id: string): Promise<ActionResult<{ fleetId: string; trip: Trip }>> {
+  let cursor: string | null = null;
+  do {
+    const fleets = await fetchFleetsPage(cursor);
+    if (!fleets.ok) return fleets;
+    for (const fleet of fleets.data.items) {
+      const result = await fetchTrip(fleet.id, id);
+      if (result.ok) return { ok: true, data: { fleetId: fleet.id, trip: result.data } };
+      if (result.code === "NETWORK_ERROR") return result;
+    }
+    cursor = fleets.data.nextCursor;
+  } while (cursor);
+  return { ok: false, message: "العنصر مش موجود في الأسطول ده", code: "NOT_FOUND" };
 }
 
 export function createTrip(fleetId: string, input: CreateTripInput): Promise<ActionResult<Trip>> {
