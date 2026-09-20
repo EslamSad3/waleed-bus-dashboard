@@ -5,146 +5,139 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
-import { useFilterStore } from "@/stores/filters";
-import { FleetPicker } from "@/components/fleet-picker";
-import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
-import { Building2 } from "lucide-react";
+import { fetchBusesPage } from "@/lib/actions/buses";
+import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/members";
+import { fetchFleetsPage } from "@/lib/actions/fleets";
+
+type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
+type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
+type TripAggregatePage = { items: TripRow[]; nextCursor: string | null };
+
+async function fetchFleetBuses(fleetId: string) {
+  const buses = new Map<string, string>();
+  let cursor: string | null = null;
+  do {
+    const result = await fetchBusesPage(fleetId, cursor);
+    if (!result.ok) throw new Error(result.message);
+    result.data.items.forEach((bus) => buses.set(bus.id, bus.registrationNumber));
+    cursor = result.data.nextCursor;
+  } while (cursor);
+  return buses;
+}
+
+async function fetchAssignedDrivers() {
+  const drivers = new Map<string, string>();
+  let cursor: string | null = null;
+  do {
+    const result = await fetchSystemDriversPage(cursor);
+    if (!result.ok) throw new Error(result.message);
+    result.data.items.forEach((driver: SystemDriverRow) => {
+      if (driver.assignedBus) drivers.set(driver.assignedBus.id, driver.name || driver.nickname || driver.phoneNumber || "غير معيّن");
+    });
+    cursor = result.data.nextCursor;
+  } while (cursor);
+  return drivers;
+}
+
+async function fetchAllFleetStates(): Promise<FleetCursor[]> {
+  const fleets: FleetCursor[] = [];
+  let cursor: string | null = null;
+  do {
+    const result = await fetchFleetsPage(cursor);
+    if (!result.ok) throw new Error(result.message);
+    fleets.push(...result.data.items.map((fleet) => ({ fleetId: fleet.id, fleetName: fleet.name, cursor: null })));
+    cursor = result.data.nextCursor;
+  } while (cursor);
+  return fleets;
+}
+
+async function fetchAggregateTripPage(cursorState: string | null): Promise<TripAggregatePage> {
+  const states: FleetCursor[] = cursorState ? JSON.parse(cursorState) as FleetCursor[] : await fetchAllFleetStates();
+  const [assignedDrivers, fleetBuses] = await Promise.all([
+    fetchAssignedDrivers(),
+    Promise.all(states.map(async (state) => [state.fleetId, await fetchFleetBuses(state.fleetId)] as const)),
+  ]);
+  const busesByFleet = new Map(fleetBuses);
+  const results = await Promise.all(
+    states.map(async (state) => {
+      const result = await fetchTripsPage(state.fleetId, state.cursor);
+      if (!result.ok) throw new Error(result.message);
+      return { state, page: result.data };
+    }),
+  );
+  const nextStates = results.map(({ state, page }) => ({ ...state, cursor: page.nextCursor }));
+  const items = results.flatMap(({ state, page }) => page.items.map((trip) => ({
+    ...trip,
+    fleetName: state.fleetName,
+    busName: busesByFleet.get(state.fleetId)?.get(trip.busId) ?? "غير معيّن",
+    driverName: assignedDrivers.get(trip.busId) ?? "غير معيّن",
+  })));
+  return {
+    items,
+    nextCursor: nextStates.some((state) => state.cursor) ? JSON.stringify(nextStates) : null,
+  };
+}
 
 export default function TripsPage() {
-  const { fleetId, setFleetId, listFilters, setListFilter } = useFilterStore();
-  const [first, setFirst] = useState<{ key: string; items: Trip[]; nextCursor: string | null } | null>(null);
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
-  const f = listFilters["trips"] ?? {};
+  const [first, setFirst] = useState<TripAggregatePage | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [listFilters, setListFilters] = useState<{ q?: string; status?: string; from?: string; to?: string }>({});
 
   useEffect(() => {
-    if (!fleetId) return;
-    fetchTripsPage(fleetId, null).then((r) => {
-      if (r.ok) setFirst({ key: fleetId, items: r.data.items, nextCursor: r.data.nextCursor });
-      else setFailed({ key: fleetId, message: r.message });
-    });
-  }, [fleetId]);
+    fetchAggregateTripPage(null).then(setFirst).catch((error: Error) => setFailed(error.message));
+  }, []);
 
-  const loading = !first || first.key !== fleetId;
-  const showFailed = failed && failed.key === fleetId ? failed.message : null;
+  const query = (listFilters.q ?? "").trim();
+  const status = listFilters.status ?? "all";
+  const from = listFilters.from ?? "";
+  const to = listFilters.to ?? "";
+  const predicate = (trip: TripRow) =>
+    (!query || trip.origin.includes(query) || trip.destination.includes(query) || trip.fleetName.includes(query) || trip.busName.includes(query) || trip.driverName.includes(query)) &&
+    (status === "all" || trip.status === status) &&
+    (!from || trip.departAt.slice(0, 10) >= from) &&
+    (!to || trip.departAt.slice(0, 10) <= to);
 
-  const q = (f.q ?? "").trim();
-  const status = f.status ?? "all";
-  const from = f.from ?? "";
-  const to = f.to ?? "";
-  const predicate = (t: Trip) =>
-    (!q || t.origin.includes(q) || t.destination.includes(q)) &&
-    (status === "all" || t.status === status) &&
-    (!from || t.departAt.slice(0, 10) >= from) &&
-    (!to || t.departAt.slice(0, 10) <= to);
-
-  if (!fleetId) {
-    return (
-      <div className="dashboard-page space-y-4">
-        <h1 className="page-title">الرحلات</h1>
-        <div className="panel-card max-w-md p-6 text-center space-y-4 mx-auto my-8">
-          <Building2 className="size-12 mx-auto text-[#2f719e] opacity-80" />
-          <div>
-            <h2 className="text-lg font-bold text-[#10153c]">اختار الأسطول لعرض الرحلات</h2>
-            <p className="text-xs text-[#5e6b78] mt-1">
-              اختار الأسطول من شريط التنقل العلوي أو حدد الأسطول أدناه:
-            </p>
-          </div>
-          <FleetPicker
-            value=""
-            onChange={(id) => {
-              if (!id) return;
-              setFleetId(id);
-              setFleetScopeCookie(id);
-            }}
-            label="اختر أسطولاً للبدء"
-          />
-        </div>
-      </div>
-    );
-  }
+  const columns: CommunityColumnDef<TripRow>[] = [
+    { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
+    { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
+    { field: "fleetName", headerName: "اسم الأسطول", filter: "agTextColumnFilter" },
+    { field: "busName", headerName: "الأتوبيس", filter: "agTextColumnFilter" },
+    { field: "driverName", headerName: "السواق", filter: "agTextColumnFilter" },
+    { field: "departAt", headerName: "موعد الرحلة", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+    { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
+  ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
         <div>
           <h1 className="page-title">الرحلات</h1>
-          <p className="page-description">جدولة الرحلات ومتابعة الخط والميعاد وحالة التشغيل.</p>
+          <p className="page-description">كل الرحلات في الأساطيل المسجلة، مع الخط والميعاد وحالة التشغيل.</p>
         </div>
-        <Button asChild>
-          <Link href="/trips/new">رحلة جديدة</Link>
-        </Button>
+        <Button asChild><Link href="/trips/new">رحلة جديدة</Link></Button>
       </div>
 
-      {showFailed ? (
-        <p role="alert" className="text-sm text-red-600">{showFailed}</p>
-      ) : loading || !first ? (
-        <p className="text-sm text-[#606060]">جاري التحميل…</p>
-      ) : (
-        <CursorList<Trip>
-          key={fleetId}
+      {failed ? <p role="alert" className="text-sm text-red-600">{failed}</p> : null}
+      {!first ? <p className="text-sm text-[#606060]">جاري تحميل الرحلات…</p> : (
+        <CursorList<TripRow>
           initialItems={first.items}
           initialCursor={first.nextCursor}
-          loadMore={(cursor) =>
-            fetchTripsPage(fleetId, cursor).then((r) => {
-              if (!r.ok) throw new Error(r.message);
-              return { items: r.data.items, nextCursor: r.data.nextCursor };
-            })
-          }
-          keyOf={(t) => t.id}
+          loadMore={fetchAggregateTripPage}
+          keyOf={(trip) => trip.id}
           filter={predicate}
+          columnDefs={columns}
           filterBar={
             <div className="contents">
-              <Input
-                aria-label="بحث بالمنشأ أو الوجهة"
-                placeholder="من / إلى"
-                value={f.q ?? ""}
-                onChange={(e) => setListFilter("trips", { q: e.target.value })}
-                className="max-w-52 bg-white"
-              />
-              <select
-                aria-label="الحالة"
-                value={status}
-                onChange={(e) => setListFilter("trips", { status: e.target.value })}
-                className="select-field"
-              >
-                <option value="all">كل الحالات</option>
-                <option value="SCHEDULED">مجدولة</option>
-                <option value="DEPARTED">شغالة</option>
-                <option value="COMPLETED">خلصت</option>
-                <option value="CANCELLED">ملغية</option>
-              </select>
-              <Input
-                aria-label="من تاريخ"
-                type="date"
-                value={from}
-                onChange={(e) => setListFilter("trips", { from: e.target.value })}
-                className="max-w-44 bg-white"
-              />
-              <Input
-                aria-label="إلى تاريخ"
-                type="date"
-                value={to}
-                onChange={(e) => setListFilter("trips", { to: e.target.value })}
-                className="max-w-44 bg-white"
-              />
+              <Input aria-label="بحث بالمنشأ أو الوجهة أو الأسطول" placeholder="من / إلى / الأسطول" value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="max-w-52 bg-white" />
+              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field"><option value="all">كل الحالات</option><option value="SCHEDULED">مجدولة</option><option value="DEPARTED">شغالة</option><option value="COMPLETED">خلصت</option><option value="CANCELLED">ملغية</option></select>
+              <Input aria-label="من تاريخ" type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="max-w-44 bg-white" />
+              <Input aria-label="إلى تاريخ" type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="max-w-44 bg-white" />
             </div>
           }
-          emptyMessage="لا توجد رحلات في الأسطول ده — ابدأ بإضافة جديد"
-          renderItem={(t) => (
-            <Link
-              href={`/trips/${t.id}`}
-              className="list-card"
-            >
-              <span className="font-semibold text-[#1a1a1a]">{t.origin} ← {t.destination}</span>
-              <span className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b78]">
-                <span className={t.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>
-                  {TRIP_STATUS_AR[t.status]}
-                </span>
-                <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time>
-              </span>
-            </Link>
-          )}
+          emptyMessage="لا توجد رحلات مسجلة في الأساطيل."
+          renderItem={(trip) => <Link href={`/trips/${trip.id}`} className="list-card"><span className="font-semibold">{trip.origin} ← {trip.destination}<span className="mt-1 block text-xs text-[#606060]">{trip.fleetName} · {trip.busName} · {trip.driverName}</span></span><span className="text-sm text-[#606060]">فتح</span></Link>}
         />
       )}
     </div>
