@@ -109,8 +109,8 @@ obsolete in-scope table/list rendering paths.
 - [X] T026 Run `pnpm typecheck` and resolve AG Grid TypeScript errors introduced by the migration across `components/tables/`, `components/fleets/`, `app/(shell)/`, and `lib/`
 - [X] T027 Run `pnpm lint` and resolve lint errors introduced by the migration while documenting unrelated baseline failures in `PROGRESS.md`
 - [X] T028 Run `pnpm build` and verify the client/server boundary does not expose `BUS_API_URL` or session tokens in the client bundle in `.next/` and affected app components
-- [ ] T029 Execute all representative browser scenarios in `specs/002-ag-grid-tables/quickstart.md` against the local backend and record the result in `PROGRESS.md`
-- [ ] T030 Confirm `specs/002-ag-grid-tables/spec.md` FR-001 through FR-012 and SC-001 through SC-005 are covered by the final implementation and update `specs/002-ag-grid-tables/checklists/requirements.md` only if the requirements wording changes
+- [X] T029 Execute all representative browser scenarios in `specs/002-ag-grid-tables/quickstart.md` against the local backend and record the result in `PROGRESS.md`
+- [X] T030 Confirm `specs/002-ag-grid-tables/spec.md` FR-001 through FR-012 and SC-001 through SC-005 are covered by the final implementation and update `specs/002-ag-grid-tables/checklists/requirements.md` only if the requirements wording changes
 
 ## Dependencies & Execution Order
 

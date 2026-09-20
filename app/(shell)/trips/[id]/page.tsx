@@ -5,13 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { deleteTrip, fetchTrip, updateTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
-import { useFilterStore } from "@/stores/filters";
+import { deleteTrip, findTripAcrossFleets, updateTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { assignDriver, fetchBus, type Bus } from "@/lib/actions/buses";
+import { apiGet } from "@/lib/actions/http";
+import type { DriverRow } from "@/lib/actions/members";
 
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const fleetId = useFilterStore((s) => s.fleetId);
+  const [fleetId, setFleetId] = useState<string | null>(null);
   const [trip, setTrip] = useState<Trip | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
@@ -21,22 +23,35 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [status, setStatus] = useState<Trip["status"]>("SCHEDULED");
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [bus, setBus] = useState<Bus | null>(null);
+  const [drivers, setDrivers] = useState<DriverRow[]>([]);
+  const [driverId, setDriverId] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    if (!fleetId) return;
-    const key = `${fleetId}/${id}`;
-    fetchTrip(fleetId, id).then((r) => {
+    findTripAcrossFleets(id).then((r) => {
       if (r.ok) {
-        setTrip(r.data);
-        setOrigin(r.data.origin);
-        setDestination(r.data.destination);
-        setDepartAt(r.data.departAt.slice(0, 16));
-        setStatus(r.data.status);
+        setFleetId(r.data.fleetId);
+        setTrip(r.data.trip);
+        setOrigin(r.data.trip.origin);
+        setDestination(r.data.trip.destination);
+        setDepartAt(r.data.trip.departAt.slice(0, 16));
+        setStatus(r.data.trip.status);
         setFailed(null);
       } else setFailed(r.message);
-      setLoadedKey(key);
+      setLoadedKey(id);
     });
-  }, [fleetId, id]);
+  }, [id]);
+
+  useEffect(() => {
+    if (!fleetId || !trip) return;
+    fetchBus(fleetId, trip.busId).then((result) => {
+      if (result.ok) setBus(result.data);
+    });
+    apiGet<{ items: DriverRow[] }>("/api/fleet/drivers?limit=100", fleetId).then((result) => {
+      if (result.ok) setDrivers(result.data.items.filter((driver) => driver.status === "ACTIVE"));
+    });
+  }, [fleetId, trip]);
 
   function done(ok: boolean, msg: string, updated?: Trip) {
     setError(ok ? null : msg);
@@ -75,16 +90,23 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     router.refresh();
   }
 
-  if (!fleetId) {
-    return (
-      <div className="flex flex-col gap-2">
-        <h1 className="title-grad text-2xl font-extrabold">الرحلة</h1>
-        <p className="empty-state">اختار الأسطول الأول لعرض بيانات الرحلة.</p>
-      </div>
-    );
+  async function assignTripDriver() {
+    if (!fleetId || !trip || !driverId) {
+      setError("اختار السواق الأول");
+      return;
+    }
+    setAssigning(true);
+    const result = await assignDriver(fleetId, trip.busId, { driverUserId: driverId });
+    setAssigning(false);
+    done(result.ok, result.ok ? "اتعين السواق على أتوبيس الرحلة" : result.message);
+    if (result.ok) {
+      const refreshed = await apiGet<{ items: DriverRow[] }>("/api/fleet/drivers?limit=100", fleetId);
+      if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+    }
   }
-  if (failed && loadedKey === `${fleetId}/${id}`) return <p role="alert" className="text-sm text-red-600">{failed}</p>;
-  if (!trip || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
+
+  if (failed && loadedKey === id) return <p role="alert" className="text-sm text-red-600">{failed}</p>;
+  if (!trip || loadedKey !== id || !fleetId) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   return (
     <div className="dashboard-page">
@@ -114,7 +136,20 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
               <span className="mb-1 block font-medium">ميعاد المغادرة</span>
               <Input dir="ltr" type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} />
             </label>
-            <p className="text-sm text-[#606060]">الأتوبيس: <span dir="ltr">{trip.busId}</span></p>
+            <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
+              <span className="block text-[#606060]">أتوبيس الرحلة</span>
+              <strong>{bus?.registrationNumber ?? "جاري تحميل بيانات الأتوبيس…"}</strong>
+              {bus?.plateNumber ? <span className="mr-2 text-[#606060]" dir="ltr">{bus.plateNumber}</span> : null}
+              <span className="mr-2 text-[#606060]">· السعة {bus?.capacity ?? "—"}</span>
+              <label className="mt-3 block text-sm">
+                <span className="mb-1 block font-medium">تعيين سواق من نفس الأسطول</span>
+                <select aria-label="تعيين سواق الرحلة" value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus || assigning}>
+                  <option value="">اختار السواق</option>
+                  {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || "سواق بدون اسم"}</option>)}
+                </select>
+              </label>
+              <Button type="button" className="mt-2" onClick={() => void assignTripDriver()} disabled={!driverId || assigning}>{assigning ? "جاري التعيين…" : "تعيين السواق"}</Button>
+            </div>
             <div className="flex gap-2">
               <Button type="button" onClick={save}>حفظ</Button>
               <Button type="button" variant="destructive" onClick={remove}>مسح</Button>
@@ -140,7 +175,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
             </Button>
           </div>
           <Button asChild variant="secondary" className="mt-4">
-            <Link href="/bookings">كشف الحجوزات</Link>
+            <Link href={`/bookings?tripId=${encodeURIComponent(trip.id)}`}>كشف حجوزات الرحلة</Link>
           </Button>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Filter, Plus, RotateCcw, Ticket } from "lucide-react";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
@@ -16,10 +17,13 @@ import {
   type AdminBookingListItem,
 } from "@/lib/actions/bookings";
 import { apiGet } from "@/lib/actions/http";
+import { findTripAcrossFleets } from "@/lib/actions/trips";
 
 type FleetOption = { id: string; name: string };
 
 export default function BookingsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [items, setItems] = useState<AdminBookingListItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +31,9 @@ export default function BookingsPage() {
   const [fleets, setFleets] = useState<FleetOption[]>([]);
   const [, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState("");
+  // Trip scope is fully URL-driven: /bookings?tripId=X always filters to that
+  // trip, including when the page is already mounted and only the param changes.
+  const tripId = searchParams.get("tripId") ?? "";
   const [fleetId, setFleetId] = useState("");
   const [status, setStatus] = useState("all");
   const [paymentStatus, setPaymentStatus] = useState("all");
@@ -43,9 +50,25 @@ export default function BookingsPage() {
     });
   }, []);
 
+  const [tripLabel, setTripLabel] = useState<{ tripId: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!tripId) return;
+    let cancelled = false;
+    findTripAcrossFleets(tripId).then((result) => {
+      if (cancelled) return;
+      const text = result.ok
+        ? `${result.data.trip.origin} ← ${result.data.trip.destination} • ${new Date(result.data.trip.departAt).toLocaleString("ar-EG")}`
+        : tripId;
+      setTripLabel({ tripId, text });
+    });
+    return () => { cancelled = true; };
+  }, [tripId]);
+  const activeTripLabel = tripLabel && tripLabel.tripId === tripId ? tripLabel.text : null;
+
   const buildFilterParams = useCallback((): AdminBookingFilterParams => {
     const params: AdminBookingFilterParams = { limit: 20 };
     if (fleetId) params.fleetId = fleetId;
+    if (tripId) params.tripId = tripId;
     if (searchTerm.trim()) {
       if (/^\+?[0-9]+$/.test(searchTerm.trim())) params.passengerPhone = searchTerm.trim();
       else params.passengerName = searchTerm.trim();
@@ -62,7 +85,7 @@ export default function BookingsPage() {
       if (toDate) { const date = new Date(toDate); date.setHours(23, 59, 59, 999); params.createdTo = date.toISOString(); }
     }
     return params;
-  }, [fleetId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
+  }, [fleetId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,9 +112,10 @@ export default function BookingsPage() {
       setFromDate("");
       setToDate("");
     });
+    if (tripId) router.replace("/bookings");
   }
 
-  const hasActiveFilters = Boolean(searchTerm || fleetId || hasReports || fromDate || toDate) || status !== "all" || paymentStatus !== "all" || paymentMethod !== "all";
+  const hasActiveFilters = Boolean(searchTerm || tripId || fleetId || hasReports || fromDate || toDate) || status !== "all" || paymentStatus !== "all" || paymentMethod !== "all";
   const columns: CommunityColumnDef<AdminBookingListItem>[] = [
     { field: "passengerName", headerName: "الراكب", filter: "agTextColumnFilter" },
     { field: "passengerPhone", headerName: "الموبايل", filter: "agTextColumnFilter" },
@@ -123,6 +147,19 @@ export default function BookingsPage() {
         </div>
         <Button asChild className="gap-2"><Link href="/bookings/new"><Plus className="size-4" /> حجز جديد</Link></Button>
       </div>
+
+      {tripId ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#daeaf5] bg-[#f3f8fc] p-4 shadow-sm">
+          <div>
+            <p className="text-sm font-bold text-[#204c6b]">حجوزات رحلة محددة</p>
+            <p className="text-xs text-[#606060]" dir="auto">{activeTripLabel ?? "جاري تحديد الرحلة…"}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>تفاصيل الرحلة</Link></Button>
+            <Button size="sm" variant="outline" onClick={() => router.replace("/bookings")}>عرض كل الحجوزات</Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-[#daeaf5] bg-white p-4 shadow-sm space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

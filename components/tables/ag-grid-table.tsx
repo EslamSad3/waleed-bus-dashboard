@@ -92,6 +92,7 @@ export function AgGridTable<T>({
           <input
             type="search"
             value={quickFilterText}
+            onChange={(event) => setQuickFilterText(event.target.value)}
             placeholder="بحث في النتائج المحملة"
             aria-label="بحث في النتائج المحملة"
             className="ag-grid-search"
