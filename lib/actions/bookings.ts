@@ -70,6 +70,8 @@ export type AdminBookingListItem = {
   passengerUserId?: string | null;
   bookingFor?: string | null;
   note?: string | null;
+  promoCode?: string | null;
+  discountAmount?: string | null;
   seats: number;
   status: BookingStatus;
   totalAmount: string;
@@ -151,6 +153,8 @@ export type AdminBookingDetail = {
   passengerUserId?: string | null;
   bookingFor?: string | null;
   note?: string | null;
+  promoCode?: string | null;
+  discountAmount?: string | null;
   boardingStationId?: string | null;
   landingStationId?: string | null;
   totalAmount: string;

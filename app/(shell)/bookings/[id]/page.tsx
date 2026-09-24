@@ -368,6 +368,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <span dir="ltr" className="font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
               </div>
               {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">ملاحظة: {booking.note}</p> : null}
+              {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">كود الخصم: <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> (خصم {booking.discountAmount} جنيه)</span> : null}</p> : null}
             </div>
           </div>
         </div>
