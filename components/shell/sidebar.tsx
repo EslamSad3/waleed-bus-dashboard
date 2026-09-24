@@ -33,6 +33,7 @@ const NAV = [
   { href: "/bookings", label: "الحجوزات", icon: Ticket },
   { href: "/promotions", label: "أكواد الخصم", icon: Ticket },
   { href: "/notifications", label: "الإشعارات", icon: Ticket },
+  { href: "/service-config", label: "خدمة العملاء والإعلانات", icon: Ticket },
   { href: "/users", label: "مستخدمو الإدارة", icon: Users },
   { href: "/reports", label: "التقارير", icon: ChartNoAxesCombined },
   { href: "/roles", label: "مستويات الوصول", icon: UserRoundCog },
