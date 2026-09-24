@@ -1,11 +1,24 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import type { CreateBusInput, AssignDriverInput } from "@/lib/schemas/p1";
 
+export type VehicleBrand = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
 export type Bus = {
   id: string;
   fleetId: string;
   registrationNumber: string;
   plateNumber?: string | null;
+  color?: string | null;
+  imageUrl?: string | null;
+  brandId?: string | null;
+  brand?: VehicleBrand | null;
+  isAirConditioned?: boolean | null;
+  modelYear?: number | null;
   capacity: number;
   lineId?: string | null;
   line?: { id: string; name: string; code: string } | null;
@@ -30,9 +43,13 @@ export function createBus(fleetId: string, input: CreateBusInput): Promise<Actio
   return apiSend<Bus>(`/api/fleets/${fleetId}/buses`, "POST", input, "REGISTRATION_TAKEN");
 }
 
-export function updateBus(fleetId: string, id: string, input: { plateNumber?: string; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
+export function updateBus(fleetId: string, id: string, input: { plateNumber?: string; color?: string; imageUrl?: string; brandId?: string | null; isAirConditioned?: boolean; modelYear?: number; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
   return apiSend<Bus>(`/api/fleets/${fleetId}/buses/${id}`, "PATCH", input, "REGISTRATION_TAKEN");
 }
+
+export const fetchBrands = () => apiGet<VehicleBrand[]>("/api/brands");
+export const createBrand = (input: { name: string; sortOrder?: number; isActive?: boolean }) => apiSend<VehicleBrand>("/api/brands", "POST", input);
+export const updateBrand = (id: string, input: { name?: string; sortOrder?: number; isActive?: boolean }) => apiSend<VehicleBrand>(`/api/brands/${id}`, "PATCH", input);
 
 export function deleteBus(fleetId: string, id: string): Promise<ActionResult<null>> {
   return apiSend<null>(`/api/fleets/${fleetId}/buses/${id}`, "DELETE");

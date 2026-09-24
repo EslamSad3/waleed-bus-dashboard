@@ -72,14 +72,39 @@ export const updateFleetSchema = z.object({
 });
 
 // ---- Buses (platform CRUD) ----
+const httpsUrl = z.url("رابط الصورة لازم يبدأ بـ https://").refine(
+  (value) => value.startsWith("https://"),
+  "رابط الصورة لازم يبدأ بـ https://",
+);
+const modelYear = z.number("سنة الموديل غير صحيحة").int("سنة الموديل غير صحيحة").min(1980, "سنة الموديل غير صحيحة").max(2100, "سنة الموديل غير صحيحة");
 export const createBusSchema = z.object({
   registrationNumber: z.string("الحقل ده مطلوب").min(1, "الحقل ده مطلوب").max(50),
-  plateNumber: z.string().max(50).optional(),
+  plateNumber: z.string("رقم اللوحة مطلوب").min(1, "رقم اللوحة مطلوب").max(50),
+  color: z.string("اللون مطلوب").min(1, "اللون مطلوب").max(50),
+  imageUrl: httpsUrl,
+  brandId: uuid.nullable().optional(),
+  isAirConditioned: z.boolean().optional(),
+  modelYear: modelYear.optional(),
   capacity,
 });
 export const updateBusSchema = z.object({
   plateNumber: z.string().max(50).optional(),
+  color: z.string().max(50).optional(),
+  imageUrl: httpsUrl.optional(),
+  brandId: uuid.nullable().optional(),
+  isAirConditioned: z.boolean().optional(),
+  modelYear: modelYear.optional(),
   capacity: capacity.optional(),
+  isActive: z.boolean().optional(),
+});
+export const createBrandSchema = z.object({
+  name: z.string("اسم الماركة مطلوب").min(1, "اسم الماركة مطلوب").max(100),
+  sortOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+});
+export const updateBrandSchema = z.object({
+  name: z.string().min(1, "اسم الماركة مطلوب").max(100).optional(),
+  sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
 export const assignDriverSchema = z.object({ driverUserId: uuid });
@@ -162,13 +187,34 @@ export const createStopSchema = z.object({
   latitude,
   longitude,
   governorateId: uuid,
+  localityId: uuid.nullable().optional(),
   isActive: z.boolean().optional(),
 });
 export const updateStopSchema = z.object({
   name: name255.optional(), address: z.string().min(1).max(500).nullable().optional(),
-  latitude: latitude.optional(), longitude: longitude.optional(), governorateId: uuid.optional(), isActive: z.boolean().optional(),
+  latitude: latitude.optional(), longitude: longitude.optional(), governorateId: uuid.optional(), localityId: uuid.nullable().optional(), isActive: z.boolean().optional(),
 });
-const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING", "BOTH"]).optional(), estimatedStopMinutes: z.number().int().min(0).optional() });
+export const createMarkazSchema = z.object({
+  governorateId: uuid,
+  code: z.string("كود المركز مطلوب").min(1, "كود المركز مطلوب").max(50),
+  nameAr: name255,
+  nameEn: name255,
+  isActive: z.boolean().optional(),
+});
+export const updateMarkazSchema = z.object({
+  nameAr: name255.optional(), nameEn: name255.optional(), isActive: z.boolean().optional(),
+});
+export const createLocalitySchema = z.object({
+  markazId: uuid,
+  type: z.enum(["CITY", "VILLAGE"], "نوع المنطقة لازم مدينة أو قرية"),
+  nameAr: name255,
+  nameEn: name255,
+  isActive: z.boolean().optional(),
+});
+export const updateLocalitySchema = z.object({
+  nameAr: name255.optional(), nameEn: name255.optional(), isActive: z.boolean().optional(),
+});
+const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], "نوع التوقف لازم ركوب أو نزول"), estimatedStopMinutes: z.number().int().min(0).optional() });
 export const createTripLineSchema = z.object({
   name: name255, code: z.string("كود الخط مطلوب").min(1, "كود الخط مطلوب").max(50),
   outboundStops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل في اتجاه الذهاب"),
@@ -202,6 +248,8 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}$`), schema: updateFleetSchema },
   { method: "POST", pattern: new RegExp(`^/fleets/${SEG}/buses$`), schema: createBusSchema, conflictKey: "REGISTRATION_TAKEN" },
   { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}/buses/${SEG}$`), schema: updateBusSchema, conflictKey: "REGISTRATION_TAKEN" },
+  { method: "POST", pattern: /^\/brands$/, schema: createBrandSchema },
+  { method: "PATCH", pattern: new RegExp(`^/brands/${SEG}$`), schema: updateBrandSchema },
   { method: "POST", pattern: new RegExp(`^/fleets/${SEG}/trips$`), schema: createTripSchema },
   { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}/trips/${SEG}$`), schema: updateTripSchema },
   { method: "POST", pattern: new RegExp(`^/fleets/${SEG}/bookings$`), schema: createBookingSchema },
@@ -213,6 +261,10 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "PATCH", pattern: new RegExp(`^/fleet/drivers/${SEG}$`), schema: updateDriverSchema },
   { method: "POST", pattern: /^\/stops$/, schema: createStopSchema },
   { method: "PATCH", pattern: new RegExp(`^/stops/${SEG}$`), schema: updateStopSchema },
+  { method: "POST", pattern: /^\/markaz$/, schema: createMarkazSchema },
+  { method: "PATCH", pattern: new RegExp(`^/markaz/${SEG}$`), schema: updateMarkazSchema },
+  { method: "POST", pattern: /^\/localities$/, schema: createLocalitySchema },
+  { method: "PATCH", pattern: new RegExp(`^/localities/${SEG}$`), schema: updateLocalitySchema },
   { method: "POST", pattern: /^\/trip-lines$/, schema: createTripLineSchema },
   { method: "PATCH", pattern: new RegExp(`^/trip-lines/${SEG}$`), schema: updateTripLineSchema },
   { method: "PATCH", pattern: new RegExp(`^/trip-lines/${SEG}/directions/${SEG}/stops$`), schema: updateDirectionStopsSchema },
