@@ -107,6 +107,19 @@ export const updateBrandSchema = z.object({
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
+export const createVipTierSchema = z.object({
+  name: z.string("اسم المستوى مطلوب").min(1, "اسم المستوى مطلوب").max(100),
+  rank: z.number("الترتيب مطلوب").int("الترتيب مطلوب").min(1, "الترتيب مطلوب"),
+  isActive: z.boolean().optional(),
+});
+export const updateVipTierSchema = z.object({
+  name: z.string().min(1, "اسم المستوى مطلوب").max(100).optional(),
+  rank: z.number().int().min(1).optional(),
+  isActive: z.boolean().optional(),
+});
+export const assignFleetVipSchema = z.object({
+  vipTierId: uuid.nullable().optional(),
+});
 export const assignDriverSchema = z.object({ driverUserId: uuid });
 
 // ---- Trips ----
@@ -250,6 +263,9 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}/buses/${SEG}$`), schema: updateBusSchema, conflictKey: "REGISTRATION_TAKEN" },
   { method: "POST", pattern: /^\/brands$/, schema: createBrandSchema },
   { method: "PATCH", pattern: new RegExp(`^/brands/${SEG}$`), schema: updateBrandSchema },
+  { method: "POST", pattern: /^\/vip-tiers$/, schema: createVipTierSchema },
+  { method: "PATCH", pattern: new RegExp(`^/vip-tiers/${SEG}$`), schema: updateVipTierSchema },
+  { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}/vip$`), schema: assignFleetVipSchema },
   { method: "POST", pattern: new RegExp(`^/fleets/${SEG}/trips$`), schema: createTripSchema },
   { method: "PATCH", pattern: new RegExp(`^/fleets/${SEG}/trips/${SEG}$`), schema: updateTripSchema },
   { method: "POST", pattern: new RegExp(`^/fleets/${SEG}/bookings$`), schema: createBookingSchema },

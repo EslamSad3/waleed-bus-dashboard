@@ -24,6 +24,7 @@ const NAV = [
   { href: "/drivers", label: "السواقين", icon: Users },
   { href: "/buses", label: "الأتوبيسات", icon: Bus },
   { href: "/brands", label: "ماركات الأتوبيسات", icon: Bus },
+  { href: "/vip-tiers", label: "مستويات VIP", icon: Bus },
   { href: "/markaz", label: "المراكز", icon: MapPin },
   { href: "/localities", label: "المدن والقرى", icon: MapPin },
   { href: "/stops", label: "نقاط التوقف", icon: MapPin },

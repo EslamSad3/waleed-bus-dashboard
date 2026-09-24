@@ -1,11 +1,20 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import type { CreateFleetInput } from "@/lib/schemas/p1";
 
+export type VipTier = {
+  id: string;
+  name: string;
+  rank: number;
+  isActive: boolean;
+};
+
 export type Fleet = {
   id: string;
   name: string;
   ownerId: string;
   isActive: boolean;
+  vipTierId?: string | null;
+  vipTier?: VipTier | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -32,6 +41,14 @@ export function updateFleet(id: string, input: { name?: string; isActive?: boole
 export function deleteFleet(id: string): Promise<ActionResult<null>> {
   return apiSend<null>(`/api/fleets/${id}`, "DELETE", undefined, "FLEET_REFERENCED");
 }
+
+export function assignFleetVip(id: string, vipTierId: string | null): Promise<ActionResult<Fleet>> {
+  return apiSend<Fleet>(`/api/fleets/${id}/vip`, "PATCH", { vipTierId });
+}
+
+export const fetchVipTiers = () => apiGet<VipTier[]>("/api/vip-tiers");
+export const createVipTier = (input: { name: string; rank: number; isActive?: boolean }) => apiSend<VipTier>("/api/vip-tiers", "POST", input);
+export const updateVipTier = (id: string, input: { name?: string; rank?: number; isActive?: boolean }) => apiSend<VipTier>(`/api/vip-tiers/${id}`, "PATCH", input);
 
 /** Owner picker (read-only reuse of GET /users per research R7). */
 export function fetchUserOptions(): Promise<ActionResult<{ items: { id: string; name?: string | null; email?: string | null; phone?: string | null; phoneNumber?: string | null }[] }>> {

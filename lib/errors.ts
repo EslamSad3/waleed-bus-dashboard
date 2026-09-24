@@ -38,6 +38,7 @@ export const AR_ERROR_MAP: Record<string, string> = {
   STOP_IN_USE: "نقطة التوقف مستخدمة في خط رحلة ومينفعش تتمسح — أوقفها بدلًا من ذلك",
   INVALID_BRAND: "ماركة الأتوبيس المختارة غير متاحة",
   INVALID_VEHICLE_YEAR: "سنة موديل الأتوبيس غير صالحة",
+  VIP_TIER_NOT_AVAILABLE: "مستوى VIP المختار غير متاح",
   FORBIDDEN_PLATFORM_ACCESS: "مفيش صلاحية، العملية تتطلب صلاحيات المشرف العام",
   JUSTIFICATION_REQUIRED: "سبب وتبرير العملية إلزامي",
   RATE_LIMITED: "محاولات كتير، حاول بعد شوية",
