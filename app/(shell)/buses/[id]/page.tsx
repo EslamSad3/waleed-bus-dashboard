@@ -17,6 +17,7 @@ import {
   assignTripLine,
   unassignTripLine,
   updateBus,
+  uploadBusImage,
   type Bus,
   type TripRef,
   type VehicleBrand,
@@ -44,6 +45,19 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
   const [isAirConditioned, setIsAirConditioned] = useState(false);
   const [modelYear, setModelYear] = useState("");
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  async function onImageFile(file: File | null) {
+    if (!file || !fleetId) return;
+    setUploading(true);
+    const uploaded = await uploadBusImage(fleetId, file);
+    setUploading(false);
+    if (!uploaded.ok) {
+      setError(uploaded.message);
+      return;
+    }
+    setImageUrl(uploaded.data.url);
+  }
   const [driverId, setDriverId] = useState("");
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -318,7 +332,14 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
             <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="أبيض" />
           </label>
           <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">رابط الصورة (https)</span>
+            <span className="mb-2 block font-bold text-[#334454]">صورة الأتوبيس</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => void onImageFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm file:ml-3 file:rounded-lg file:border-0 file:bg-[#2f719e] file:px-4 file:py-2 file:text-white"
+            />
+            {uploading ? <span className="mt-1 block text-xs text-slate-500">جاري رفع الصورة وضغطها…</span> : null}
             <Input dir="ltr" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
           </label>
           <label className="block text-sm">

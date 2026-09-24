@@ -1,4 +1,4 @@
-import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { apiGet, apiSend, apiSendFile, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import type { CreateBusInput, AssignDriverInput } from "@/lib/schemas/p1";
 
 export type VehicleBrand = {
@@ -45,6 +45,10 @@ export function createBus(fleetId: string, input: CreateBusInput): Promise<Actio
 
 export function updateBus(fleetId: string, id: string, input: { plateNumber?: string; color?: string; imageUrl?: string; brandId?: string | null; isAirConditioned?: boolean; modelYear?: number; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
   return apiSend<Bus>(`/api/fleets/${fleetId}/buses/${id}`, "PATCH", input, "REGISTRATION_TAKEN");
+}
+
+export function uploadBusImage(fleetId: string, file: File): Promise<ActionResult<{ url: string }>> {
+  return apiSendFile<{ url: string }>(`/api/fleets/${fleetId}/uploads/bus-image`, file);
 }
 
 export const fetchBrands = () => apiGet<VehicleBrand[]>("/api/brands");

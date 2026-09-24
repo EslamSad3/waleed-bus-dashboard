@@ -9,7 +9,7 @@ import { createBusSchema } from "@/lib/schemas/p1";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { createBus, fetchBrands, type VehicleBrand } from "@/lib/actions/buses";
+import { createBus, fetchBrands, uploadBusImage, type VehicleBrand } from "@/lib/actions/buses";
 import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
@@ -23,6 +23,8 @@ export default function NewBusPage() {
   const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
   const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
   const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<Values>({
@@ -44,6 +46,24 @@ export default function NewBusPage() {
       if (result.ok) setBrands(result.data);
     });
   }, []);
+
+  async function onFileSelect(file: File | null) {
+    setImageFile(file);
+    setFormError(null);
+    if (!file) return;
+    if (!fleetId) {
+      setFormError("اختار الأسطول الأول قبل رفع الصورة.");
+      return;
+    }
+    setUploading(true);
+    const uploaded = await uploadBusImage(fleetId, file);
+    setUploading(false);
+    if (!uploaded.ok) {
+      setFormError(uploaded.message);
+      return;
+    }
+    form.setValue("imageUrl", uploaded.data.url, { shouldValidate: true });
+  }
 
   async function onSubmit(values: Values) {
     setFormError(null);
@@ -125,9 +145,19 @@ export default function NewBusPage() {
               name="imageUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>رابط صورة الأتوبيس (https)</FormLabel>
+                  <FormLabel>صورة الأتوبيس</FormLabel>
                   <FormControl>
-                    <Input dir="ltr" placeholder="https://…" {...field} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => void onFileSelect(e.target.files?.[0] ?? null)}
+                      className="block w-full text-sm file:ml-3 file:rounded-lg file:border-0 file:bg-[#2f719e] file:px-4 file:py-2 file:text-white"
+                    />
+                  </FormControl>
+                  {uploading ? <p className="text-sm text-slate-500">جاري رفع الصورة وضغطها…</p> : null}
+                  {imageFile && !uploading ? <p className="text-sm text-slate-500">{imageFile.name}</p> : null}
+                  <FormControl>
+                    <Input dir="ltr" placeholder="أو الصق رابط https://… مباشرة" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

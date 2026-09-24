@@ -75,3 +75,18 @@ export async function apiSend<T>(
 }
 
 export type CursorPage<T> = { items: T[]; nextCursor: string | null };
+
+export async function apiSendFile<T>(
+  path: string,
+  file: File,
+  fieldName = "image",
+): Promise<ActionResult<T>> {
+  try {
+    const form = new FormData();
+    form.append(fieldName, file);
+    const res = await fetch(path, { method: "POST", body: form });
+    return parse<T>(res);
+  } catch {
+    return { ok: false, message: "مشكلة في الاتصال بالسيرفر", code: "NETWORK_ERROR" };
+  }
+}
