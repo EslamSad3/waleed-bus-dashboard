@@ -68,6 +68,8 @@ export type AdminBookingListItem = {
   passengerName: string;
   passengerPhone?: string | null;
   passengerUserId?: string | null;
+  bookingFor?: string | null;
+  note?: string | null;
   seats: number;
   status: BookingStatus;
   totalAmount: string;
@@ -144,6 +146,13 @@ export type AdminBookingDetail = {
   fleetName: string;
   status: BookingStatus;
   seats: number;
+  passengerName?: string | null;
+  passengerPhone?: string | null;
+  passengerUserId?: string | null;
+  bookingFor?: string | null;
+  note?: string | null;
+  boardingStationId?: string | null;
+  landingStationId?: string | null;
   totalAmount: string;
   refundedAmount: string;
   paymentMethod: string;

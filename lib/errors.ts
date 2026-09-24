@@ -23,6 +23,8 @@ export const AR_ERROR_MAP: Record<string, string> = {
   BOOKING_ALREADY_CANCELLED: "الحجز ملغي بالفعل",
   BOOKING_NOT_CANCELLED: "الحجز غير ملغي، لا يمكن استرجاعه",
   SEATS_UNAVAILABLE: "لا توجد مقاعد كافية في الرحلة لاسترجاع الحجز",
+  BOOKING_SEAT_LIMIT_EXCEEDED: "عدد المقاعد أكبر من الحد المسموح للمستخدم",
+  INVALID_BOOKING_SEAT_LIMIT: "الحد الأقصى لمقاعد الحجز لازم يكون رقم صحيح أكبر من صفر",
   PAYMENT_AMOUNT_MISMATCH: "المبلغ المدخل غير مطابق لقيمة الحجز بالظبط",
   PAYMENT_ALREADY_SETTLED: "تم تأكيد أو تسوية الدفع للحجز ده مسبقاً",
   REFUND_EXCEEDS_BALANCE: "المبلغ المطلوب استرداده أكبر من الرصيد المتبقي للحجز",
