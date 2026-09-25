@@ -32,10 +32,11 @@ export default function MarkazPage() {
     fetchGovernorates().then((result) => {
       if (!result.ok) return setError(result.message);
       setGovernorates(result.data);
+      setError(null);
       if (result.data.length === 0) return;
       setGovernorateId(result.data[0].id);
       fetchMarkaz(result.data[0].id, true).then((markazResult) => {
-        if (markazResult.ok) setRows(markazResult.data);
+        if (markazResult.ok) { setRows(markazResult.data); setError(null); }
         else setError(markazResult.message);
       });
     });
@@ -47,9 +48,10 @@ export default function MarkazPage() {
       setRows([]);
       return;
     }
-    fetchMarkaz(id, true).then((result) =>
-      result.ok ? setRows(result.data) : setError(result.message),
-    );
+    fetchMarkaz(id, true).then((result) => {
+      if (result.ok) { setRows(result.data); setError(null); }
+      else setError(result.message);
+    });
   }
 
   function openCreate() {

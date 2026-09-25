@@ -14,7 +14,7 @@ export default function FleetOwnersPage() {
 
   useEffect(() => {
     fetchFleetOwnersPage(null).then((result) => {
-      if (result.ok) setPage(result.data);
+      if (result.ok) { setPage(result.data); setFailed(null); }
       else setFailed(result.message);
     });
   }, []);

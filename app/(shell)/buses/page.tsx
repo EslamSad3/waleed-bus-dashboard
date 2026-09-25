@@ -48,7 +48,9 @@ export default function BusesPage() {
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string }>({});
 
   useEffect(() => {
-    fetchAggregateBusPage(null).then(setFirst).catch((error: Error) => setFailed(error.message));
+    fetchAggregateBusPage(null)
+      .then((page) => { setFirst(page); setFailed(null); })
+      .catch((error: Error) => setFailed(error.message));
   }, []);
 
   const query = (listFilters.q ?? "").trim();

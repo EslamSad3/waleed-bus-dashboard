@@ -31,7 +31,7 @@ export default function NewTripLinePage() {
 
   useEffect(() => {
     fetchStops().then((result) => {
-      if (result.ok) setAvailable(result.data.filter((stop) => stop.isActive));
+      if (result.ok) { setAvailable(result.data.filter((stop) => stop.isActive)); setError(null); }
       else setError(result.message);
     });
   }, []);

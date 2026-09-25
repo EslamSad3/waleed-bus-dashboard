@@ -43,12 +43,26 @@ export default function NewTripPage() {
 
   const selectedBus = buses.find((bus) => bus.id === form.watch("busId"));
   const selectedLine = selectedBus?.lineId ? tripLines.find((line) => line.id === selectedBus.lineId) : undefined;
+  const selectedDirection = selectedLine?.directions.find((item) => item.id === form.watch("routeId"));
+  // From/to dropdowns read the CURRENT direction's stations (pair-aware):
+  // boarding-capable rows for origin, landing-capable rows for destination.
+  const boardingStops = (selectedDirection?.stations ?? []).filter(
+    (station) => station.stopType === "BOARDING" || station.stopType === "BOTH",
+  );
+  const landingStops = (selectedDirection?.stations ?? []).filter(
+    (station) => station.stopType === "LANDING" || station.stopType === "BOTH",
+  );
   function selectDirection(routeId: string) {
     const direction = selectedLine?.directions.find((item) => item.id === routeId);
     form.setValue("routeId", routeId || undefined, { shouldValidate: true });
     if (direction) {
-      form.setValue("origin", direction.origin, { shouldValidate: true });
-      form.setValue("destination", direction.destination, { shouldValidate: true });
+      const boarding = direction.stations.filter((s) => s.stopType === "BOARDING" || s.stopType === "BOTH");
+      const landing = direction.stations.filter((s) => s.stopType === "LANDING" || s.stopType === "BOTH");
+      form.setValue("origin", boarding[0]?.station.name ?? direction.origin, { shouldValidate: true });
+      form.setValue("destination", landing.at(-1)?.station.name ?? direction.destination, { shouldValidate: true });
+    } else {
+      form.setValue("origin", "", { shouldValidate: true });
+      form.setValue("destination", "", { shouldValidate: true });
     }
   }
 
@@ -65,6 +79,26 @@ export default function NewTripPage() {
     if (!values.routeId) {
       setFormError("اختر اتجاه الرحلة: ذهاب أو عودة.");
       return;
+    }
+    // Origin must come before destination on the chosen direction (same
+    // converted-pair rule as passenger booking: X → X is not a trip).
+    if (values.origin === values.destination) {
+      setFormError("نقطة البداية والنهاية لازم تكون مختلفة.");
+      return;
+    }
+    if (selectedDirection) {
+      const ordered = selectedDirection.stations;
+      const originIdx = ordered.findIndex(
+        (s) => s.station.name === values.origin && (s.stopType === "BOARDING" || s.stopType === "BOTH"),
+      );
+      const destIdx = [...ordered].reverse().findIndex(
+        (s) => s.station.name === values.destination && (s.stopType === "LANDING" || s.stopType === "BOTH"),
+      );
+      const destinationIdx = destIdx === -1 ? -1 : ordered.length - 1 - destIdx;
+      if (originIdx === -1 || destinationIdx === -1 || originIdx >= destinationIdx) {
+        setFormError("نقطة النزول لازم تكون بعد نقطة الركوب في اتجاه الرحلة.");
+        return;
+      }
     }
     setFleetId(fleetId);
     setFleetScopeCookie(fleetId);
@@ -121,7 +155,14 @@ export default function NewTripPage() {
                   <FormItem>
                     <FormLabel>من</FormLabel>
                     <FormControl>
-                      <Input placeholder="اختر اتجاه الرحلة" readOnly {...field} />
+                      <select aria-label="اختار نقطة البداية" {...field} disabled={!selectedDirection} className="select-field w-full">
+                        <option value="">اختر نقطة البداية…</option>
+                        {boardingStops.map((station) => (
+                          <option key={`${station.id}`} value={station.station.name}>
+                            {station.station.name} · {station.stopType === "BOTH" ? "ركوب ونزول" : "ركوب فقط"}
+                          </option>
+                        ))}
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -134,7 +175,14 @@ export default function NewTripPage() {
                   <FormItem>
                     <FormLabel>إلى</FormLabel>
                     <FormControl>
-                      <Input placeholder="اختر اتجاه الرحلة" readOnly {...field} />
+                      <select aria-label="اختار نقطة النهاية" {...field} disabled={!selectedDirection} className="select-field w-full">
+                        <option value="">اختر نقطة النهاية…</option>
+                        {landingStops.map((station) => (
+                          <option key={`${station.id}`} value={station.station.name}>
+                            {station.station.name} · {station.stopType === "BOTH" ? "ركوب ونزول" : "نزول فقط"}
+                          </option>
+                        ))}
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

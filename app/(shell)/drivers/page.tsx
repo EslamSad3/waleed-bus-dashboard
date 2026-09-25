@@ -20,6 +20,7 @@ export default function DriversPage() {
       } else {
         setDrivers(result.data.items);
         setNextCursor(result.data.nextCursor);
+        setError(null);
       }
       setLoading(false);
     });

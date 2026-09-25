@@ -40,7 +40,7 @@ export default function NewStopPage() {
 
   useEffect(() => {
     fetchGovernorates().then((result) => {
-      if (result.ok) setGovernorates(result.data);
+      if (result.ok) { setGovernorates(result.data); setError(null); }
       else setError(result.message);
     });
   }, []);
@@ -53,7 +53,7 @@ export default function NewStopPage() {
     setLocalities([]);
     if (!id) return;
     fetchMarkaz(id).then((result) => {
-      if (result.ok) setMarkazes(result.data);
+      if (result.ok) { setMarkazes(result.data); setError(null); }
       else setError(result.message);
     });
   }
@@ -64,7 +64,7 @@ export default function NewStopPage() {
     setLocalities([]);
     if (!id) return;
     fetchLocalities(id).then((result) => {
-      if (result.ok) setLocalities(result.data);
+      if (result.ok) { setLocalities(result.data); setError(null); }
       else setError(result.message);
     });
   }

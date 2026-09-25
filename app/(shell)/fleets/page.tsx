@@ -30,7 +30,7 @@ export default function FleetsPage() {
 
   useEffect(() => {
     fetchFleetsPage(null).then(async (r) => {
-      if (r.ok) setFirst(await withOwnerNames(r.data));
+      if (r.ok) { setFirst(await withOwnerNames(r.data)); setFailed(null); }
       else setFailed(r.message);
     });
   }, []);

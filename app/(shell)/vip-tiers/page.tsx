@@ -20,7 +20,7 @@ export default function VipTiersPage() {
 
   useEffect(() => {
     fetchVipTiers(true).then((result) => {
-      if (result.ok) setRows(result.data);
+      if (result.ok) { setRows(result.data); setError(null); }
       else setError(result.message);
     });
   }, []);

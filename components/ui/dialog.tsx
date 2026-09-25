@@ -30,6 +30,16 @@ export function Dialog({
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  // onOpenChange arrives as a fresh inline arrow on every parent render.
+  // Depending on it directly would tear down + re-run the focus effect on
+  // every keystroke inside the dialog (stealing focus out of text inputs
+  // mid-typing). The ref keeps the effect mounted once per open state.
+  const onOpenChangeRef = useRef(onOpenChange);
+  // Runs every render: keeps the latest callback without re-subscribing
+  // the focus effect below (ref writes inside effects are safe).
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -44,7 +54,7 @@ export function Dialog({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onOpenChange(false);
+        onOpenChangeRef.current(false);
         return;
       }
       if (event.key !== "Tab" || !panel) return;
@@ -71,7 +81,7 @@ export function Dialog({
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
-  }, [onOpenChange, open]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 
