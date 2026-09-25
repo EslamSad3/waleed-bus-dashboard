@@ -10,6 +10,8 @@ export type BusResult<T> =
 type BusFetchOptions = {
   method?: string;
   body?: unknown;
+  /** Raw multipart body (forwarded with its content type, never JSON-encoded). */
+  rawBody?: { bytes: ArrayBuffer; contentType: string };
   /** Attach the fleet-scope hint (persisted zustand filter → cookie → header). */
   fleetId?: string | null;
   /** Retry once via refresh on 401 (default true; false for the refresh call itself). */
@@ -21,21 +23,27 @@ type BusFetchOptions = {
  * `{statusCode, data}` envelope exactly once, preserves cursor pages untouched.
  */
 export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Promise<BusResult<T>> {
-  const { method = "GET", body, fleetId, retryAuth = true } = opts;
+  const { method = "GET", body, rawBody, fleetId, retryAuth = true } = opts;
   const store = await cookies();
   const access = store.get(ACCESS_COOKIE)?.value;
 
   const headers: Record<string, string> = {};
   if (access) headers.Authorization = `Bearer ${access}`;
   if (fleetId) headers["x-fleet-id"] = fleetId;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (rawBody) headers["Content-Type"] = rawBody.contentType;
+  else if (body !== undefined) headers["Content-Type"] = "application/json";
 
   let res: Response;
   try {
     res = await fetch(`${busApiUrl()}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body:
+        rawBody !== undefined
+          ? rawBody.bytes
+          : body === undefined
+            ? undefined
+            : JSON.stringify(body),
       cache: "no-store",
     });
   } catch {

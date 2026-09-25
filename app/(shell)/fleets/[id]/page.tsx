@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FleetBookingsTab, FleetBusesTab, FleetReportsTab, FleetTripsTab } from "@/components/fleets/fleet-detail-listings";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
-import { deleteFleet, fetchFleet, updateFleet, type Fleet } from "@/lib/actions/fleets";
+import { assignFleetVip, deleteFleet, fetchFleet, fetchVipTiers, updateFleet, type Fleet, type VipTier } from "@/lib/actions/fleets";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
 import { Pencil } from "lucide-react";
@@ -28,6 +28,9 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
   const [tab, setTab] = useState<string>("overview");
   const [name, setName] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [tiers, setTiers] = useState<VipTier[]>([]);
+  const [vipTierId, setVipTierId] = useState("");
+  const [savingVip, setSavingVip] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -38,9 +41,28 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
         setFleet(r.data);
         setName(r.data.name);
         setIsActive(r.data.isActive);
+        setVipTierId(r.data.vipTierId ?? "");
       } else setFailed(r.message);
     });
+    fetchVipTiers().then((r) => {
+      if (r.ok) setTiers(r.data);
+    });
   }, [id]);
+
+  async function saveVip() {
+    setError(null);
+    setStatus(null);
+    setSavingVip(true);
+    const r = await assignFleetVip(id, vipTierId || null);
+    setSavingVip(false);
+    if (!r.ok) {
+      setError(r.message);
+      return;
+    }
+    setFleet(r.data);
+    setVipTierId(r.data.vipTierId ?? "");
+    setStatus("اتحفظ مستوى VIP بنجاح");
+  }
 
   useEffect(() => {
     setFleetId(id);
@@ -100,16 +122,32 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
       </nav>
 
       {tab === "overview" && (
-        <div className="panel-card max-w-xl p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold text-[#71808d]">اسم الأسطول</p>
-              <p className="mt-1 text-lg font-bold text-[#17212b]">{fleet.name}</p>
-              <span className={`mt-3 ${fleet.isActive ? "status-pill" : "status-pill status-pill-muted"}`}>{fleet.isActive ? "نشط" : "موقوف"}</span>
+        <div className="grid max-w-3xl gap-4 lg:grid-cols-2">
+          <div className="panel-card p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-[#71808d]">اسم الأسطول</p>
+                <p className="mt-1 text-lg font-bold text-[#17212b]">{fleet.name}</p>
+                <span className={`mt-3 ${fleet.isActive ? "status-pill" : "status-pill status-pill-muted"}`}>{fleet.isActive ? "نشط" : "موقوف"}</span>
+              </div>
+              <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" aria-hidden="true" /> تعديل
+              </Button>
             </div>
-            <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" aria-hidden="true" /> تعديل
-            </Button>
+          </div>
+          <div className="panel-card p-5 sm:p-6">
+            <p className="text-xs font-semibold text-[#71808d]">مستوى VIP</p>
+            <p className="mt-1 text-lg font-bold text-[#17212b]">{fleet.vipTier ? `VIP ${fleet.vipTier.rank} · ${fleet.vipTier.name}` : "بدون مستوى"}</p>
+            <div className="mt-3 flex gap-2">
+              <select aria-label="مستوى VIP" value={vipTierId} onChange={(e) => setVipTierId(e.target.value)} className="select-field min-w-0 flex-1">
+                <option value="">بدون مستوى…</option>
+                {tiers.map((tier) => <option key={tier.id} value={tier.id}>VIP {tier.rank} · {tier.name}{tier.isActive ? "" : " (موقوف)"}</option>)}
+                {fleet?.vipTier && !tiers.some((t) => t.id === fleet.vipTier!.id) ? (
+                  <option key={fleet.vipTier.id} value={fleet.vipTier.id}>VIP {fleet.vipTier.rank} · {fleet.vipTier.name} (موقوف)</option>
+                ) : null}
+              </select>
+              <Button type="button" variant="secondary" onClick={saveVip} disabled={savingVip}>{savingVip ? "…" : "حفظ"}</Button>
+            </div>
           </div>
         </div>
       )}

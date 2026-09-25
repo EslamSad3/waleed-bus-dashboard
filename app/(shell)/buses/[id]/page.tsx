@@ -9,6 +9,7 @@ import {
   assignDriver,
   deleteBus,
   disableBus,
+  fetchBrands,
   fetchBus,
   fetchBusTripsPage,
   reactivateBus,
@@ -16,8 +17,10 @@ import {
   assignTripLine,
   unassignTripLine,
   updateBus,
+  uploadBusImage,
   type Bus,
   type TripRef,
+  type VehicleBrand,
 } from "@/lib/actions/buses";
 import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
@@ -36,6 +39,25 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
   const [tab, setTab] = useState<"overview" | "trips">("overview");
   const [plate, setPlate] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [color, setColor] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [brandId, setBrandId] = useState("");
+  const [isAirConditioned, setIsAirConditioned] = useState(false);
+  const [modelYear, setModelYear] = useState("");
+  const [brands, setBrands] = useState<VehicleBrand[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  async function onImageFile(file: File | null) {
+    if (!file || !fleetId) return;
+    setUploading(true);
+    const uploaded = await uploadBusImage(fleetId, file);
+    setUploading(false);
+    if (!uploaded.ok) {
+      setError(uploaded.message);
+      return;
+    }
+    setImageUrl(uploaded.data.url);
+  }
   const [driverId, setDriverId] = useState("");
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -47,19 +69,34 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
   const [tripLines, setTripLines] = useState<TripLine[]>([]);
   const [tripLineId, setTripLineId] = useState("");
 
+  function syncForm(bus: Bus) {
+    setPlate(bus.plateNumber ?? "");
+    setCapacity(String(bus.capacity));
+    setColor(bus.color ?? "");
+    setImageUrl(bus.imageUrl ?? "");
+    setBrandId(bus.brandId ?? "");
+    setIsAirConditioned(bus.isAirConditioned ?? false);
+    setModelYear(bus.modelYear ? String(bus.modelYear) : "");
+  }
+
   useEffect(() => {
     if (!fleetId) return;
     const key = `${fleetId}/${id}`;
     fetchBus(fleetId, id).then((r) => {
       if (r.ok) {
         setBus(r.data);
-        setPlate(r.data.plateNumber ?? "");
-        setCapacity(String(r.data.capacity));
+        syncForm(r.data);
         setFailed(null);
       } else setFailed(r.message);
       setLoadedKey(key);
     });
   }, [fleetId, id]);
+
+  useEffect(() => {
+    fetchBrands().then((r) => {
+      if (r.ok) setBrands(r.data);
+    });
+  }, []);
 
   useEffect(() => {
     if (!fleetId) return;
@@ -84,8 +121,7 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
     setStatus(ok ? msg : null);
     if (ok && updated) {
       setBus(updated);
-      setPlate(updated.plateNumber ?? "");
-      setCapacity(String(updated.capacity));
+      syncForm(updated);
     }
   }
 
@@ -93,6 +129,11 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
     if (!fleetId) return;
     const r = await updateBus(fleetId, id, {
       plateNumber: plate || undefined,
+      color: color || undefined,
+      imageUrl: imageUrl || undefined,
+      brandId: brandId || null,
+      isAirConditioned,
+      modelYear: modelYear === "" ? undefined : Number(modelYear),
       capacity: capacity === "" ? undefined : Number(capacity),
     });
     note(r.ok, r.ok ? "اتحفظ بنجاح" : r.message, r.ok ? r.data : undefined);
@@ -211,8 +252,13 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="section-title">البيانات</h2>
+                {bus.imageUrl ? <img src={bus.imageUrl} alt={`صورة الأتوبيس ${bus.registrationNumber}`} className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
                 <dl className="space-y-2 text-sm">
                   <div className="flex gap-3"><dt className="text-[#687886]">رقم اللوحة</dt><dd dir="ltr" className="font-semibold">{bus.plateNumber ?? "—"}</dd></div>
+                  <div className="flex gap-3"><dt className="text-[#687886]">اللون</dt><dd className="font-semibold">{bus.color ?? "—"}</dd></div>
+                  <div className="flex gap-3"><dt className="text-[#687886]">الماركة</dt><dd className="font-semibold">{bus.brand?.name ?? "—"}</dd></div>
+                  <div className="flex gap-3"><dt className="text-[#687886]">مكيّف</dt><dd className="font-semibold">{bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? "نعم" : "لا"}</dd></div>
+                  <div className="flex gap-3"><dt className="text-[#687886]">سنة الموديل</dt><dd className="font-semibold">{bus.modelYear ?? "—"}</dd></div>
                   <div className="flex gap-3"><dt className="text-[#687886]">السعة</dt><dd className="font-semibold">{bus.capacity} مقعد</dd></div>
                 </dl>
               </div>
@@ -282,8 +328,48 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
             <Input dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value)} />
           </label>
           <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">السعة (1–300)</span>
-            <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+            <span className="mb-2 block font-bold text-[#334454]">اللون</span>
+            <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="أبيض" />
+          </label>
+          <div className="block text-sm">
+            <span className="mb-2 block font-bold text-[#334454]">صورة الأتوبيس</span>
+            {imageUrl ? (
+              <img src={imageUrl} alt="صورة الأتوبيس الحالية" className="mb-2 h-32 w-full rounded-xl object-cover" />
+            ) : (
+              <span className="mb-2 block text-xs text-slate-500">لا توجد صورة مرفوعة.</span>
+            )}
+            <span className="mb-2 block text-xs text-slate-500">الصورة للعرض فقط — الاستبدال يكون برفع ملف جديد إلى التخزين (لا يمكن إدخال رابط يدوي).</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => void onImageFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm file:ml-3 file:rounded-lg file:border-0 file:bg-[#2f719e] file:px-4 file:py-2 file:text-white"
+            />
+            {uploading ? <span className="mt-1 block text-xs text-slate-500">جاري رفع الصورة وضغطها…</span> : null}
+          </div>
+          <label className="block text-sm">
+            <span className="mb-2 block font-bold text-[#334454]">الماركة</span>
+            <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
+              <option value="">بدون ماركة…</option>
+              {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (موقوفة)"}</option>)}
+              {bus?.brand && !brands.some((b) => b.id === bus.brand!.id) ? (
+                <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} (موقوفة)</option>
+              ) : null}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-2 block font-bold text-[#334454]">سنة الموديل</span>
+              <Input dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(e) => setModelYear(e.target.value)} placeholder="2022" />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-2 block font-bold text-[#334454]">السعة (1–300)</span>
+              <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+            </label>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={isAirConditioned} onChange={(e) => setIsAirConditioned(e.target.checked)} className="size-4" />
+            مكيّف
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">

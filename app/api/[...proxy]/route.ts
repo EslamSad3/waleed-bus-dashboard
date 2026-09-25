@@ -23,21 +23,33 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     );
   }
 
+  const contentType = req.headers.get("content-type") ?? "";
+  const isMultipart = contentType.startsWith("multipart/form-data");
+
   let body: unknown;
+  let rawBody: { bytes: ArrayBuffer; contentType: string } | undefined;
   if (method !== "GET") {
-    const text = await req.text().catch(() => "");
-    if (text) {
-      try {
-        body = JSON.parse(text);
-      } catch {
-        return NextResponse.json(
-          {
-            statusCode: 400,
-            code: "VALIDATION_FAILED",
-            message: toArabicError("VALIDATION_FAILED"),
-          },
-          { status: 400 },
-        );
+    if (isMultipart) {
+      // File uploads (e.g. bus images) pass through byte-identical.
+      rawBody = {
+        bytes: await req.arrayBuffer(),
+        contentType,
+      };
+    } else {
+      const text = await req.text().catch(() => "");
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          return NextResponse.json(
+            {
+              statusCode: 400,
+              code: "VALIDATION_FAILED",
+              message: toArabicError("VALIDATION_FAILED"),
+            },
+            { status: 400 },
+          );
+        }
       }
     }
   }
@@ -71,7 +83,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     }
   }
 
-  const result = await busFetch(path, { method, body, fleetId });
+  const result = await busFetch(path, { method, body, rawBody, fleetId });
 
   if (!result.ok) {
     const status = result.status === 0 ? 503 : result.status;

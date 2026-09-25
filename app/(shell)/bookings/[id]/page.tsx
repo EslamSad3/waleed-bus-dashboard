@@ -356,6 +356,20 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 {booking.passenger?.id ? `${booking.passenger.id.slice(0, 16)}…` : "—"}
               </span>
             </div>
+
+            <div className="rounded-xl bg-[#f8fbfd] p-3">
+              <p className="mb-2 text-xs font-bold text-[#71808d]">بيانات الحجز المحفوظة تاريخيًا + <span className={booking.bookingFor === "OTHER" ? "status-pill" : "status-pill status-pill-muted"}>{booking.bookingFor === "OTHER" ? "لراكب آخر" : "لنفسه"}</span></p>
+              <div className="flex justify-between items-center">
+                <span className="text-[#5e6b78]">الاسم المحفوظ:</span>
+                <span className="font-bold text-[#1a1a1a]">{booking.passengerName ?? "—"}</span>
+              </div>
+              <div className="mt-2 flex justify-between items-center">
+                <span className="text-[#5e6b78]">الموبايل المحفوظ:</span>
+                <span dir="ltr" className="font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
+              </div>
+              {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">ملاحظة: {booking.note}</p> : null}
+              {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">كود الخصم: <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> (خصم {booking.discountAmount} جنيه)</span> : null}</p> : null}
+            </div>
           </div>
         </div>
 
