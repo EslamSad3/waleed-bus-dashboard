@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
@@ -131,13 +131,18 @@ export default function PromotionsPage() {
   }
 
   const dialogOpen = creating || editing !== null;
+  // Monotonic request id: drops stale search responses when a newer query
+  // overtakes an older one (no AbortController in the shared http layer).
+  const targetSearchId = useRef(0);
 
   useEffect(() => {
     if (!dialogOpen) return;
     // Server-side search over ALL eligible accounts (debounced); the list is
     // already scoped to active passengers by GET /users/target-options.
     const timer = setTimeout(() => {
+      const requestId = ++targetSearchId.current;
       fetchTargetOptions(userSearch).then((result) => {
+        if (requestId !== targetSearchId.current) return;
         if (result.ok) setUserOptions(result.data);
       });
     }, 300);
