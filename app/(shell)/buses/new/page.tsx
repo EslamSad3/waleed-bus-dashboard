@@ -156,9 +156,8 @@ export default function NewBusPage() {
                   </FormControl>
                   {uploading ? <p className="text-sm text-slate-500">جاري رفع الصورة وضغطها…</p> : null}
                   {imageFile && !uploading ? <p className="text-sm text-slate-500">{imageFile.name}</p> : null}
-                  <FormControl>
-                    <Input dir="ltr" placeholder="أو الصق رابط https://… مباشرة" {...field} />
-                  </FormControl>
+                  <p className="text-xs text-slate-500">الصورة تُرفع إلى التخزين السحابي تلقائيًا — لا حاجة للصق روابط خارجية.</p>
+                  <input type="hidden" {...field} value={field.value ?? ""} />
                   <FormMessage />
                 </FormItem>
               )}

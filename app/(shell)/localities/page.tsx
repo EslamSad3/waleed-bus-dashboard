@@ -41,13 +41,13 @@ export default function LocalitiesPage() {
       if (result.data.length === 0) return;
       const firstGov = result.data[0].id;
       setGovernorateId(firstGov);
-      fetchMarkaz(firstGov).then((markazResult) => {
+      fetchMarkaz(firstGov, true).then((markazResult) => {
         if (!markazResult.ok) return setError(markazResult.message);
         setMarkazes(markazResult.data);
         if (markazResult.data.length === 0) return;
         const firstMarkaz = markazResult.data[0].id;
         setMarkazId(firstMarkaz);
-        fetchLocalities(firstMarkaz).then((localityResult) => {
+        fetchLocalities(firstMarkaz, true).then((localityResult) => {
           if (localityResult.ok) setRows(localityResult.data);
           else setError(localityResult.message);
         });
@@ -61,13 +61,13 @@ export default function LocalitiesPage() {
     setMarkazId("");
     setRows([]);
     if (!id) return;
-    fetchMarkaz(id).then((result) => {
+    fetchMarkaz(id, true).then((result) => {
       if (!result.ok) return setError(result.message);
       setMarkazes(result.data);
       if (result.data.length === 0) return;
       const firstMarkaz = result.data[0].id;
       setMarkazId(firstMarkaz);
-      fetchLocalities(firstMarkaz).then((localityResult) => {
+      fetchLocalities(firstMarkaz, true).then((localityResult) => {
         if (localityResult.ok) setRows(localityResult.data);
         else setError(localityResult.message);
       });
@@ -78,7 +78,7 @@ export default function LocalitiesPage() {
     setMarkazId(id);
     setRows([]);
     if (!id) return;
-    fetchLocalities(id).then((result) => {
+    fetchLocalities(id, true).then((result) => {
       if (result.ok) setRows(result.data);
       else setError(result.message);
     });

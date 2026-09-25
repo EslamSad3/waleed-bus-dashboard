@@ -19,7 +19,7 @@ export default function BrandsPage() {
   const [sortOrder, setSortOrder] = useState("0");
 
   useEffect(() => {
-    fetchBrands().then((result) => {
+    fetchBrands(true).then((result) => {
       if (result.ok) setRows(result.data);
       else setError(result.message);
     });

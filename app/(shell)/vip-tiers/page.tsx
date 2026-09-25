@@ -19,7 +19,7 @@ export default function VipTiersPage() {
   const [rank, setRank] = useState("1");
 
   useEffect(() => {
-    fetchVipTiers().then((result) => {
+    fetchVipTiers(true).then((result) => {
       if (result.ok) setRows(result.data);
       else setError(result.message);
     });

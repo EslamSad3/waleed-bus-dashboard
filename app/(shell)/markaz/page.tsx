@@ -34,7 +34,7 @@ export default function MarkazPage() {
       setGovernorates(result.data);
       if (result.data.length === 0) return;
       setGovernorateId(result.data[0].id);
-      fetchMarkaz(result.data[0].id).then((markazResult) => {
+      fetchMarkaz(result.data[0].id, true).then((markazResult) => {
         if (markazResult.ok) setRows(markazResult.data);
         else setError(markazResult.message);
       });
@@ -47,7 +47,7 @@ export default function MarkazPage() {
       setRows([]);
       return;
     }
-    fetchMarkaz(id).then((result) =>
+    fetchMarkaz(id, true).then((result) =>
       result.ok ? setRows(result.data) : setError(result.message),
     );
   }

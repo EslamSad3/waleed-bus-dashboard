@@ -26,9 +26,7 @@ export default function PromotionsPage() {
   const [usages, setUsages] = useState<PromotionUsage[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [code, setCode] = useState("");
-  const [type, setType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
   const [value, setValue] = useState("");
-  const [maxDiscount, setMaxDiscount] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
   const [maxPerUser, setMaxPerUser] = useState("1");
   const [expiresAt, setExpiresAt] = useState("");
@@ -43,9 +41,7 @@ export default function PromotionsPage() {
   function openCreate() {
     setEditing(null);
     setCode("");
-    setType("PERCENTAGE");
     setValue("");
-    setMaxDiscount("");
     setMaxTotal("");
     setMaxPerUser("1");
     setExpiresAt("");
@@ -57,7 +53,6 @@ export default function PromotionsPage() {
     setCreating(false);
     setEditing(promo);
     setValue(promo.value);
-    setMaxDiscount(promo.maxDiscountAmount ?? "");
     setMaxTotal(promo.maxTotalUses != null ? String(promo.maxTotalUses) : "");
     setMaxPerUser(String(promo.maxUsesPerUser));
     setExpiresAt(promo.expiresAt ? promo.expiresAt.slice(0, 16) : "");
@@ -78,16 +73,14 @@ export default function PromotionsPage() {
     const result = editing
       ? await updatePromotion(editing.id, {
           value: numValue,
-          maxDiscountAmount: maxDiscount ? Number(maxDiscount) : null,
           maxUsesPerUser: Number(maxPerUser) || 1,
           maxTotalUses: maxTotal ? Number(maxTotal) : null,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         })
       : await createPromotion({
           code: code.trim(),
-          type,
+          type: "FIXED",
           value: numValue,
-          maxDiscountAmount: maxDiscount ? Number(maxDiscount) : undefined,
           maxUsesPerUser: Number(maxPerUser) || 1,
           maxTotalUses: maxTotal ? Number(maxTotal) : undefined,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
@@ -129,7 +122,7 @@ export default function PromotionsPage() {
     {
       field: "type",
       headerName: "النوع",
-      cellRenderer: (params: { data?: Promotion }) => params.data ? <span>{params.data.type === "PERCENTAGE" ? `نسبة ${params.data.value}%` : `${params.data.value} جنيه`}{params.data.maxDiscountAmount ? ` (سقف ${params.data.maxDiscountAmount})` : ""}</span> : null,
+      cellRenderer: (params: { data?: Promotion }) => params.data ? <span>{params.data.value} جنيه (ثابت)</span> : null,
     },
     { field: "maxUsesPerUser", headerName: "مرات/مستخدم", filter: "agNumberColumnFilter" },
     {
@@ -179,9 +172,7 @@ export default function PromotionsPage() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? `تعديل ${editing.code}` : "كود جديد"} description={editing ? "الكود نفسه لا يتغير بعد الإنشاء." : "الكود يتحول لحروف كبيرة تلقائيًا (A-Z 0-9 _ -)."} size="sm">
         <div className="space-y-4">
           {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الكود</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="SAVE10" /></label> : null}
-          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">النوع</span><select className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5" value={type} onChange={(event) => setType(event.target.value as "PERCENTAGE" | "FIXED")}><option value="PERCENTAGE">نسبة %</option><option value="FIXED">مبلغ ثابت (جنيه)</option></select></label> : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">القيمة</span><Input dir="ltr" inputMode="decimal" type="number" min={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder={type === "PERCENTAGE" ? "مثال: 10" : "مثال: 50"} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">سقف الخصم (للنسبة فقط، فارغ = بلا سقف)</span><Input dir="ltr" inputMode="decimal" type="number" min={1} value={maxDiscount} onChange={(event) => setMaxDiscount(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">القيمة — مبلغ ثابت بالجنيه</span><Input dir="ltr" inputMode="decimal" type="number" min={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder="مثال: 50" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">مرات الاستخدام لكل مستخدم (1 = مرة واحدة)</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxPerUser} onChange={(event) => setMaxPerUser(event.target.value)} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">السقف الكلي (فارغ = بلا حد)</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تاريخ الانتهاء (فارغ = بلا انتهاء)</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>

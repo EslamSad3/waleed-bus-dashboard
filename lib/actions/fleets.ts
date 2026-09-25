@@ -46,7 +46,8 @@ export function assignFleetVip(id: string, vipTierId: string | null): Promise<Ac
   return apiSend<Fleet>(`/api/fleets/${id}/vip`, "PATCH", { vipTierId });
 }
 
-export const fetchVipTiers = () => apiGet<VipTier[]>("/api/vip-tiers");
+export const fetchVipTiers = (includeInactive = false) =>
+  apiGet<VipTier[]>(`/api/vip-tiers${includeInactive ? "?includeInactive=true" : ""}`);
 export const createVipTier = (input: { name: string; rank: number; isActive?: boolean }) => apiSend<VipTier>("/api/vip-tiers", "POST", input);
 export const updateVipTier = (id: string, input: { name?: string; rank?: number; isActive?: boolean }) => apiSend<VipTier>(`/api/vip-tiers/${id}`, "PATCH", input);
 

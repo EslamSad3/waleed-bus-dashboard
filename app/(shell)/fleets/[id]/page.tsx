@@ -141,7 +141,10 @@ export default function FleetDetailPage({ params }: { params: Promise<{ id: stri
             <div className="mt-3 flex gap-2">
               <select aria-label="مستوى VIP" value={vipTierId} onChange={(e) => setVipTierId(e.target.value)} className="select-field min-w-0 flex-1">
                 <option value="">بدون مستوى…</option>
-                {tiers.map((tier) => <option key={tier.id} value={tier.id}>VIP {tier.rank} · {tier.name}</option>)}
+                {tiers.map((tier) => <option key={tier.id} value={tier.id}>VIP {tier.rank} · {tier.name}{tier.isActive ? "" : " (موقوف)"}</option>)}
+                {fleet?.vipTier && !tiers.some((t) => t.id === fleet.vipTier!.id) ? (
+                  <option key={fleet.vipTier.id} value={fleet.vipTier.id}>VIP {fleet.vipTier.rank} · {fleet.vipTier.name} (موقوف)</option>
+                ) : null}
               </select>
               <Button type="button" variant="secondary" onClick={saveVip} disabled={savingVip}>{savingVip ? "…" : "حفظ"}</Button>
             </div>

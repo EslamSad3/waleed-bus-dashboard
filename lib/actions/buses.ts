@@ -51,7 +51,9 @@ export function uploadBusImage(fleetId: string, file: File): Promise<ActionResul
   return apiSendFile<{ url: string }>(`/api/fleets/${fleetId}/uploads/bus-image`, file);
 }
 
-export const fetchBrands = () => apiGet<VehicleBrand[]>("/api/brands");
+export const fetchBrands = (includeInactive = false) =>
+  apiGet<VehicleBrand[]>(`/api/brands${includeInactive ? "?includeInactive=true" : ""}`);
+export const fetchBrandById = (id: string) => apiGet<VehicleBrand>(`/api/brands/${id}`);
 export const createBrand = (input: { name: string; sortOrder?: number; isActive?: boolean }) => apiSend<VehicleBrand>("/api/brands", "POST", input);
 export const updateBrand = (id: string, input: { name?: string; sortOrder?: number; isActive?: boolean }) => apiSend<VehicleBrand>(`/api/brands/${id}`, "PATCH", input);
 

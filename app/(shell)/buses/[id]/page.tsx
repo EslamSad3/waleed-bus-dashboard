@@ -346,7 +346,10 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
             <span className="mb-2 block font-bold text-[#334454]">الماركة</span>
             <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
               <option value="">بدون ماركة…</option>
-              {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+              {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (موقوفة)"}</option>)}
+              {bus?.brand && !brands.some((b) => b.id === bus.brand!.id) ? (
+                <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} (موقوفة)</option>
+              ) : null}
             </select>
           </label>
           <div className="grid grid-cols-2 gap-3">

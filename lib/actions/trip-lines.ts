@@ -61,11 +61,13 @@ export type TripLine = {
 
 export const fetchStops = () => apiGet<Stop[]>("/api/stops");
 export const fetchGovernorates = () => apiGet<Governorate[]>("/api/governorates");
-export const fetchMarkaz = (governorateId: string) => apiGet<Markaz[]>(`/api/governorates/${governorateId}/markaz`);
+export const fetchMarkaz = (governorateId: string, includeInactive = false) =>
+  apiGet<Markaz[]>(`/api/governorates/${governorateId}/markaz${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchMarkazById = (id: string) => apiGet<Markaz>(`/api/markaz/${id}`);
 export const createMarkaz = (input: { governorateId: string; code: string; nameAr: string; nameEn: string; isActive?: boolean }) => apiSend<Markaz>("/api/markaz", "POST", input);
 export const updateMarkaz = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) => apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input);
-export const fetchLocalities = (markazId: string) => apiGet<Locality[]>(`/api/markaz/${markazId}/localities`);
+export const fetchLocalities = (markazId: string, includeInactive = false) =>
+  apiGet<Locality[]>(`/api/markaz/${markazId}/localities${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchLocalityById = (id: string) => apiGet<Locality>(`/api/localities/${id}`);
 export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; nameEn: string; isActive?: boolean }) => apiSend<Locality>("/api/localities", "POST", input);
 export const updateLocality = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) => apiSend<Locality>(`/api/localities/${id}`, "PATCH", input);

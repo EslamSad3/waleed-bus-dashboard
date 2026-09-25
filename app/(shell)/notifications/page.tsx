@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { fetchOpsNotifications, type OpsNotification } from "@/lib/actions/notifications";
 
 const CATEGORY_AR: Record<string, string> = {
-  BOOKING: "حجوزات",
-  PAYMENT: "مدفوعات",
-  TRIP: "رحلات",
-  PROMO: "عروض",
-  SYSTEM: "نظام",
+  TEXT: "تنبيه",
+  TRIP: "رحلة",
+  DISCOUNT_CODE: "كود خصم",
 };
 
 export default function NotificationsOpsPage() {
@@ -70,11 +68,9 @@ export default function NotificationsOpsPage() {
         <Input dir="ltr" value={userId} onChange={(event) => setUserId(event.target.value)} placeholder="فلترة برقم المستخدم (UUID)" />
         <select className="rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm" value={category} onChange={(event) => setCategory(event.target.value)}>
           <option value="">كل الفئات</option>
-          <option value="BOOKING">حجوزات</option>
-          <option value="PAYMENT">مدفوعات</option>
-          <option value="TRIP">رحلات</option>
-          <option value="PROMO">عروض</option>
-          <option value="SYSTEM">نظام</option>
+          <option value="TEXT">تنبيه</option>
+          <option value="TRIP">رحلة</option>
+          <option value="DISCOUNT_CODE">كود خصم</option>
         </select>
         <Button onClick={() => void load()}>بحث</Button>
       </div>

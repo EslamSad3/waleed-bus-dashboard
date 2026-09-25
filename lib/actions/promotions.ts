@@ -3,9 +3,8 @@ import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actio
 export type Promotion = {
   id: string;
   code: string;
-  type: "PERCENTAGE" | "FIXED";
+  type: "FIXED";
   value: string;
-  maxDiscountAmount: string | null;
   isGlobal: boolean;
   maxUsesPerUser: number;
   maxTotalUses: number | null;
@@ -24,9 +23,8 @@ export type PromotionUsage = {
 
 export type CreatePromotionInput = {
   code: string;
-  type: "PERCENTAGE" | "FIXED";
+  type: "FIXED";
   value: number;
-  maxDiscountAmount?: number;
   isGlobal?: boolean;
   targetUserIds?: string[];
   maxUsesPerUser?: number;
@@ -37,7 +35,6 @@ export type CreatePromotionInput = {
 
 export type UpdatePromotionInput = {
   value?: number;
-  maxDiscountAmount?: number | null;
   maxUsesPerUser?: number;
   maxTotalUses?: number | null;
   startsAt?: string | null;
