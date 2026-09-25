@@ -331,8 +331,14 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
             <span className="mb-2 block font-bold text-[#334454]">اللون</span>
             <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="أبيض" />
           </label>
-          <label className="block text-sm">
+          <div className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">صورة الأتوبيس</span>
+            {imageUrl ? (
+              <img src={imageUrl} alt="صورة الأتوبيس الحالية" className="mb-2 h-32 w-full rounded-xl object-cover" />
+            ) : (
+              <span className="mb-2 block text-xs text-slate-500">لا توجد صورة مرفوعة.</span>
+            )}
+            <span className="mb-2 block text-xs text-slate-500">الصورة للعرض فقط — الاستبدال يكون برفع ملف جديد إلى التخزين (لا يمكن إدخال رابط يدوي).</span>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -340,8 +346,7 @@ export default function BusDetailPage({ params }: { params: Promise<{ id: string
               className="block w-full text-sm file:ml-3 file:rounded-lg file:border-0 file:bg-[#2f719e] file:px-4 file:py-2 file:text-white"
             />
             {uploading ? <span className="mt-1 block text-xs text-slate-500">جاري رفع الصورة وضغطها…</span> : null}
-            <Input dir="ltr" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
-          </label>
+          </div>
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">الماركة</span>
             <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">

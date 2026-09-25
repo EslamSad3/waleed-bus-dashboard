@@ -16,7 +16,7 @@ import {
   type Promotion,
   type PromotionUsage,
 } from "@/lib/actions/promotions";
-import { fetchUserOptions } from "@/lib/actions/fleets";
+import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 
 export default function PromotionsPage() {
   const [rows, setRows] = useState<Promotion[] | null>(null);
@@ -30,7 +30,7 @@ export default function PromotionsPage() {
   const [value, setValue] = useState("");
   const [audience, setAudience] = useState<"all" | "specific">("all");
   const [targetIds, setTargetIds] = useState<string[]>([]);
-  const [userOptions, setUserOptions] = useState<{ id: string; name?: string | null; phone?: string | null; phoneNumber?: string | null }[]>([]);
+  const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
   const [maxPerUser, setMaxPerUser] = useState("1");
@@ -134,10 +134,15 @@ export default function PromotionsPage() {
 
   useEffect(() => {
     if (!dialogOpen) return;
-    fetchUserOptions().then((result) => {
-      if (result.ok) setUserOptions(result.data.items);
-    });
-  }, [dialogOpen]);
+    // Server-side search over ALL eligible accounts (debounced); the list is
+    // already scoped to active passengers by GET /users/target-options.
+    const timer = setTimeout(() => {
+      fetchTargetOptions(userSearch).then((result) => {
+        if (result.ok) setUserOptions(result.data);
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [dialogOpen, userSearch]);
 
   const columns: CommunityColumnDef<Promotion>[] = [
     {
@@ -217,16 +222,10 @@ export default function PromotionsPage() {
               ) : null}
               {(editing ? !editing.isGlobal : audience === "specific") ? (
                 <div className="rounded-xl border border-[#e4ecf2] p-3">
-                  <Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="ابحث بالاسم أو الهاتف…" />
-                  <p className="mt-1 text-xs text-slate-500">المستخدمون الجدد المضافون يستلمون إشعار كود الخصم تلقائيًا.</p>
+                  <Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="ابحث بالاسم أو الهاتف أو البريد…" />
+                  <p className="mt-1 text-xs text-slate-500">البحث يشمل كل حسابات الركاب النشطة. المستخدمون الجدد المضافون يستلمون إشعار كود الخصم تلقائيًا.</p>
                   <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">
                     {userOptions
-                      .filter((u) => {
-                        const q = userSearch.trim();
-                        if (!q) return true;
-                        return `${u.name ?? ""} ${u.phone ?? ""} ${u.phoneNumber ?? ""}`.includes(q);
-                      })
-                      .slice(0, 50)
                       .map((u) => (
                         <label key={u.id} className="flex items-center gap-2 rounded-lg bg-[#f8fbfd] p-2">
                           <input
@@ -238,7 +237,7 @@ export default function PromotionsPage() {
                             className="size-4 accent-[#2f719e]"
                           />
                           <span className="font-bold">{u.name ?? "بدون اسم"}</span>
-                          <span dir="ltr" className="text-xs text-slate-500">{u.phone ?? u.phoneNumber ?? ""}</span>
+                          <span dir="ltr" className="text-xs text-slate-500">{u.phoneNumber ?? ""}</span>
                         </label>
                       ))}
                   </div>
