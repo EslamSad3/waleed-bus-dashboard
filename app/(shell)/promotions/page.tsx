@@ -16,6 +16,7 @@ import {
   type Promotion,
   type PromotionUsage,
 } from "@/lib/actions/promotions";
+import { fetchUserOptions } from "@/lib/actions/fleets";
 
 export default function PromotionsPage() {
   const [rows, setRows] = useState<Promotion[] | null>(null);
@@ -27,6 +28,10 @@ export default function PromotionsPage() {
   const [saving, setSaving] = useState(false);
   const [code, setCode] = useState("");
   const [value, setValue] = useState("");
+  const [audience, setAudience] = useState<"all" | "specific">("all");
+  const [targetIds, setTargetIds] = useState<string[]>([]);
+  const [userOptions, setUserOptions] = useState<{ id: string; name?: string | null; phone?: string | null; phoneNumber?: string | null }[]>([]);
+  const [userSearch, setUserSearch] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
   const [maxPerUser, setMaxPerUser] = useState("1");
   const [expiresAt, setExpiresAt] = useState("");
@@ -42,6 +47,9 @@ export default function PromotionsPage() {
     setEditing(null);
     setCode("");
     setValue("");
+    setAudience("all");
+    setTargetIds([]);
+    setUserSearch("");
     setMaxTotal("");
     setMaxPerUser("1");
     setExpiresAt("");
@@ -53,6 +61,9 @@ export default function PromotionsPage() {
     setCreating(false);
     setEditing(promo);
     setValue(promo.value);
+    setAudience(promo.isGlobal ? "all" : "specific");
+    setTargetIds(promo.targetUserIds ?? []);
+    setUserSearch("");
     setMaxTotal(promo.maxTotalUses != null ? String(promo.maxTotalUses) : "");
     setMaxPerUser(String(promo.maxUsesPerUser));
     setExpiresAt(promo.expiresAt ? promo.expiresAt.slice(0, 16) : "");
@@ -69,10 +80,16 @@ export default function PromotionsPage() {
       setError("أدخل قيمة صحيحة أكبر من صفر.");
       return;
     }
+    const specific = editing ? !editing.isGlobal : audience === "specific";
+    if (specific && targetIds.length === 0) {
+      setError("اختر مستخدمًا واحدًا على الأقل للكود المخصص.");
+      return;
+    }
     setSaving(true);
     const result = editing
       ? await updatePromotion(editing.id, {
           value: numValue,
+          ...(!editing.isGlobal ? { targetUserIds: targetIds } : {}),
           maxUsesPerUser: Number(maxPerUser) || 1,
           maxTotalUses: maxTotal ? Number(maxTotal) : null,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
@@ -81,6 +98,8 @@ export default function PromotionsPage() {
           code: code.trim(),
           type: "FIXED",
           value: numValue,
+          isGlobal: audience === "all",
+          ...(audience === "specific" ? { targetUserIds: targetIds } : {}),
           maxUsesPerUser: Number(maxPerUser) || 1,
           maxTotalUses: maxTotal ? Number(maxTotal) : undefined,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
@@ -113,6 +132,13 @@ export default function PromotionsPage() {
 
   const dialogOpen = creating || editing !== null;
 
+  useEffect(() => {
+    if (!dialogOpen) return;
+    fetchUserOptions().then((result) => {
+      if (result.ok) setUserOptions(result.data.items);
+    });
+  }, [dialogOpen]);
+
   const columns: CommunityColumnDef<Promotion>[] = [
     {
       field: "code",
@@ -125,6 +151,13 @@ export default function PromotionsPage() {
       cellRenderer: (params: { data?: Promotion }) => params.data ? <span>{params.data.value} جنيه (ثابت)</span> : null,
     },
     { field: "maxUsesPerUser", headerName: "مرات/مستخدم", filter: "agNumberColumnFilter" },
+    {
+      field: "isGlobal",
+      headerName: "النطاق",
+      cellRenderer: (params: { data?: Promotion }) => params.data ? (
+        <span>{params.data.isGlobal ? "عام — كل المستخدمين" : `مخصص (${params.data.targetUserIds?.length ?? 0})`}</span>
+      ) : null,
+    },
     {
       field: "maxTotalUses",
       headerName: "السقف الكلي",
@@ -154,7 +187,7 @@ export default function PromotionsPage() {
       <div className="page-heading">
         <div>
           <h1 className="page-title">أكواد الخصم</h1>
-          <p className="page-description">أكواد عامة لكل المستخدمين (مرة واحدة لكل مستخدم افتراضيًا) — تُطبق عند الحجز.</p>
+          <p className="page-description">أكواد عامة لكل المستخدمين أو مخصصة لمستخدمين محددين (مرة واحدة لكل مستخدم افتراضيًا) — تُطبق عند الحجز، والمخصص يُشعر مستخدميه تلقائيًا.</p>
         </div>
         <Button onClick={openCreate}><Plus className="size-4" /> كود جديد</Button>
       </div>
@@ -173,6 +206,47 @@ export default function PromotionsPage() {
         <div className="space-y-4">
           {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الكود</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="SAVE10" /></label> : null}
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">القيمة — مبلغ ثابت بالجنيه</span><Input dir="ltr" inputMode="decimal" type="number" min={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder="مثال: 50" /></label>
+          {!editing || !editing.isGlobal ? (
+            <div className="space-y-2 text-sm">
+              <span className="block font-bold text-[#334454]">الجمهور {editing ? "(النطاق لا يتغير بعد الإنشاء)" : ""}</span>
+              {!editing ? (
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2"><input type="radio" checked={audience === "all"} onChange={() => setAudience("all")} className="size-4 accent-[#2f719e]" /> كل المستخدمين</label>
+                  <label className="flex items-center gap-2"><input type="radio" checked={audience === "specific"} onChange={() => setAudience("specific")} className="size-4 accent-[#2f719e]" /> مستخدمون محددون</label>
+                </div>
+              ) : null}
+              {(editing ? !editing.isGlobal : audience === "specific") ? (
+                <div className="rounded-xl border border-[#e4ecf2] p-3">
+                  <Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="ابحث بالاسم أو الهاتف…" />
+                  <p className="mt-1 text-xs text-slate-500">المستخدمون الجدد المضافون يستلمون إشعار كود الخصم تلقائيًا.</p>
+                  <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">
+                    {userOptions
+                      .filter((u) => {
+                        const q = userSearch.trim();
+                        if (!q) return true;
+                        return `${u.name ?? ""} ${u.phone ?? ""} ${u.phoneNumber ?? ""}`.includes(q);
+                      })
+                      .slice(0, 50)
+                      .map((u) => (
+                        <label key={u.id} className="flex items-center gap-2 rounded-lg bg-[#f8fbfd] p-2">
+                          <input
+                            type="checkbox"
+                            checked={targetIds.includes(u.id)}
+                            onChange={(event) =>
+                              setTargetIds((ids) => (event.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id)))
+                            }
+                            className="size-4 accent-[#2f719e]"
+                          />
+                          <span className="font-bold">{u.name ?? "بدون اسم"}</span>
+                          <span dir="ltr" className="text-xs text-slate-500">{u.phone ?? u.phoneNumber ?? ""}</span>
+                        </label>
+                      ))}
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-[#2f719e]">المحدد: {targetIds.length}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">مرات الاستخدام لكل مستخدم (1 = مرة واحدة)</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxPerUser} onChange={(event) => setMaxPerUser(event.target.value)} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">السقف الكلي (فارغ = بلا حد)</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تاريخ الانتهاء (فارغ = بلا انتهاء)</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>

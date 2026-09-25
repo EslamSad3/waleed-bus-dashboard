@@ -6,6 +6,7 @@ export type Promotion = {
   type: "FIXED";
   value: string;
   isGlobal: boolean;
+  targetUserIds: string[];
   maxUsesPerUser: number;
   maxTotalUses: number | null;
   startsAt: string | null;
@@ -35,6 +36,7 @@ export type CreatePromotionInput = {
 
 export type UpdatePromotionInput = {
   value?: number;
+  targetUserIds?: string[];
   maxUsesPerUser?: number;
   maxTotalUses?: number | null;
   startsAt?: string | null;

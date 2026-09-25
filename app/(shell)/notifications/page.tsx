@@ -60,7 +60,7 @@ export default function NotificationsOpsPage() {
       <div className="page-heading">
         <div>
           <h1 className="page-title">الإشعارات</h1>
-          <p className="page-description">عرض تشغيلي لقراءة التوصيل — تُرسل تلقائيًا عند الحجز والدفع والإلغاء والاسترداد.</p>
+          <p className="page-description">عرض تشغيلي لقراءة التوصيل — تُرسل أكواد الخصم المخصصة تلقائيًا لمستخدميها (DISCOUNT_CODE)؛ التنبيهات العامة والمرتبطة بالرحلات قابلة للتوسع.</p>
         </div>
         <Button variant="secondary" onClick={() => void load()}>تحديث</Button>
       </div>
