@@ -388,6 +388,23 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               </span>
             </div>
 
+            {(booking.boardingStationName || booking.landingStationName || booking.boardingStationId || booking.landingStationId) && (
+              <div className="rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-2.5 text-xs space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#5e6b78]">محطة الركوب:</span>
+                  <span className="font-bold text-[#1a1a1a]">
+                    {booking.boardingStationName ?? (booking.boardingStationId ? `معرف: ${booking.boardingStationId.slice(0, 8)}…` : "نقطة الانطلاق")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-[#e4ecf2] pt-1.5">
+                  <span className="text-[#5e6b78]">محطة النزول:</span>
+                  <span className="font-bold text-[#1a1a1a]">
+                    {booking.landingStationName ?? (booking.landingStationId ? `معرف: ${booking.landingStationId.slice(0, 8)}…` : "نقطة الوصول")}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">موعد الإقلاع:</span>
               <span className="font-semibold text-[#1a1a1a] flex items-center gap-1">
