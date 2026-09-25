@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,11 @@ import {
   sendPlatformNotification,
   type SendNotificationInput,
 } from "@/lib/actions/notifications";
-import { AlertCircle, Send, Users, User, Bell } from "lucide-react";
+import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
+import { fetchPromotions, type Promotion } from "@/lib/actions/promotions";
+import { fetchTripsPage, type Trip } from "@/lib/actions/trips";
+import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { AlertCircle, Send, Users, User, Search, Check } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -27,9 +31,68 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Dropdown data options
+  const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+
+  const [trips, setTrips] = useState<Trip[]>([]);
+
+  // Load users when dialog is opened in single-user mode
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      fetchTargetOptions(userSearch).then((res) => {
+        if (active && res.ok) setUserOptions(res.data);
+      });
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [open, userSearch]);
+
+  // Load promotions when category is DISCOUNT_CODE
+  useEffect(() => {
+    if (!open || category !== "DISCOUNT_CODE") return;
+    if (promotions.length > 0) return;
+    let active = true;
+    fetchPromotions().then((res) => {
+      if (active && res.ok) {
+        setPromotions(res.data.items.filter((p) => p.isActive));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, category, promotions.length]);
+
+  // Load trips when category is TRIP
+  useEffect(() => {
+    if (!open || category !== "TRIP") return;
+    if (trips.length > 0) return;
+    let active = true;
+    fetchFleetsPage(null).then(async (fleetsRes) => {
+      if (active && fleetsRes.ok) {
+        const collected: Trip[] = [];
+        for (const fleet of fleetsRes.data.items.slice(0, 5)) {
+          const tRes = await fetchTripsPage(fleet.id, null);
+          if (tRes.ok) collected.push(...tRes.data.items);
+        }
+        if (active) setTrips(collected);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, category, trips.length]);
+
   function resetForm() {
     setIsGlobal(true);
     setUserId("");
+    setUserSearch("");
     setCategory("TEXT");
     setTitle("");
     setBody("");
@@ -37,6 +100,8 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     setPromotionId("");
     setError(null);
   }
+
+  const selectedUser = userOptions.find((u) => u.id === userId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,16 +118,16 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
       setError("يرجى إدخال محتوى الإشعار");
       return;
     }
-    if (!isGlobal && !userId.trim()) {
-      setError("يرجى إدخال معرف المستخدم (UUID) أو اختيار إرسال عام");
+    if (!isGlobal && !userId) {
+      setError("يرجى اختيار المستخدم المستهدف من القائمة أو اختيار إرسال عام");
       return;
     }
-    if (category === "TRIP" && !tripId.trim()) {
-      setError("يرجى إدخال معرف الرحلة (UUID)");
+    if (category === "TRIP" && !tripId) {
+      setError("يرجى اختيار الرحلة من القائمة");
       return;
     }
-    if (category === "DISCOUNT_CODE" && !promotionId.trim()) {
-      setError("يرجى إدخال معرف كود الخصم (UUID)");
+    if (category === "DISCOUNT_CODE" && !promotionId) {
+      setError("يرجى اختيار كود الخصم من القائمة");
       return;
     }
 
@@ -70,12 +135,12 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
     const payload: SendNotificationInput = {
       isGlobal,
-      userId: isGlobal ? undefined : userId.trim(),
+      userId: isGlobal ? undefined : userId,
       category,
       title: trimmedTitle,
       body: trimmedBody,
-      tripId: category === "TRIP" ? tripId.trim() : undefined,
-      promotionId: category === "DISCOUNT_CODE" ? promotionId.trim() : undefined,
+      tripId: category === "TRIP" ? tripId : undefined,
+      promotionId: category === "DISCOUNT_CODE" ? promotionId : undefined,
     };
 
     const res = await sendPlatformNotification(payload);
@@ -146,20 +211,58 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           </div>
         </div>
 
-        {/* User ID input when single user is selected */}
+        {/* User Selection Dropdown (NO UUID) */}
         {!isGlobal && (
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">معرف المستخدم (UUID) *</label>
-            <Input
-              dir="ltr"
-              placeholder="مثال: 123e4567-e89b-12d3-a456-426614174000"
+          <div className="space-y-2 rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#10153c]">اختر المستخدم المستهدف *</label>
+            </div>
+
+            {/* Quick search input to filter users */}
+            <div className="relative">
+              <Input
+                placeholder="ابحث بالاسم، رقم الموبايل، أو البريد لتصفية القائمة…"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="text-xs pe-8"
+              />
+              <Search className="size-3.5 absolute left-2.5 top-3 text-[#5e6b78] pointer-events-none" />
+            </div>
+
+            {/* User Dropdown */}
+            <select
+              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              className="font-mono text-xs"
-            />
-            <p className="text-[11px] text-[#5e6b78]">
-              يصل الإشعار إلى هذا المستخدم فقط ويظهر فورًا في سجل إشعاراته.
-            </p>
+            >
+              <option value="">-- اختر المستخدم من القائمة ({userOptions.length} متاح) --</option>
+              {userOptions.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name || "مستخدم بدون اسم"} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
+                  {u.email ? `— ${u.email}` : ""}
+                </option>
+              ))}
+            </select>
+
+            {/* Selected User Confirmation Badge */}
+            {selectedUser && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-xs text-emerald-900">
+                <Check className="size-4 text-emerald-600 shrink-0" />
+                <div className="flex flex-wrap gap-x-2">
+                  <span className="font-bold">{selectedUser.name || "مستخدم"}</span>
+                  {selectedUser.phoneNumber && (
+                    <span dir="ltr" className="text-emerald-700">
+                      {selectedUser.phoneNumber}
+                    </span>
+                  )}
+                  {selectedUser.email && (
+                    <span dir="ltr" className="text-emerald-600">
+                      {selectedUser.email}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -177,31 +280,47 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           </select>
         </div>
 
-        {/* Trip ID if TRIP */}
+        {/* Trip Dropdown if TRIP (NO UUID) */}
         {category === "TRIP" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">معرف الرحلة (Trip UUID) *</label>
-            <Input
-              dir="ltr"
-              placeholder="UUID الرحلة"
+            <label className="text-xs font-bold text-[#10153c]">اختر الرحلة *</label>
+            <select
+              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
               value={tripId}
               onChange={(e) => setTripId(e.target.value)}
-              className="font-mono text-xs"
-            />
+            >
+              <option value="">-- اختر الرحلة من القائمة --</option>
+              {trips.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.origin} ← {t.destination} ({new Date(t.departAt).toLocaleString("ar-EG")})
+                </option>
+              ))}
+            </select>
+            {trips.length === 0 && (
+              <p className="text-[11px] text-amber-700">لا توجد رحلات مجدولة حاليًا في النظام.</p>
+            )}
           </div>
         )}
 
-        {/* Promotion ID if DISCOUNT_CODE */}
+        {/* Promotion Dropdown if DISCOUNT_CODE (NO UUID) */}
         {category === "DISCOUNT_CODE" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">معرف كود الخصم (Promotion UUID) *</label>
-            <Input
-              dir="ltr"
-              placeholder="UUID كود الخصم"
+            <label className="text-xs font-bold text-[#10153c]">اختر كود الخصم *</label>
+            <select
+              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
               value={promotionId}
               onChange={(e) => setPromotionId(e.target.value)}
-              className="font-mono text-xs"
-            />
+            >
+              <option value="">-- اختر كود الخصم من القائمة --</option>
+              {promotions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code} — خصم {p.value} جنيه ({p.isGlobal ? "كود عام" : "كود مخصص"})
+                </option>
+              ))}
+            </select>
+            {promotions.length === 0 && (
+              <p className="text-[11px] text-amber-700">لا توجد أكواد خصم نشطة حاليًا في النظام.</p>
+            )}
           </div>
         )}
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchOpsNotifications, type OpsNotification } from "@/lib/actions/notifications";
+import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { SendNotificationDialog } from "@/components/notifications/send-notification-dialog";
-import { CheckCircle2, Send } from "lucide-react";
+import { CheckCircle2, RotateCcw, Search, Send, User } from "lucide-react";
 
 const CATEGORY_AR: Record<string, string> = {
   TEXT: "تنبيه",
@@ -20,13 +21,30 @@ export default function NotificationsOpsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
-  const [userId, setUserId] = useState("");
+
+  // Filters (NO UUID)
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [category, setCategory] = useState("");
+
+  // User dropdown options
+  const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
+
+  // Load user options for the filter dropdown
+  useEffect(() => {
+    let active = true;
+    fetchTargetOptions(searchQuery).then((res) => {
+      if (active && res.ok) setUserOptions(res.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [searchQuery]);
 
   async function load() {
     setError(null);
     const result = await fetchOpsNotifications({
-      userId: userId.trim() || undefined,
+      userId: selectedUserId || undefined,
       category: category || undefined,
     });
     if (result.ok) {
@@ -35,6 +53,15 @@ export default function NotificationsOpsPage() {
     } else {
       setError(result.message);
     }
+  }
+
+  function handleReset() {
+    setSelectedUserId("");
+    setSearchQuery("");
+    setCategory("");
+    void fetchOpsNotifications().then((res) => {
+      if (res.ok) setRows(res.data.items);
+    });
   }
 
   function handleSendSuccess(msg?: string) {
@@ -55,6 +82,31 @@ export default function NotificationsOpsPage() {
       }
     });
   }, []);
+
+  // Filter rows locally if a search query is typed (matches user name, phone, email, or title)
+  const displayRows = useMemo(() => {
+    if (!rows) return null;
+    let list = rows;
+
+    if (selectedUserId) {
+      list = list.filter((r) => r.userId === selectedUserId);
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((r) => {
+        const nameMatch = r.user?.name?.toLowerCase().includes(q) ?? false;
+        const phoneMatch = r.user?.phoneNumber?.includes(q) ?? false;
+        const titleMatch = r.title?.toLowerCase().includes(q) ?? false;
+        const bodyMatch = r.body?.toLowerCase().includes(q) ?? false;
+        return nameMatch || phoneMatch || titleMatch || bodyMatch;
+      });
+    }
+
+    return list;
+  }, [rows, selectedUserId, searchQuery]);
+
+  const isFiltered = Boolean(selectedUserId || searchQuery || category);
 
   const columns: CommunityColumnDef<OpsNotification>[] = [
     {
@@ -99,8 +151,8 @@ export default function NotificationsOpsPage() {
           );
         }
         return (
-          <span dir="ltr" className="font-mono text-xs text-[#5e6b78]">
-            {params.data.userId ? `${params.data.userId.slice(0, 8)}…` : "—"}
+          <span className="text-xs text-[#71808d]">
+            {userOptions.find((u) => u.id === params.data?.userId)?.name ?? "مستخدم مسجل"}
           </span>
         );
       },
@@ -162,24 +214,67 @@ export default function NotificationsOpsPage() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <Input
-          dir="ltr"
-          value={userId}
-          onChange={(event) => setUserId(event.target.value)}
-          placeholder="فلترة برقم المستخدم (UUID)"
-        />
+      {/* Filter Bar (No UUID input: Name/Phone/Email Search + User Dropdown + Category) */}
+      <div className="mb-4 flex flex-col gap-2.5 rounded-2xl border border-[#daeaf5] bg-white p-3.5 shadow-sm sm:flex-row sm:items-center">
+        {/* User Search Input */}
+        <div className="relative flex-1">
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="بحث بالاسم، رقم الموبايل، أو البريد الإلكتروني…"
+            className="text-xs pe-8"
+          />
+          <Search className="size-4 absolute left-2.5 top-2.5 text-[#5e6b78] pointer-events-none" />
+        </div>
+
+        {/* User Dropdown */}
+        <div className="flex items-center gap-1.5 sm:w-64">
+          <User className="size-4 text-[#2f719e] shrink-0" />
+          <select
+            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+            value={selectedUserId}
+            onChange={(event) => setSelectedUserId(event.target.value)}
+          >
+            <option value="">كل المستخدمين (المستلم)</option>
+            {userOptions.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name || "مستخدم"} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
+                {u.email ? `— ${u.email}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Category Dropdown */}
         <select
-          className="rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm"
+          className="rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#2f719e] sm:w-36"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
         >
           <option value="">كل الفئات</option>
-          <option value="TEXT">تنبيه</option>
+          <option value="TEXT">تنبيه عام</option>
           <option value="TRIP">رحلة</option>
           <option value="DISCOUNT_CODE">كود خصم</option>
         </select>
-        <Button onClick={() => void load()}>بحث</Button>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => void load()}>
+            بحث
+          </Button>
+          {isFiltered && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleReset}
+              className="gap-1 border border-slate-200 text-xs"
+              title="إعادة ضبط الفلاتر"
+            >
+              <RotateCcw className="size-3.5" />
+              <span>إعادة ضبط</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {error ? (
@@ -188,15 +283,19 @@ export default function NotificationsOpsPage() {
         </p>
       ) : null}
 
-      {!rows ? (
+      {!displayRows ? (
         <p className="text-sm text-slate-500">جاري التحميل…</p>
       ) : (
         <AgGridTable<OpsNotification>
-          key={rows.map((n) => `${n.id}:${n.isRead}`).join("|")}
+          key={displayRows.map((n) => `${n.id}:${n.isRead}`).join("|")}
           gridId="notifications-ops"
-          rows={rows}
+          rows={displayRows}
           columnDefs={columns}
-          emptyMessage="لا توجد إشعارات بعد."
+          emptyMessage={
+            isFiltered
+              ? "لا توجد إشعارات مطابقة لمعايير البحث المحددة."
+              : "لا توجد إشعارات مسجلة حتى الآن."
+          }
           getRowId={(n) => n.id}
         />
       )}
