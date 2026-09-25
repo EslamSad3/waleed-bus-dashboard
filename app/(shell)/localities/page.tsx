@@ -37,18 +37,20 @@ export default function LocalitiesPage() {
   useEffect(() => {
     fetchGovernorates().then((result) => {
       if (!result.ok) return setError(result.message);
+      setError(null);
       setGovernorates(result.data);
       if (result.data.length === 0) return;
       const firstGov = result.data[0].id;
       setGovernorateId(firstGov);
       fetchMarkaz(firstGov, true).then((markazResult) => {
         if (!markazResult.ok) return setError(markazResult.message);
+        setError(null);
         setMarkazes(markazResult.data);
         if (markazResult.data.length === 0) return;
         const firstMarkaz = markazResult.data[0].id;
         setMarkazId(firstMarkaz);
         fetchLocalities(firstMarkaz, true).then((localityResult) => {
-          if (localityResult.ok) setRows(localityResult.data);
+          if (localityResult.ok) { setRows(localityResult.data); setError(null); }
           else setError(localityResult.message);
         });
       });
@@ -63,12 +65,13 @@ export default function LocalitiesPage() {
     if (!id) return;
     fetchMarkaz(id, true).then((result) => {
       if (!result.ok) return setError(result.message);
+      setError(null);
       setMarkazes(result.data);
       if (result.data.length === 0) return;
       const firstMarkaz = result.data[0].id;
       setMarkazId(firstMarkaz);
       fetchLocalities(firstMarkaz, true).then((localityResult) => {
-        if (localityResult.ok) setRows(localityResult.data);
+        if (localityResult.ok) { setRows(localityResult.data); setError(null); }
         else setError(localityResult.message);
       });
     });
@@ -79,7 +82,7 @@ export default function LocalitiesPage() {
     setRows([]);
     if (!id) return;
     fetchLocalities(id, true).then((result) => {
-      if (result.ok) setRows(result.data);
+      if (result.ok) { setRows(result.data); setError(null); }
       else setError(result.message);
     });
   }

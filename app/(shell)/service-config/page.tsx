@@ -34,6 +34,7 @@ export default function ServiceConfigPage() {
             .sort((a, b) => a.sortOrder - b.sortOrder)
             .map((e) => ({ key: e.id, id: e.id, text: e.text, type: e.type, value: e.value, isActive: e.isActive })),
         );
+        setError(null);
       } else setError(result.message);
     });
   }, []);

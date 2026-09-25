@@ -38,7 +38,7 @@ export default function PromotionsPage() {
 
   useEffect(() => {
     fetchPromotions().then((result) => {
-      if (result.ok) setRows(result.data.items);
+      if (result.ok) { setRows(result.data.items); setError(null); }
       else setError(result.message);
     });
   }, []);
@@ -126,7 +126,7 @@ export default function PromotionsPage() {
     setUsagesFor(promo);
     setUsages(null);
     const result = await fetchPromotionUsages(promo.id);
-    if (result.ok) setUsages(result.data.items);
+    if (result.ok) { setUsages(result.data.items); setError(null); }
     else setError(result.message);
   }
 

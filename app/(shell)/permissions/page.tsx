@@ -22,7 +22,7 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     fetchPermissionCatalog().then((result) => {
-      if (result.ok) setFirst({ items: result.data, nextCursor: null });
+      if (result.ok) { setFirst({ items: result.data, nextCursor: null }); setError(null); }
       else setError(result.message);
     });
   }, []);

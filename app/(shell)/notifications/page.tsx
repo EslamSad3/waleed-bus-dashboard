@@ -25,13 +25,13 @@ export default function NotificationsOpsPage() {
       userId: userId.trim() || undefined,
       category: category || undefined,
     });
-    if (result.ok) setRows(result.data.items);
+    if (result.ok) { setRows(result.data.items); setError(null); }
     else setError(result.message);
   }
 
   useEffect(() => {
     fetchOpsNotifications().then((result) => {
-      if (result.ok) setRows(result.data.items);
+      if (result.ok) { setRows(result.data.items); setError(null); }
       else setError(result.message);
     });
   }, []);
