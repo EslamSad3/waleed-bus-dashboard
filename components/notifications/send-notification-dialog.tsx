@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,16 @@ import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { fetchPromotions, type Promotion } from "@/lib/actions/promotions";
 import { fetchTripsPage, type Trip } from "@/lib/actions/trips";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
-import { AlertCircle, Send, Users, User, Search, Check } from "lucide-react";
+import {
+  AlertCircle,
+  Send,
+  Users,
+  User,
+  Search,
+  CheckCircle2,
+  X,
+  Loader2,
+} from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -20,9 +29,28 @@ type Props = {
   onSuccess: (message?: string) => void;
 };
 
+function matchesQuery(text: string | null | undefined, query: string): boolean {
+  if (!text || !query) return false;
+  return text.toLowerCase().includes(query.trim().toLowerCase());
+}
+
+function matchesPhone(phone: string | null | undefined, query: string): boolean {
+  if (!phone || !query) return false;
+  const cleanPhone = phone.replace(/\D/g, "");
+  const cleanQuery = query.replace(/\D/g, "");
+  if (!cleanQuery) return phone.toLowerCase().includes(query.toLowerCase());
+  const strippedQuery = cleanQuery.replace(/^0+/, "");
+  return (
+    cleanPhone.includes(cleanQuery) ||
+    phone.includes(query) ||
+    (strippedQuery.length >= 2 && cleanPhone.includes(strippedQuery))
+  );
+}
+
 export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props) {
   const [isGlobal, setIsGlobal] = useState(true);
   const [userId, setUserId] = useState("");
+  const [selectedUserObj, setSelectedUserObj] = useState<TargetOption | null>(null);
   const [category, setCategory] = useState<"TEXT" | "TRIP" | "DISCOUNT_CODE">("TEXT");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -31,28 +59,60 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Dropdown data options
+  // User search & options
   const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
   const [userSearch, setUserSearch] = useState("");
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const searchRequestId = useRef(0);
 
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-
   const [trips, setTrips] = useState<Trip[]>([]);
 
-  // Load users when dialog is opened in single-user mode
+  // Load initial users when dialog opens
   useEffect(() => {
     if (!open) return;
     let active = true;
-    const timer = setTimeout(() => {
-      fetchTargetOptions(userSearch).then((res) => {
-        if (active && res.ok) setUserOptions(res.data);
-      });
-    }, 250);
+    fetchTargetOptions("").then((res) => {
+      if (active && res.ok) setUserOptions(res.data);
+    });
     return () => {
       active = false;
-      clearTimeout(timer);
     };
-  }, [open, userSearch]);
+  }, [open]);
+
+  // Server-side debounced search when user types a query
+  useEffect(() => {
+    if (!open || isGlobal || !userSearch.trim()) return;
+    const reqId = ++searchRequestId.current;
+    const timer = setTimeout(() => {
+      setLoadingUsers(true);
+      fetchTargetOptions(userSearch).then((res) => {
+        if (reqId !== searchRequestId.current) return;
+        setLoadingUsers(false);
+        if (res.ok) {
+          setUserOptions((prev) => {
+            const map = new Map<string, TargetOption>();
+            for (const u of prev) map.set(u.id, u);
+            for (const u of res.data) map.set(u.id, u);
+            return Array.from(map.values());
+          });
+        }
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [open, isGlobal, userSearch]);
+
+  // Client-side filtering for instantaneous responsiveness
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim();
+    if (!q) return userOptions;
+    return userOptions.filter(
+      (u) =>
+        matchesQuery(u.name, q) ||
+        matchesPhone(u.phoneNumber, q) ||
+        matchesQuery(u.email, q),
+    );
+  }, [userOptions, userSearch]);
 
   // Load promotions when category is DISCOUNT_CODE
   useEffect(() => {
@@ -92,6 +152,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
   function resetForm() {
     setIsGlobal(true);
     setUserId("");
+    setSelectedUserObj(null);
     setUserSearch("");
     setCategory("TEXT");
     setTitle("");
@@ -100,8 +161,6 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     setPromotionId("");
     setError(null);
   }
-
-  const selectedUser = userOptions.find((u) => u.id === userId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -118,7 +177,16 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
       setError("يرجى إدخال محتوى الإشعار");
       return;
     }
-    if (!isGlobal && !userId) {
+
+    let targetUserId = userId;
+    // Auto-select if user typed and there is exactly 1 match
+    if (!isGlobal && !targetUserId && filteredUsers.length === 1) {
+      targetUserId = filteredUsers[0].id;
+      setUserId(targetUserId);
+      setSelectedUserObj(filteredUsers[0]);
+    }
+
+    if (!isGlobal && !targetUserId) {
       setError("يرجى اختيار المستخدم المستهدف من القائمة أو اختيار إرسال عام");
       return;
     }
@@ -135,7 +203,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
     const payload: SendNotificationInput = {
       isGlobal,
-      userId: isGlobal ? undefined : userId,
+      userId: isGlobal ? undefined : targetUserId,
       category,
       title: trimmedTitle,
       body: trimmedBody,
@@ -211,56 +279,142 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           </div>
         </div>
 
-        {/* User Selection Dropdown (NO UUID) */}
+        {/* User Selection (NO UUID, Searchable Autocomplete Picker) */}
         {!isGlobal && (
           <div className="space-y-2 rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#10153c]">اختر المستخدم المستهدف *</label>
+              <label className="text-xs font-bold text-[#10153c]">
+                اختر المستخدم المستهدف *
+              </label>
+              {userId && (
+                <span className="text-[11px] font-semibold text-emerald-700">
+                  تم تحديد المستخدم بنجاح
+                </span>
+              )}
             </div>
 
-            {/* Quick search input to filter users */}
-            <div className="relative">
-              <Input
-                placeholder="ابحث بالاسم، رقم الموبايل، أو البريد لتصفية القائمة…"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="text-xs pe-8"
-              />
-              <Search className="size-3.5 absolute left-2.5 top-3 text-[#5e6b78] pointer-events-none" />
-            </div>
+            {selectedUserObj ? (
+              /* Selected User Card */
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50/80 p-3 shadow-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                    <CheckCircle2 className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-bold text-emerald-950">
+                      {selectedUserObj.name || "مستخدم بدون اسم"}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-emerald-800">
+                      {selectedUserObj.phoneNumber && (
+                        <span dir="ltr" className="font-semibold">
+                          {selectedUserObj.phoneNumber}
+                        </span>
+                      )}
+                      {selectedUserObj.email && (
+                        <span dir="ltr" className="text-emerald-700">
+                          {selectedUserObj.email}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setUserId("");
+                    setSelectedUserObj(null);
+                    setUserSearch("");
+                  }}
+                  className="shrink-0 gap-1 border-emerald-200 text-xs text-emerald-900 hover:bg-emerald-100"
+                >
+                  <X className="size-3.5" />
+                  <span>تغيير</span>
+                </Button>
+              </div>
+            ) : (
+              /* Search Input and Live Interactive Results List */
+              <div className="space-y-2">
+                <div className="relative">
+                  <Input
+                    placeholder="ابحث بالاسم، رقم الموبايل (مثال: 0100...)، أو البريد الإلكتروني…"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (filteredUsers.length > 0) {
+                          const picked = filteredUsers[0];
+                          setUserId(picked.id);
+                          setSelectedUserObj(picked);
+                          setUserSearch("");
+                        }
+                      }
+                    }}
+                    className="text-xs pe-8"
+                    autoFocus
+                  />
+                  <div className="absolute left-2.5 top-2.5 flex items-center gap-1 text-[#5e6b78]">
+                    {loadingUsers ? (
+                      <Loader2 className="size-3.5 animate-spin text-[#2f719e]" />
+                    ) : (
+                      <Search className="size-3.5 pointer-events-none" />
+                    )}
+                  </div>
+                </div>
 
-            {/* User Dropdown */}
-            <select
-              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-            >
-              <option value="">-- اختر المستخدم من القائمة ({userOptions.length} متاح) --</option>
-              {userOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name || "مستخدم بدون اسم"} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
-                  {u.email ? `— ${u.email}` : ""}
-                </option>
-              ))}
-            </select>
-
-            {/* Selected User Confirmation Badge */}
-            {selectedUser && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-xs text-emerald-900">
-                <Check className="size-4 text-emerald-600 shrink-0" />
-                <div className="flex flex-wrap gap-x-2">
-                  <span className="font-bold">{selectedUser.name || "مستخدم"}</span>
-                  {selectedUser.phoneNumber && (
-                    <span dir="ltr" className="text-emerald-700">
-                      {selectedUser.phoneNumber}
-                    </span>
-                  )}
-                  {selectedUser.email && (
-                    <span dir="ltr" className="text-emerald-600">
-                      {selectedUser.email}
-                    </span>
+                {/* Results dropdown list */}
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-[#d7e1ea] bg-white divide-y divide-[#f0f4f8] shadow-inner">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((u) => (
+                      <button
+                        type="button"
+                        key={u.id}
+                        onClick={() => {
+                          setUserId(u.id);
+                          setSelectedUserObj(u);
+                          setUserSearch("");
+                        }}
+                        className="flex w-full items-center justify-between gap-3 p-2.5 text-right transition-colors hover:bg-[#daeaf5]/40"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#daeaf5] text-[#204c6b]">
+                            <User className="size-3.5" />
+                          </div>
+                          <div className="min-w-0 text-right">
+                            <div className="truncate text-xs font-bold text-[#10153c]">
+                              {u.name || "مستخدم بدون اسم"}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#5e6b78]">
+                              {u.phoneNumber && <span dir="ltr">{u.phoneNumber}</span>}
+                              {u.email && <span dir="ltr">— {u.email}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-lg bg-[#daeaf5] px-2 py-0.5 text-[11px] font-bold text-[#204c6b]">
+                          اختيار
+                        </span>
+                      </button>
+                    ))
+                  ) : loadingUsers ? (
+                    <div className="flex items-center justify-center gap-2 p-4 text-xs text-slate-500">
+                      <Loader2 className="size-4 animate-spin text-[#2f719e]" />
+                      <span>جاري البحث…</span>
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      {userSearch.trim()
+                        ? `لا يوجد مستخدم يطابق "${userSearch}"`
+                        : "لا يوجد مستخدمون متاحون حاليًا"}
+                    </div>
                   )}
                 </div>
+                <p className="text-[11px] text-[#5e6b78]">
+                  {userSearch.trim()
+                    ? `اضغط على المستخدم لاختياره أو اضغط Enter لاختيار أول نتيجة (${filteredUsers.length} نتيجة)`
+                    : `اختر المستخدم من القائمة أعلاه (${filteredUsers.length} متاح) أو اكتب للبحث`}
+                </p>
               </div>
             )}
           </div>

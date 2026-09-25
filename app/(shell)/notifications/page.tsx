@@ -16,6 +16,24 @@ const CATEGORY_AR: Record<string, string> = {
   DISCOUNT_CODE: "كود خصم",
 };
 
+function matchesQuery(text: string | null | undefined, query: string): boolean {
+  if (!text || !query) return false;
+  return text.toLowerCase().includes(query.trim().toLowerCase());
+}
+
+function matchesPhone(phone: string | null | undefined, query: string): boolean {
+  if (!phone || !query) return false;
+  const cleanPhone = phone.replace(/\D/g, "");
+  const cleanQuery = query.replace(/\D/g, "");
+  if (!cleanQuery) return phone.toLowerCase().includes(query.toLowerCase());
+  const strippedQuery = cleanQuery.replace(/^0+/, "");
+  return (
+    cleanPhone.includes(cleanQuery) ||
+    phone.includes(query) ||
+    (strippedQuery.length >= 2 && cleanPhone.includes(strippedQuery))
+  );
+}
+
 export default function NotificationsOpsPage() {
   const [rows, setRows] = useState<OpsNotification[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +48,16 @@ export default function NotificationsOpsPage() {
   // User dropdown options
   const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
 
-  // Load user options for the filter dropdown
+  // Load initial user options for the filter dropdown
   useEffect(() => {
     let active = true;
-    fetchTargetOptions(searchQuery).then((res) => {
+    fetchTargetOptions("").then((res) => {
       if (active && res.ok) setUserOptions(res.data);
     });
     return () => {
       active = false;
     };
-  }, [searchQuery]);
+  }, []);
 
   async function load() {
     setError(null);
@@ -83,7 +101,7 @@ export default function NotificationsOpsPage() {
     });
   }, []);
 
-  // Filter rows locally if a search query is typed (matches user name, phone, email, or title)
+  // Filter rows locally if a search query is typed (matches user name, phone, email, or title/body)
   const displayRows = useMemo(() => {
     if (!rows) return null;
     let list = rows;
@@ -92,13 +110,13 @@ export default function NotificationsOpsPage() {
       list = list.filter((r) => r.userId === selectedUserId);
     }
 
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim();
     if (q) {
       list = list.filter((r) => {
-        const nameMatch = r.user?.name?.toLowerCase().includes(q) ?? false;
-        const phoneMatch = r.user?.phoneNumber?.includes(q) ?? false;
-        const titleMatch = r.title?.toLowerCase().includes(q) ?? false;
-        const bodyMatch = r.body?.toLowerCase().includes(q) ?? false;
+        const nameMatch = matchesQuery(r.user?.name, q);
+        const phoneMatch = matchesPhone(r.user?.phoneNumber, q);
+        const titleMatch = matchesQuery(r.title, q);
+        const bodyMatch = matchesQuery(r.body, q);
         return nameMatch || phoneMatch || titleMatch || bodyMatch;
       });
     }
@@ -221,6 +239,9 @@ export default function NotificationsOpsPage() {
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void load();
+            }}
             placeholder="بحث بالاسم، رقم الموبايل، أو البريد الإلكتروني…"
             className="text-xs pe-8"
           />
