@@ -157,6 +157,8 @@ export type AdminBookingDetail = {
   discountAmount?: string | null;
   boardingStationId?: string | null;
   landingStationId?: string | null;
+  boardingStationName?: string | null;
+  landingStationName?: string | null;
   totalAmount: string;
   refundedAmount: string;
   paymentMethod: string;
