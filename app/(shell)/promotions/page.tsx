@@ -17,9 +17,12 @@ import {
   type PromotionUsage,
 } from "@/lib/actions/promotions";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
+import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 export default function PromotionsPage() {
-  const [rows, setRows] = useState<Promotion[] | null>(null);
+  const queryClient = useQueryClient();
+  const { data: promoPage, isLoading, error: fetchError } = useApiQuery(qk.promotions, fetchPromotions);
+  const rows: Promotion[] | null = promoPage?.items ?? null;
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
@@ -35,13 +38,6 @@ export default function PromotionsPage() {
   const [maxTotal, setMaxTotal] = useState("");
   const [maxPerUser, setMaxPerUser] = useState("1");
   const [expiresAt, setExpiresAt] = useState("");
-
-  useEffect(() => {
-    fetchPromotions().then((result) => {
-      if (result.ok) { setRows(result.data.items); setError(null); }
-      else setError(result.message);
-    });
-  }, []);
 
   function openCreate() {
     setEditing(null);
@@ -106,20 +102,16 @@ export default function PromotionsPage() {
         });
     setSaving(false);
     if (!result.ok) return setError(result.message);
-    if (editing) {
-      setRows((items) => items?.map((p) => (p.id === result.data.id ? result.data : p)) ?? [result.data]);
-      setEditing(null);
-    } else {
-      setRows((items) => [result.data, ...(items ?? [])]);
-      setCreating(false);
-    }
+    upsertInList(queryClient, qk.promotions, result.data);
+    setEditing(null);
+    setCreating(false);
     setError(null);
   }
 
   async function expire(promo: Promotion) {
     const result = await expirePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    setRows((items) => items?.map((p) => (p.id === result.data.id ? result.data : p)) ?? []);
+    upsertInList(queryClient, qk.promotions, result.data);
   }
 
   async function openUsages(promo: Promotion) {
@@ -221,8 +213,8 @@ export default function PromotionsPage() {
               <span className="block font-bold text-[#334454]">الجمهور {editing ? "(النطاق لا يتغير بعد الإنشاء)" : ""}</span>
               {!editing ? (
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2"><input type="radio" checked={audience === "all"} onChange={() => setAudience("all")} className="size-4 accent-[#2f719e]" /> كل المستخدمين</label>
-                  <label className="flex items-center gap-2"><input type="radio" checked={audience === "specific"} onChange={() => setAudience("specific")} className="size-4 accent-[#2f719e]" /> مستخدمون محددون</label>
+                  <label className="flex items-center gap-2"><input type="radio" checked={audience === "all"} onChange={() => setAudience("all")} className="size-4 accent-[#059ff8]" /> كل المستخدمين</label>
+                  <label className="flex items-center gap-2"><input type="radio" checked={audience === "specific"} onChange={() => setAudience("specific")} className="size-4 accent-[#059ff8]" /> مستخدمون محددون</label>
                 </div>
               ) : null}
               {(editing ? !editing.isGlobal : audience === "specific") ? (
@@ -239,14 +231,14 @@ export default function PromotionsPage() {
                             onChange={(event) =>
                               setTargetIds((ids) => (event.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id)))
                             }
-                            className="size-4 accent-[#2f719e]"
+                            className="size-4 accent-[#059ff8]"
                           />
                           <span className="font-bold">{u.name ?? "بدون اسم"}</span>
                           <span dir="ltr" className="text-xs text-slate-500">{u.phoneNumber ?? ""}</span>
                         </label>
                       ))}
                   </div>
-                  <p className="mt-1 text-xs font-bold text-[#2f719e]">المحدد: {targetIds.length}</p>
+                  <p className="mt-1 text-xs font-bold text-[#059ff8]">المحدد: {targetIds.length}</p>
                 </div>
               ) : null}
             </div>

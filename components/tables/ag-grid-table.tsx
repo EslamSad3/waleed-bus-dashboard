@@ -37,6 +37,17 @@ export function AgGridTable<T>({
   const [quickFilterText, setQuickFilterText] = useState("");
   const [gridApi, setGridApi] = useState<GridApi<T> | null>(null);
 
+  // Sync with fresh prop data (cache writes after dialog mutations) so the
+  // grid updates instantly — no remount, no loading state.
+  const [seenRows, setSeenRows] = useState(initialRows);
+  const [seenCursor, setSeenCursor] = useState(initialCursor);
+  if (seenRows !== initialRows || seenCursor !== initialCursor) {
+    setSeenRows(initialRows);
+    setSeenCursor(initialCursor);
+    setRows(initialRows);
+    setCursor(initialCursor);
+  }
+
   function onGridReady(event: GridReadyEvent<T>) {
     setGridApi(event.api);
   }

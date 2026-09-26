@@ -90,7 +90,7 @@ export function Dialog({
       <button
         type="button"
         aria-label={closeLabel}
-        className="absolute inset-0 cursor-default bg-[#0e0b2c]/45 backdrop-blur-md motion-safe:animate-[fade-in_180ms_ease-out]"
+        className="absolute inset-0 cursor-default bg-[#000b26]/45 backdrop-blur-md motion-safe:animate-[fade-in_180ms_ease-out]"
         onClick={() => onOpenChange(false)}
       />
       <div
@@ -109,14 +109,14 @@ export function Dialog({
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e4ecf2] bg-[#f8fbfd]/95 px-5 py-5 sm:px-7">
           <div>
-            <h2 id={titleId} className="text-xl font-extrabold text-[#204c6b] sm:text-2xl">{title}</h2>
+            <h2 id={titleId} className="text-xl font-extrabold text-[#00134c] sm:text-2xl">{title}</h2>
             {description ? <p id={descriptionId} className="mt-1 text-sm leading-6 text-[#687886]">{description}</p> : null}
           </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label={closeLabel}
-            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#d8e4ec] bg-white text-[#5e6b78] transition hover:border-[#b9d2e3] hover:bg-[#edf6fc] hover:text-[#204c6b] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2f719e]/15"
+            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#d8e4ec] bg-white text-[#5e6b78] transition hover:border-[#b9d2e3] hover:bg-[#eaf6ff] hover:text-[#00134c] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#059ff8]/25"
           >
             <X className="size-5" aria-hidden="true" />
           </button>

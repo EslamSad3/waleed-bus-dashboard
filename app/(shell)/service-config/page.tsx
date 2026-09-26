@@ -10,6 +10,7 @@ import {
   type ServiceConfigEntry,
   type ServiceConfigEntryInput,
 } from "@/lib/actions/service-config";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 
 const TYPE_AR: Record<string, string> = {
   PHONE: "هاتف",
@@ -20,24 +21,25 @@ const TYPE_AR: Record<string, string> = {
 type Draft = ServiceConfigEntryInput & { key: string };
 
 export default function ServiceConfigPage() {
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<Draft[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    fetchServiceConfig().then((result) => {
-      if (result.ok) {
-        setRows(
-          (result.data as ServiceConfigEntry[])
-            .slice()
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((e) => ({ key: e.id, id: e.id, text: e.text, type: e.type, value: e.value, isActive: e.isActive })),
-        );
-        setError(null);
-      } else setError(result.message);
-    });
-  }, []);
+  const { data: config, isLoading, error: fetchError } = useApiQuery<ServiceConfigEntry[]>(qk.serviceConfig, fetchServiceConfig);
+
+  // Render-phase sync from the query cache (no setState-in-effect)
+  const [seenConfig, setSeenConfig] = useState<ServiceConfigEntry[] | null>(null);
+  if (config && config !== seenConfig) {
+    setSeenConfig(config);
+    setRows(
+      config
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((e) => ({ key: e.id, id: e.id, text: e.text, type: e.type, value: e.value, isActive: e.isActive })),
+    );
+  }
 
   function add() {
     setRows((items) => [...(items ?? []), { key: `new-${Date.now()}`, text: "", type: "PHONE", value: "", isActive: true }]);
@@ -120,7 +122,7 @@ export default function ServiceConfigPage() {
                 <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">النص</span><Input value={row.text} onChange={(event) => patch(row.key, "text", event.target.value)} placeholder="تواصل مع خدمة العملاء" /></label>
                 <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">القيمة</span><Input dir="ltr" value={row.value} onChange={(event) => patch(row.key, "value", event.target.value)} placeholder="011xxxxxxxx أو https://…" /></label>
                 <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">النوع</span><select className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5" value={row.type} onChange={(event) => patch(row.key, "type", event.target.value)}><option value="PHONE">هاتف</option><option value="WHATSAPP">واتساب</option><option value="WEBSITE">موقع</option></select></label>
-                <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm"><input type="checkbox" checked={row.isActive ?? true} onChange={(event) => patch(row.key, "isActive", event.target.checked)} className="size-4 accent-[#2f719e]" /> ظاهر في التطبيق</label>
+                <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm"><input type="checkbox" checked={row.isActive ?? true} onChange={(event) => patch(row.key, "isActive", event.target.checked)} className="size-4 accent-[#059ff8]" /> ظاهر في التطبيق</label>
               </div>
             </div>
           ))}

@@ -9,6 +9,7 @@ import { deleteTrip, findTripAcrossFleets, updateTrip, TRIP_STATUS_AR, type Trip
 import { assignDriver, fetchBus, type Bus } from "@/lib/actions/buses";
 import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
+import { qk, useApiQuery } from "@/lib/queries";
 
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -28,20 +29,25 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [driverId, setDriverId] = useState("");
   const [assigning, setAssigning] = useState(false);
 
-  useEffect(() => {
-    findTripAcrossFleets(id).then((r) => {
-      if (r.ok) {
-        setFleetId(r.data.fleetId);
-        setTrip(r.data.trip);
-        setOrigin(r.data.trip.origin);
-        setDestination(r.data.trip.destination);
-        setDepartAt(r.data.trip.departAt.slice(0, 16));
-        setStatus(r.data.trip.status);
-        setFailed(null);
-      } else setFailed(r.message);
-      setLoadedKey(id);
-    });
-  }, [id]);
+  // TanStack cache: الرحلة بتتجاب عبر طبقة الكاش والتعديلات بتكتب فيها فورًا
+  const { data: tripData, error: tripError } = useApiQuery(
+    ["trip-found", id],
+    () => findTripAcrossFleets(id),
+  );
+  // Render-phase sync from the query cache (no setState-in-effect)
+  const [seenTripData, setSeenTripData] = useState<typeof tripData>(undefined);
+  if (tripData && tripData !== seenTripData) {
+    setSeenTripData(tripData);
+    setFleetId(tripData.fleetId);
+    setTrip(tripData.trip);
+    setOrigin(tripData.trip.origin);
+    setDestination(tripData.trip.destination);
+    setDepartAt(tripData.trip.departAt.slice(0, 16));
+    setStatus(tripData.trip.status);
+    setFailed(null);
+    setLoadedKey(id);
+  }
+  const fetchFailed = tripError?.message ?? null;
 
   useEffect(() => {
     if (!fleetId || !trip) return;
@@ -98,7 +104,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     setAssigning(true);
     const result = await assignDriver(fleetId, trip.busId, { driverUserId: driverId });
     setAssigning(false);
-    done(result.ok, result.ok ? "اتعين السواق على أتوبيس الرحلة" : result.message);
+    done(result.ok, result.ok ? "اتعين السواق على عربية الرحلة" : result.message);
     if (result.ok) {
       const refreshed = await apiGet<{ items: DriverRow[] }>("/api/fleet/drivers?limit=100", fleetId);
       if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
@@ -137,8 +143,8 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
               <Input dir="ltr" type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} />
             </label>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
-              <span className="block text-[#606060]">أتوبيس الرحلة</span>
-              <strong>{bus?.registrationNumber ?? "جاري تحميل بيانات الأتوبيس…"}</strong>
+              <span className="block text-[#606060]">عربية الرحلة</span>
+              <strong>{bus?.registrationNumber ?? "جاري تحميل بيانات العربية…"}</strong>
               {bus?.plateNumber ? <span className="mr-2 text-[#606060]" dir="ltr">{bus.plateNumber}</span> : null}
               <span className="mr-2 text-[#606060]">· السعة {bus?.capacity ?? "—"}</span>
               <label className="mt-3 block text-sm">

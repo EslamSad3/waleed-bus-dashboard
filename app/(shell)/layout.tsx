@@ -28,7 +28,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         <main className="min-w-0 flex-1">{children}</main>
       </div>
       <footer className="border-t border-slate-200/70 px-4 py-5 text-center text-xs text-[#5e6b78]">
-        منصة الأتوبيسات — لوحة تحكم المشرف العام
+        منصة العربيات — لوحة تحكم المشرف العام
       </footer>
     </div>
   );

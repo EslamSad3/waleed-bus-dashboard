@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { fetchBusesPage } from "@/lib/actions/buses";
 import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/members";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { qk, useDataQuery } from "@/lib/queries";
 
 type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -81,13 +83,12 @@ async function fetchAggregateTripPage(cursorState: string | null): Promise<TripA
 }
 
 export default function TripsPage() {
-  const [first, setFirst] = useState<TripAggregatePage | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; from?: string; to?: string }>({});
-
-  useEffect(() => {
-    fetchAggregateTripPage(null).then(setFirst).catch((error: Error) => setFailed(error.message));
-  }, []);
+  const { data: first, isLoading, error } = useDataQuery<TripAggregatePage>(
+    qk.trips(null),
+    () => fetchAggregateTripPage(null),
+  );
 
   const query = (listFilters.q ?? "").trim();
   const status = listFilters.status ?? "all";
@@ -103,7 +104,7 @@ export default function TripsPage() {
     { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
     { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
     { field: "fleetName", headerName: "اسم الأسطول", filter: "agTextColumnFilter" },
-    { field: "busName", headerName: "الأتوبيس", filter: "agTextColumnFilter" },
+    { field: "busName", headerName: "العربية", filter: "agTextColumnFilter" },
     { field: "driverName", headerName: "السواق", filter: "agTextColumnFilter" },
     { field: "departAt", headerName: "موعد الرحلة", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
     { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
@@ -116,14 +117,14 @@ export default function TripsPage() {
           <h1 className="page-title">الرحلات</h1>
           <p className="page-description">كل الرحلات في الأساطيل المسجلة، مع الخط والميعاد وحالة التشغيل.</p>
         </div>
-        <Button asChild><Link href="/trips/new">رحلة جديدة</Link></Button>
+        <Button onClick={() => setCreateOpen(true)}>رحلة جديدة</Button>
       </div>
 
-      {failed ? <p role="alert" className="text-sm text-red-600">{failed}</p> : null}
-      {!first ? <p className="text-sm text-[#606060]">جاري تحميل الرحلات…</p> : (
+      {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
+      {isLoading ? <p className="text-sm text-[#606060]">جاري تحميل الرحلات…</p> : (
         <CursorList<TripRow>
-          initialItems={first.items}
-          initialCursor={first.nextCursor}
+          initialItems={first?.items ?? []}
+          initialCursor={first?.nextCursor ?? null}
           loadMore={fetchAggregateTripPage}
           keyOf={(trip) => trip.id}
           filter={predicate}
@@ -140,6 +141,7 @@ export default function TripsPage() {
           renderItem={(trip) => <Link href={`/trips/${trip.id}`} className="list-card"><span className="font-semibold">{trip.origin} ← {trip.destination}<span className="mt-1 block text-xs text-[#606060]">{trip.fleetName} · {trip.busName} · {trip.driverName}</span></span><span className="text-sm text-[#606060]">فتح</span></Link>}
         />
       )}
+      <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

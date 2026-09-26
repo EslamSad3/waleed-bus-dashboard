@@ -9,6 +9,7 @@ import { fetchOpsNotifications, type OpsNotification } from "@/lib/actions/notif
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { SendNotificationDialog } from "@/components/notifications/send-notification-dialog";
 import { CheckCircle2, RotateCcw, Search, Send, User } from "lucide-react";
+import { qk, useDataQuery, useQueryClient } from "@/lib/queries";
 
 const CATEGORY_AR: Record<string, string> = {
   TEXT: "تنبيه",
@@ -35,7 +36,7 @@ function matchesPhone(phone: string | null | undefined, query: string): boolean 
 }
 
 export default function NotificationsOpsPage() {
-  const [rows, setRows] = useState<OpsNotification[] | null>(null);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -59,27 +60,28 @@ export default function NotificationsOpsPage() {
     };
   }, []);
 
-  async function load() {
-    setError(null);
-    const result = await fetchOpsNotifications({
-      userId: selectedUserId || undefined,
-      category: category || undefined,
-    });
-    if (result.ok) {
-      setRows(result.data.items);
-      setError(null);
-    } else {
-      setError(result.message);
-    }
+  const { data: notifPage, isLoading: rowsLoading } = useDataQuery(
+    [...qk.notifications, selectedUserId, category],
+    async () => {
+      const result = await fetchOpsNotifications({
+        userId: selectedUserId || undefined,
+        category: category || undefined,
+      });
+      if (!result.ok) throw new Error(result.message);
+      return result.data;
+    },
+  );
+  const rows: OpsNotification[] | null = notifPage?.items ?? null;
+
+  function load() {
+    void queryClient.invalidateQueries({ queryKey: qk.notifications });
   }
 
   function handleReset() {
     setSelectedUserId("");
     setSearchQuery("");
     setCategory("");
-    void fetchOpsNotifications().then((res) => {
-      if (res.ok) setRows(res.data.items);
-    });
+    // الفلاتر بترجع للوضع الافتراضي — الكاش بيتحدث تلقائيًا لما المفاتيح تتغير
   }
 
   function handleSendSuccess(msg?: string) {
@@ -87,19 +89,8 @@ export default function NotificationsOpsPage() {
       setSuccessNote(msg);
       setTimeout(() => setSuccessNote(null), 5000);
     }
-    void load();
+    load();
   }
-
-  useEffect(() => {
-    fetchOpsNotifications().then((result) => {
-      if (result.ok) {
-        setRows(result.data.items);
-        setError(null);
-      } else {
-        setError(result.message);
-      }
-    });
-  }, []);
 
   // Filter rows locally if a search query is typed (matches user name, phone, email, or title/body)
   const displayRows = useMemo(() => {
@@ -211,7 +202,7 @@ export default function NotificationsOpsPage() {
         <div className="flex items-center gap-2">
           <Button
             onClick={() => setSendDialogOpen(true)}
-            className="gap-2 bg-[#2f719e] hover:bg-[#204c6b]"
+            className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
           >
             <Send className="size-4" />
             <span>إرسال إشعار جديد</span>
@@ -233,7 +224,7 @@ export default function NotificationsOpsPage() {
       )}
 
       {/* Filter Bar (No UUID input: Name/Phone/Email Search + User Dropdown + Category) */}
-      <div className="mb-4 flex flex-col gap-2.5 rounded-2xl border border-[#daeaf5] bg-white p-3.5 shadow-sm sm:flex-row sm:items-center">
+      <div className="mb-4 flex flex-col gap-2.5 rounded-2xl border border-[#d6eeff] bg-white p-3.5 shadow-sm sm:flex-row sm:items-center">
         {/* User Search Input */}
         <div className="relative flex-1">
           <Input
@@ -250,9 +241,9 @@ export default function NotificationsOpsPage() {
 
         {/* User Dropdown */}
         <div className="flex items-center gap-1.5 sm:w-64">
-          <User className="size-4 text-[#2f719e] shrink-0" />
+          <User className="size-4 text-[#059ff8] shrink-0" />
           <select
-            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
             value={selectedUserId}
             onChange={(event) => setSelectedUserId(event.target.value)}
           >
@@ -268,7 +259,7 @@ export default function NotificationsOpsPage() {
 
         {/* Category Dropdown */}
         <select
-          className="rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#2f719e] sm:w-36"
+          className="rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#059ff8] sm:w-36"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
         >

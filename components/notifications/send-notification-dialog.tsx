@@ -250,14 +250,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Target Mode Toggle */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-[#10153c]">المستهدفون بالإشعار</label>
+          <label className="text-xs font-bold text-[#00134c]">المستهدفون بالإشعار</label>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setIsGlobal(true)}
               className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition-colors ${
                 isGlobal
-                  ? "border-[#2f719e] bg-[#daeaf5] text-[#204c6b]"
+                  ? "border-[#059ff8] bg-[#d6eeff] text-[#00134c]"
                   : "border-[#d7e1ea] bg-white text-[#5e6b78] hover:bg-slate-50"
               }`}
             >
@@ -269,7 +269,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               onClick={() => setIsGlobal(false)}
               className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition-colors ${
                 !isGlobal
-                  ? "border-[#2f719e] bg-[#daeaf5] text-[#204c6b]"
+                  ? "border-[#059ff8] bg-[#d6eeff] text-[#00134c]"
                   : "border-[#d7e1ea] bg-white text-[#5e6b78] hover:bg-slate-50"
               }`}
             >
@@ -281,9 +281,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* User Selection (NO UUID, Searchable Autocomplete Picker) */}
         {!isGlobal && (
-          <div className="space-y-2 rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3">
+          <div className="space-y-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#10153c]">
+              <label className="text-xs font-bold text-[#00134c]">
                 اختر المستخدم المستهدف *
               </label>
               {userId && (
@@ -357,7 +357,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                   />
                   <div className="absolute left-2.5 top-2.5 flex items-center gap-1 text-[#5e6b78]">
                     {loadingUsers ? (
-                      <Loader2 className="size-3.5 animate-spin text-[#2f719e]" />
+                      <Loader2 className="size-3.5 animate-spin text-[#059ff8]" />
                     ) : (
                       <Search className="size-3.5 pointer-events-none" />
                     )}
@@ -376,14 +376,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                           setSelectedUserObj(u);
                           setUserSearch("");
                         }}
-                        className="flex w-full items-center justify-between gap-3 p-2.5 text-right transition-colors hover:bg-[#daeaf5]/40"
+                        className="flex w-full items-center justify-between gap-3 p-2.5 text-right transition-colors hover:bg-[#d6eeff]/40"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#daeaf5] text-[#204c6b]">
+                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#d6eeff] text-[#00134c]">
                             <User className="size-3.5" />
                           </div>
                           <div className="min-w-0 text-right">
-                            <div className="truncate text-xs font-bold text-[#10153c]">
+                            <div className="truncate text-xs font-bold text-[#00134c]">
                               {u.name || "مستخدم بدون اسم"}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#5e6b78]">
@@ -392,14 +392,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                             </div>
                           </div>
                         </div>
-                        <span className="shrink-0 rounded-lg bg-[#daeaf5] px-2 py-0.5 text-[11px] font-bold text-[#204c6b]">
+                        <span className="shrink-0 rounded-lg bg-[#d6eeff] px-2 py-0.5 text-[11px] font-bold text-[#00134c]">
                           اختيار
                         </span>
                       </button>
                     ))
                   ) : loadingUsers ? (
                     <div className="flex items-center justify-center gap-2 p-4 text-xs text-slate-500">
-                      <Loader2 className="size-4 animate-spin text-[#2f719e]" />
+                      <Loader2 className="size-4 animate-spin text-[#059ff8]" />
                       <span>جاري البحث…</span>
                     </div>
                   ) : (
@@ -422,9 +422,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Category select */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#10153c]">نوع الإشعار</label>
+          <label className="text-xs font-bold text-[#00134c]">نوع الإشعار</label>
           <select
-            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
             value={category}
             onChange={(e) => setCategory(e.target.value as "TEXT" | "TRIP" | "DISCOUNT_CODE")}
           >
@@ -437,9 +437,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Trip Dropdown if TRIP (NO UUID) */}
         {category === "TRIP" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">اختر الرحلة *</label>
+            <label className="text-xs font-bold text-[#00134c]">اختر الرحلة *</label>
             <select
-              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
               value={tripId}
               onChange={(e) => setTripId(e.target.value)}
             >
@@ -459,9 +459,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Promotion Dropdown if DISCOUNT_CODE (NO UUID) */}
         {category === "DISCOUNT_CODE" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">اختر كود الخصم *</label>
+            <label className="text-xs font-bold text-[#00134c]">اختر كود الخصم *</label>
             <select
-              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
               value={promotionId}
               onChange={(e) => setPromotionId(e.target.value)}
             >
@@ -480,7 +480,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#10153c]">عنوان الإشعار *</label>
+          <label className="text-xs font-bold text-[#00134c]">عنوان الإشعار *</label>
           <Input
             placeholder="مثال: تنبيه هام بخصوص مواعيد الرحلات"
             value={title}
@@ -491,14 +491,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Body */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#10153c]">نص ومحتوى الإشعار *</label>
+          <label className="text-xs font-bold text-[#00134c]">نص ومحتوى الإشعار *</label>
           <textarea
             rows={4}
             placeholder="اكتب تفاصيل الإشعار هنا..."
             value={body}
             onChange={(e) => setBody(e.target.value)}
             maxLength={2000}
-            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
           />
           <p className="text-left text-[11px] text-[#5e6b78]" dir="ltr">
             {body.length} / 2000
@@ -518,7 +518,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           <Button
             type="submit"
             disabled={submitting}
-            className="gap-2 bg-[#2f719e] hover:bg-[#204c6b]"
+            className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
           >
             <Send className="size-4" />
             <span>{submitting ? "جاري الإرسال…" : "إرسال الإشعار"}</span>

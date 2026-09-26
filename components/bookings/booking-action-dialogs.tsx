@@ -91,10 +91,10 @@ export function VerifyPaymentDialog({
           </div>
         )}
 
-        <div className="rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3 text-sm">
+        <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-[#5e6b78]">قيمة الحجز الإجمالية:</span>
-            <span className="font-bold text-[#10153c] text-base" dir="ltr">{booking.totalAmount} EGP</span>
+            <span className="font-bold text-[#00134c] text-base" dir="ltr">{booking.totalAmount} EGP</span>
           </div>
           <p className="mt-1 text-xs text-[#5e6b78]">
             تنبيه: يتطلب النظام مطابقة المبلغ المسدد بالكامل مع إجمالي الحجز (Exact Match).
@@ -152,7 +152,7 @@ export function VerifyPaymentDialog({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="مثلاً: تم التأكد من كشف حساب محفظة التاجر بتاريخ اليوم"
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
           />
         </label>
 
@@ -245,7 +245,7 @@ export function FailPaymentDialog({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="تفاصيل المحادثة مع العميل أو تتبع كشف الحساب"
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
           />
         </label>
 
@@ -343,10 +343,10 @@ export function RefundPaymentDialog({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3 text-xs sm:text-sm">
+        <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:text-sm">
           <div>
             <span className="text-[#5e6b78] block">إجمالي الحجز:</span>
-            <span className="font-bold text-[#10153c]" dir="ltr">{booking.totalAmount} EGP</span>
+            <span className="font-bold text-[#00134c]" dir="ltr">{booking.totalAmount} EGP</span>
           </div>
           <div>
             <span className="text-[#5e6b78] block">المسترد سابقاً:</span>
@@ -405,7 +405,7 @@ export function RefundPaymentDialog({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="بيانات الحساب أو المحفظة المحول إليها"
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
           />
         </label>
 
@@ -487,19 +487,19 @@ export function ForceCancelDialog({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="اكتب التبرير أو سبب الإلغاء بالتفصيل (مطلوب لأغراض سجل التدقيق)..."
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
             autoFocus
           />
         </label>
 
-        <div className="rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3">
+        <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={releaseSeats}
               onChange={(e) => setReleaseSeats(e.target.checked)}
-              className="mt-1 size-4 rounded text-[#2f719e] focus:ring-[#2f719e]"
+              className="mt-1 size-4 rounded text-[#059ff8] focus:ring-[#059ff8]"
             />
             <div className="text-sm">
               <span className="font-semibold text-[#1a1a1a] block">إرجاع المقاعد لسعة الرحلة المتاحة</span>
@@ -580,7 +580,7 @@ export function ReinstateDialog({
         )}
 
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 leading-relaxed">
-          <p className="font-semibold mb-1">فحص سعة الأتوبيس الفورية:</p>
+          <p className="font-semibold mb-1">فحص سعة العربية الفورية:</p>
           المقاعد المطلوبة للحجز: <strong>{booking.seats}</strong> مقعد. سيتحقق السيرفر تلقائياً من توفر السعة في الرحلة، وسيتم رفض العملية إذا كانت الرحلة ممتلئة بالكامل.
         </div>
 
@@ -591,7 +591,7 @@ export function ReinstateDialog({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="مثال: الإلغاء تم بالخطأ من العميل وأكد رغبته في السفر..."
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
             autoFocus
           />
@@ -674,13 +674,13 @@ export function OperationalOverrideDialog({
           </div>
         )}
 
-        <div className="rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3 space-y-3">
+        <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 space-y-3">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={boarded}
               onChange={(e) => setBoarded(e.target.checked)}
-              className="size-4 rounded text-[#2f719e] focus:ring-[#2f719e]"
+              className="size-4 rounded text-[#059ff8] focus:ring-[#059ff8]"
             />
             <span className="text-sm font-semibold text-[#1a1a1a]">صعود الراكب (Boarded)</span>
           </label>
@@ -728,7 +728,7 @@ export function OperationalOverrideDialog({
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
             placeholder="مثال: تعطل هاتف السائق ونفاد البطارية أثناء خط السير وتم التأكد من صعود الراكب هاتفياً"
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
           />
         </label>
@@ -829,7 +829,7 @@ export function ResolveReportDialog({
                 value="RESOLVED"
                 checked={status === "RESOLVED"}
                 onChange={() => setStatus("RESOLVED")}
-                className="text-[#2f719e]"
+                className="text-[#059ff8]"
               />
               <span className="font-semibold text-green-800">تم الحل (RESOLVED)</span>
             </label>
@@ -854,7 +854,7 @@ export function ResolveReportDialog({
             value={resolutionNote}
             onChange={(e) => setResolutionNote(e.target.value)}
             placeholder="اكتب تفاصيل التواصل مع الراكب أو السائق والإجراء المتخذ (5 أحرف على الأقل)..."
-            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
             autoFocus
           />

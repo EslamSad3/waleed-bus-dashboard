@@ -7,8 +7,8 @@
 export const AR_ERROR_MAP: Record<string, string> = {
   AUTHENTICATION_FAILED: "بيانات الدخول غير صحيحة",
   ACCOUNT_ALREADY_EXISTS: "رقم الموبايل أو الرقم القومي مستخدم قبل كده",
-  ROLE_CONFIGURATION_INVALID: "إعدادات دور مالك الأسطول غير مكتملة",
-  BUS_ACTION_NOT_ALLOWED: "العملية مرفوضة: الأتوبيس عليه رحلة شغالة (DEPARTED)",
+  ROLE_CONFIGURATION_INVALID: "إعدادات دور صاحب العربيات غير مكتملة",
+  BUS_ACTION_NOT_ALLOWED: "العملية مرفوضة: العربية عليه رحلة شغالة (DEPARTED)",
   DRIVER_ASSIGNMENT_NOT_ALLOWED: "تعيين السواق مرفوض: مش نشط أو من أسطول تاني",
   RESOURCE_NOT_OWNED: "العنصر مش موجود في الأسطول ده",
   BUS_ACCESS_DENIED: "العنصر مش موجود في الأسطول ده",
@@ -38,8 +38,8 @@ export const AR_ERROR_MAP: Record<string, string> = {
   MARKAZ_IN_USE: "المركز مرتبط بمدن/قرى ومينفعش يتمسح — أوقفه بدلًا من ذلك",
   LOCALITY_IN_USE: "المدينة/القرية مرتبطة بنقاط توقف ومينفعش تتمسح — أوقفها بدلًا من ذلك",
   STOP_IN_USE: "نقطة التوقف مستخدمة في خط رحلة ومينفعش تتمسح — أوقفها بدلًا من ذلك",
-  INVALID_BRAND: "ماركة الأتوبيس المختارة غير متاحة",
-  INVALID_VEHICLE_YEAR: "سنة موديل الأتوبيس غير صالحة",
+  INVALID_BRAND: "ماركة العربية المختارة غير متاحة",
+  INVALID_VEHICLE_YEAR: "سنة موديل العربية غير صالحة",
   VIP_TIER_NOT_AVAILABLE: "مستوى VIP المختار غير متاح",
   INVALID_IMAGE_TYPE: "الصورة لازم تكون JPEG أو PNG أو WebP",
   IMAGE_TOO_LARGE: "حجم الصورة لازم يكون 5 ميجا أو أقل",
@@ -60,9 +60,9 @@ export const AR_ERROR_MAP: Record<string, string> = {
  */
 export const CONFLICT_MESSAGES = {
   REGISTRATION_TAKEN: "رقم التسجيل مستخدم قبل كده",
-  FLEET_REFERENCED: "الأسطول مرتبط بأتوبيسات أو رحلات أو حجوزات و مينفعش يتمسح",
+  FLEET_REFERENCED: "الأسطول مرتبط بعربيات أو رحلات أو حجوزات و مينفعش يتمسح",
   MEMBER_EXISTS: "المستخدم ده عضو في الأسطول ده قبل كده",
-  OWNER_LINK: "مشكلة في ربط مالك الأسطول، راجع بيانات المالك",
+  OWNER_LINK: "مشكلة في ربط صاحب العربيات، راجع بيانات المالك",
 } as const;
 
 export type ConflictKey = keyof typeof CONFLICT_MESSAGES;

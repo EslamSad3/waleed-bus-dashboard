@@ -78,7 +78,7 @@ const httpsUrl = z.url("رابط الصورة لازم يبدأ بـ https://").
 );
 const modelYear = z.number("سنة الموديل غير صحيحة").int("سنة الموديل غير صحيحة").min(1980, "سنة الموديل غير صحيحة").max(2100, "سنة الموديل غير صحيحة");
 export const createBusSchema = z.object({
-  registrationNumber: z.string("الحقل ده مطلوب").min(1, "الحقل ده مطلوب").max(50),
+  registrationNumber: z.string("الحقل ده مطلوب").max(50).optional(),
   plateNumber: z.string("رقم اللوحة مطلوب").min(1, "رقم اللوحة مطلوب").max(50),
   color: z.string("اللون مطلوب").min(1, "اللون مطلوب").max(50),
   imageUrl: httpsUrl,

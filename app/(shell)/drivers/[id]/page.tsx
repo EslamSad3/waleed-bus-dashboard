@@ -12,6 +12,7 @@ import {
   type Member,
 } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
+import { qk, patchDetail, useApiQuery } from "@/lib/queries";
 import { Dialog } from "@/components/ui/dialog";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
@@ -31,26 +32,27 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   const setFleetId = useFilterStore((s) => s.setFleetId);
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [status, setStatus] = useState<Member["status"]>("ACTIVE");
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
-  useEffect(() => {
-    if (!fleetId) return;
-    const key = `${fleetId}/${id}`;
-    fetchDriver(fleetId, id).then((r) => {
-      if (r.ok) {
-        setDriver(r.data);
-        if (r.data.status === "ACTIVE" || r.data.status === "SUSPENDED" || r.data.status === "REVOKED") {
-          setStatus(r.data.status);
-        }
-        setFailed(null);
-      } else setFailed(r.message);
-      setLoadedKey(key);
-    });
-  }, [fleetId, id]);
+  // TanStack cache: the driver detail is fetched through the query layer and
+  // mutations patch the same cache slot — the view stays live after dialogs.
+  const { data: driverData, error: driverError } = useApiQuery<DriverRow>(
+    qk.driver(fleetId ?? "unknown", id),
+    () => fetchDriver(fleetId!, id),
+    { enabled: Boolean(fleetId) },
+  );
+  const fetchFailed = driverError?.message ?? null;
+  const [seenDriver, setSeenDriver] = useState<DriverRow | null>(null);
+  if (driverData && driverData !== seenDriver) {
+    setSeenDriver(driverData);
+    setDriver(driverData);
+    if (driverData.status === "ACTIVE" || driverData.status === "SUSPENDED" || driverData.status === "REVOKED") {
+      setStatus(driverData.status);
+    }
+  }
 
   async function save() {
     if (!fleetId) return;
@@ -99,8 +101,8 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
       </div>
     );
   }
-  if (failed && loadedKey === `${fleetId}/${id}`) return <p role="alert" className="text-sm text-red-600">{failed}</p>;
-  if (!driver || loadedKey !== `${fleetId}/${id}`) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
+  if (failed || fetchFailed) return <p role="alert" className="text-sm text-red-600">{failed ?? fetchFailed}</p>;
+  if (!driver) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   const assignmentColumns: CommunityColumnDef<DriverAssignment>[] = [
     { field: "registrationNumber", headerName: "رقم التسجيل", filter: "agTextColumnFilter" },
@@ -109,7 +111,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="dashboard-page">
-      <div><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات الأتوبيسات.</p></div>
+      <div><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات العربيات.</p></div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {note && <p role="status" className="text-sm text-green-700">{note}</p>}

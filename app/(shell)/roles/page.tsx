@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -9,33 +9,19 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import { createRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
+import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 type FirstPage = { items: Role[]; nextCursor: string | null };
 
 export default function RolesPage() {
   const router = useRouter();
-  const [first, setFirst] = useState<FirstPage | null>(null);
+  const queryClient = useQueryClient();
+  const { data: first, isLoading, error: fetchError } = useApiQuery<FirstPage>(qk.roles, () => fetchRolesPage(null));
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchRolesPage(null).then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        setFirst(result.data);
-        setError(null);
-      } else {
-        setError(result.message);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function save() {
     if (!name.trim()) {
@@ -50,6 +36,7 @@ export default function RolesPage() {
       setError(result.message);
       return;
     }
+    upsertInCursorList(queryClient, qk.roles, result.data);
     setOpen(false);
     router.push(`/roles/${result.data.id}`);
   }
@@ -64,10 +51,10 @@ export default function RolesPage() {
         <Button type="button" onClick={() => setOpen(true)}><Plus aria-hidden="true" /> مستوى وصول جديد</Button>
       </div>
 
-      {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {!first ? <p className="text-sm text-[#606060]">جاري التحميل…</p> : <CursorList<Role>
-        initialItems={first.items}
-        initialCursor={first.nextCursor}
+      {(error || fetchError) ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error ?? fetchError?.message ?? "حصلت مشكلة"}</p> : null}
+      {isLoading ? <p className="text-sm text-[#606060]">جاري التحميل…</p> : <CursorList<Role>
+        initialItems={first?.items ?? []}
+        initialCursor={first?.nextCursor ?? null}
         loadMore={(cursor) => fetchRolesPage(cursor).then((result) => {
           if (!result.ok) throw new Error(result.message);
           return result.data;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
@@ -8,28 +8,25 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
+import { rankOrdinalAr } from "@/lib/ordinals";
+import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 export default function VipTiersPage() {
-  const [rows, setRows] = useState<VipTier[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  // TanStack cache: edits land here instantly on dialog close — no reload.
+  const { data: rows, isLoading, error } = useApiQuery<VipTier[]>(qk.vipTiers, () => fetchVipTiers(true));
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VipTier | null>(null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [rank, setRank] = useState("1");
-
-  useEffect(() => {
-    fetchVipTiers(true).then((result) => {
-      if (result.ok) { setRows(result.data); setError(null); }
-      else setError(result.message);
-    });
-  }, []);
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   function openCreate() {
     setEditing(null);
     setName("");
     setRank(String((rows?.length ?? 0) + 1));
-    setError(null);
+    setDialogError(null);
     setCreating(true);
   }
 
@@ -38,12 +35,18 @@ export default function VipTiersPage() {
     setEditing(tier);
     setName(tier.name);
     setRank(String(tier.rank));
-    setError(null);
+    setDialogError(null);
+  }
+
+  function closeDialog() {
+    setCreating(false);
+    setEditing(null);
+    setDialogError(null);
   }
 
   async function save() {
     if (!name.trim() || !rank) {
-      setError("أدخل اسم المستوى والترتيب.");
+      setDialogError("أدخل اسم المستوى والترتيب.");
       return;
     }
     setSaving(true);
@@ -51,21 +54,17 @@ export default function VipTiersPage() {
       ? await updateVipTier(editing.id, { name: name.trim(), rank: Number(rank) })
       : await createVipTier({ name: name.trim(), rank: Number(rank) });
     setSaving(false);
-    if (!result.ok) return setError(result.message);
-    if (editing) {
-      setRows((items) => items?.map((t) => (t.id === result.data.id ? result.data : t)) ?? [result.data]);
-      setEditing(null);
-    } else {
-      setRows((items) => [...(items ?? []), result.data].sort((a, b) => a.rank - b.rank));
-      setCreating(false);
-    }
-    setError(null);
+    if (!result.ok) return setDialogError(result.message);
+    // Instant cache write → الجدول بيتحدث في نفس اللحظة.
+    upsertInList(queryClient, qk.vipTiers, result.data);
+    queryClient.invalidateQueries({ queryKey: qk.vipTiers });
+    closeDialog();
   }
 
   async function toggleActive(tier: VipTier) {
     const result = await updateVipTier(tier.id, { isActive: !tier.isActive });
-    if (!result.ok) return setError(result.message);
-    setRows((items) => items?.map((t) => (t.id === result.data.id ? result.data : t)) ?? []);
+    if (!result.ok) return setDialogError(result.message);
+    upsertInList(queryClient, qk.vipTiers, result.data);
   }
 
   const dialogOpen = creating || editing !== null;
@@ -75,7 +74,8 @@ export default function VipTiersPage() {
       field: "rank",
       headerName: "الترتيب",
       filter: "agNumberColumnFilter",
-      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">VIP {params.data.rank}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
+      valueFormatter: (params) => rankOrdinalAr(params.value as number),
+      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
     },
     { field: "name", headerName: "الاسم" },
     {
@@ -101,27 +101,30 @@ export default function VipTiersPage() {
       <div className="page-heading">
         <div>
           <h1 className="page-title">مستويات VIP</h1>
-          <p className="page-description">ترتيب ظهور ملاك الأساطيل في نتائج البحث — الأقل ترتيبًا يظهر أولًا.</p>
+          <p className="page-description">ترتيب ظهور أصحاب العربيات في نتائج البحث — الأقل ترتيبًا يظهر أولًا.</p>
         </div>
         <Button onClick={openCreate}><Plus className="size-4" /> مستوى جديد</Button>
       </div>
-      {error && !dialogOpen ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {!rows ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+      {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
+      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
         <AgGridTable<VipTier>
-          key={rows.map((t) => `${t.id}:${t.rank}:${t.isActive}`).join("|")}
+          key={rows?.map((t) => `${t.id}:${t.rank}:${t.isActive}`).join("|") ?? "empty"}
           gridId="vip-tiers"
-          rows={rows}
+          rows={rows ?? []}
           columnDefs={columns}
-          emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة VIP 1."
+          emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة أول مستوى."
           getRowId={(t) => t.id}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? "تعديل المستوى" : "مستوى جديد"} description="الترتيب رقم فريد — 1 يظهر أولًا." size="sm">
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المستوى" : "مستوى جديد"} description="الترتيب رقم فريد — الأول في القائمه يظهر أولًا." size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="VIP 1" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ذهبي" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الترتيب</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={rank} onChange={(event) => setRank(event.target.value)} /></label>
-          {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>إلغاء</Button><Button type="button" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button></div>
+          {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
+          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
+            <Button type="button" variant="success" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button>
+          </div>
         </div>
       </Dialog>
     </div>

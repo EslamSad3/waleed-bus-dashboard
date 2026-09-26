@@ -63,11 +63,23 @@ export const fetchStops = () => apiGet<Stop[]>("/api/stops");
 export const fetchGovernorates = () => apiGet<Governorate[]>("/api/governorates");
 export const fetchMarkaz = (governorateId: string, includeInactive = false) =>
   apiGet<Markaz[]>(`/api/governorates/${governorateId}/markaz${includeInactive ? "?includeInactive=true" : ""}`);
+export const fetchMarkazAll = (includeInactive = true) =>
+  apiGet<Markaz[]>(`/api/markaz${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchMarkazById = (id: string) => apiGet<Markaz>(`/api/markaz/${id}`);
 export const createMarkaz = (input: { governorateId: string; code: string; nameAr: string; nameEn: string; isActive?: boolean }) => apiSend<Markaz>("/api/markaz", "POST", input);
 export const updateMarkaz = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) => apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input);
 export const fetchLocalities = (markazId: string, includeInactive = false) =>
   apiGet<Locality[]>(`/api/markaz/${markazId}/localities${includeInactive ? "?includeInactive=true" : ""}`);
+export const fetchLocalitiesAll = (
+  filters: { governorateId?: string | null; markazId?: string | null; includeInactive?: boolean } = {},
+) => {
+  const params = new URLSearchParams();
+  if (filters.governorateId) params.set("governorateId", filters.governorateId);
+  if (filters.markazId) params.set("markazId", filters.markazId);
+  if (filters.includeInactive) params.set("includeInactive", "true");
+  const qs = params.toString();
+  return apiGet<Locality[]>(`/api/localities${qs ? `?${qs}` : ""}`);
+};
 export const fetchLocalityById = (id: string) => apiGet<Locality>(`/api/localities/${id}`);
 export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; nameEn: string; isActive?: boolean }) => apiSend<Locality>("/api/localities", "POST", input);
 export const updateLocality = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) => apiSend<Locality>(`/api/localities/${id}`, "PATCH", input);

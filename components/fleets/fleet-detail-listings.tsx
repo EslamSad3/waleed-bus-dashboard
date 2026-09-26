@@ -67,7 +67,7 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
   const { first, error } = useFleetListing<Bus>(fleetId, fetchBusesPage);
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="أتوبيسات الأسطول" actionHref="/buses/new" actionLabel="إضافة أتوبيس" />
+      <TabHeader title="عربيات الأسطول" actionHref="/buses" actionLabel="إضافة عربية" />
       <ListingShell error={error} isLoading={!first}>
         {first && <CursorList<Bus>
           key={fleetId}
@@ -78,9 +78,9 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
             return result.data;
           })}
           keyOf={(bus) => bus.id}
-          emptyMessage="لا توجد أتوبيسات مسجلة في هذا الأسطول"
+          emptyMessage="لا توجد عربيات مسجلة في هذا الأسطول"
           renderItem={(bus) => (
-            <Link href={`/buses/${bus.id}`} className="list-card">
+            <Link href={`/buses/${bus.id}?fleetId=${fleetId}`} className="list-card">
               <span className="font-semibold text-[#1a1a1a]"><span dir="ltr">{bus.registrationNumber}</span>{bus.plateNumber ? <span className="text-sm text-[#606060]"> · <span dir="ltr">{bus.plateNumber}</span></span> : null}</span>
               <span className="flex items-center gap-3 text-sm text-[#606060]"><span>السعة <span dir="ltr">{bus.capacity}</span></span><span className={bus.isActive ? "status-pill" : "status-pill status-pill-muted"}>{bus.isActive ? "نشط" : "موقوف"}</span></span>
             </Link>
@@ -95,7 +95,7 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
   const { first, error } = useFleetListing<Trip>(fleetId, fetchTripsPage);
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="رحلات الأسطول" actionHref="/trips/new" actionLabel="إضافة رحلة" />
+      <TabHeader title="رحلات الأسطول" actionHref="/trips" actionLabel="إضافة رحلة" />
       <ListingShell error={error} isLoading={!first}>
         {first && <CursorList<Trip>
           key={fleetId}
@@ -123,7 +123,7 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
   const { first, error } = useFleetListing<Booking>(fleetId, fetchBookingsPage);
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="حجوزات الأسطول" actionHref="/bookings/new" actionLabel="إضافة حجز" />
+      <TabHeader title="حجوزات الأسطول" actionHref="/bookings" actionLabel="إضافة حجز" />
       <ListingShell error={error} isLoading={!first}>
         {first && <CursorList<Booking>
           key={fleetId}
@@ -178,9 +178,9 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
       <ListingShell error={error} isLoading={!data}>
         {data && <div className="space-y-5">
           <dl className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-[#edf6fc] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم الأتوبيس</dt><dd className="mt-1 text-xl font-bold text-[#204c6b]">{data.ratingSummary.busAvg?.toFixed(1) ?? "—"}</dd></div>
-            <div className="rounded-xl bg-[#edf6fc] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم السائق</dt><dd className="mt-1 text-xl font-bold text-[#204c6b]">{data.ratingSummary.driverAvg?.toFixed(1) ?? "—"}</dd></div>
-            <div className="rounded-xl bg-[#edf6fc] p-4"><dt className="text-sm text-[#5e6b78]">الحجوزات المُقيّمة</dt><dd className="mt-1 text-xl font-bold text-[#204c6b]">{data.ratingSummary.count}</dd></div>
+            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم العربية</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.busAvg?.toFixed(1) ?? "—"}</dd></div>
+            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم السائق</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.driverAvg?.toFixed(1) ?? "—"}</dd></div>
+            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">الحجوزات المُقيّمة</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.count}</dd></div>
           </dl>
           <AgGridTable<FleetReport>
             gridId={`fleet-reports-${fleetId}`}

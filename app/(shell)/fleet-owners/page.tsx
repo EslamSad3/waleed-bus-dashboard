@@ -1,23 +1,169 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
-import { fetchFleetOwnersPage, type FleetOwnerAccount } from "@/lib/actions/fleet-owners";
+import {
+  createFleetOwner,
+  fetchFleetOwnersPage,
+  uploadFleetOwnerPicture,
+  type FleetOwnerAccount,
+} from "@/lib/actions/fleet-owners";
+import { createFleet } from "@/lib/actions/fleets";
+import { createFleetOwnerSchema } from "@/lib/schemas/p1";
+import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+
+type Page = { items: FleetOwnerAccount[]; nextCursor: string | null };
+
+/** نافذة إضافة صاحب عربية — الصورة بتترفع كملف (FormData) مش لينك. */
+function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [fleetName, setFleetName] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function resetForm() {
+    setName(""); setNickname(""); setPhone(""); setNationalId(""); setFleetName("");
+    setPassword(""); setPasswordConfirmation(""); setImageFile(null);
+    setError(null);
+  }
+
+  async function submit() {
+    setError(null);
+    const parsed = createFleetOwnerSchema.safeParse({
+      name, nickname, phone, fleetName,
+      password,
+      nationalId: nationalId || undefined,
+      picture: undefined,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "أكمل البيانات المطلوبة.");
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError("كلمتا السر غير متطابقتين");
+      return;
+    }
+    setSaving(true);
+    const result = await createFleetOwner({
+      name: name.trim(),
+      nickname: nickname.trim(),
+      phone,
+      password,
+      fleetName: fleetName.trim(),
+      nationalId: nationalId || undefined,
+    });
+    if (!result.ok) {
+      setSaving(false);
+      setError(result.message);
+      return;
+    }
+    // الصورة بتترفع كملف FormData بعد إنشاء الحساب — مش لينك مكتوب بالإيد.
+    if (imageFile) {
+      const uploaded = await uploadFleetOwnerPicture(result.data.id, imageFile);
+      if (!uploaded.ok) setError(uploaded.message);
+    }
+    setSaving(false);
+    const refreshed = await fetchFleetOwnersPage(null);
+    if (refreshed.ok) queryClient.setQueryData<Page>(qk.fleetOwners, refreshed.data);
+    resetForm();
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة صاحب عربية" description="هننشئ الحساب والأسطول الأول وعضوية المالك في خطوة واحدة." size="lg">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالكامل</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="أحمد حسن" autoComplete="name" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الشهرة</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="أحمد" autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">رقم الموبايل</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الرقم القومي (اختياري)</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder="14 رقم" autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الأسطول</span><Input value={fleetName} onChange={(event) => setFleetName(event.target.value)} placeholder="نقل أحمد" autoComplete="organization" /></label>
+        <ImagePicker
+          label="صورة المالك (اختياري)"
+          file={imageFile}
+          onChange={setImageFile}
+          uploading={saving && Boolean(imageFile)}
+          hint="بتترفع كملف للتخزين السحابي — من غير روابط."
+        />
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كلمة السر</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تأكيد كلمة السر</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
+        {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
+        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الإنشاء…" : "إنشاء المالك والأسطول"}</Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/** نافذة إضافة أسطول لصاحب عربية موجود (issue 13). */
+function AddFleetToOwnerDialog({ open, owner, onClose }: { open: boolean; owner: FleetOwnerAccount | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [fleetName, setFleetName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function resetForm() {
+    setFleetName("");
+    setError(null);
+  }
+
+  async function submit() {
+    if (!owner) return;
+    setError(null);
+    if (!fleetName.trim()) {
+      setError("اكتب اسم الأسطول.");
+      return;
+    }
+    setSaving(true);
+    const result = await createFleet({ name: fleetName.trim(), ownerId: owner.id, ownerRoleSlug: "fleet-owner" });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    const refreshed = await fetchFleetOwnersPage(null);
+    if (refreshed.ok) queryClient.setQueryData<Page>(qk.fleetOwners, refreshed.data);
+    resetForm();
+    onClose();
+  }
+
+  return (
+    <Dialog open={open && Boolean(owner)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة أسطول لصاحب عربية" description={owner ? `هنضيف أسطول جديد ملكه ${owner.name} — الدور الابتدائي ثابت fleet-owner.` : undefined} size="sm">
+      <div className="space-y-4">
+        <label className="block text-sm">
+          <span className="mb-1.5 block font-bold text-[#334454]">اسم الأسطول</span>
+          <Input value={fleetName} onChange={(event) => setFleetName(event.target.value)} placeholder="أسطول الجيزة" />
+        </label>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الإضافة…" : "إضافة الأسطول"}</Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
 
 export default function FleetOwnersPage() {
-  const [page, setPage] = useState<{ items: FleetOwnerAccount[]; nextCursor: string | null } | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [fleetOwnerForFleet, setFleetOwnerForFleet] = useState<FleetOwnerAccount | null>(null);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    fetchFleetOwnersPage(null).then((result) => {
-      if (result.ok) { setPage(result.data); setFailed(null); }
-      else setFailed(result.message);
-    });
-  }, []);
+  const { data: page, isLoading, error } = useApiQuery<Page>(qk.fleetOwners, () => fetchFleetOwnersPage(null));
 
   const term = query.trim().toLocaleLowerCase("ar-EG");
   const filter = (owner: FleetOwnerAccount) =>
@@ -28,42 +174,45 @@ export default function FleetOwnersPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div>
-          <h1 className="page-title">ملاك الأساطيل</h1>
+          <h1 className="page-title">أصحاب العربيات</h1>
           <p className="page-description">حساب المالك والأسطول الأول بيتعملوا مع بعض بأمان.</p>
         </div>
-        <Button asChild><Link href="/fleet-owners/new">إضافة مالك</Link></Button>
+        <Button onClick={() => setCreateOpen(true)}>إضافة مالك</Button>
       </div>
 
-      {failed ? <p role="alert" className="text-sm text-red-600">{failed}</p> : !page ? (
+      {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isLoading ? (
         <p className="text-sm text-[#606060]">جاري التحميل…</p>
       ) : (
         <CursorList
-          initialItems={page.items}
-          initialCursor={page.nextCursor}
+          initialItems={page?.items ?? []}
+          initialCursor={page?.nextCursor ?? null}
           loadMore={(cursor) => fetchFleetOwnersPage(cursor).then((result) => {
             if (!result.ok) throw new Error(result.message);
             return result.data;
           })}
           keyOf={(owner) => owner.id}
           filter={filter}
-          filterBar={<Input aria-label="بحث في ملاك الأساطيل" placeholder="الاسم، الموبايل أو الأسطول" value={query} onChange={(event) => setQuery(event.target.value)} className="max-w-sm bg-white" />}
-          emptyMessage="لا يوجد ملاك أساطيل بعد"
+          filterBar={<Input aria-label="بحث في أصحاب العربيات" placeholder="الاسم، الموبايل أو الأسطول" value={query} onChange={(event) => setQuery(event.target.value)} className="max-w-sm bg-white" />}
+          emptyMessage="لا يوجد أصحاب عربيات بعد"
           renderItem={(owner) => (
-            <Link href={`/fleet-owners/${owner.id}`} className="list-card">
-              <span>
+            <div className="list-card">
+              <Link href={`/fleet-owners/${owner.id}`} className="min-w-0 flex-1">
                 <span className="block font-semibold">{owner.name}</span>
                 <span className="text-sm text-[#606060]" dir="ltr">{owner.phoneNumber}</span>
-              </span>
+              </Link>
               <span className="text-right text-sm text-[#5e6b78] sm:text-left">
                 <span className="block font-medium text-[#1a1a1a]">{owner.fleets[0]?.name ?? "بدون أسطول"}</span>
                 <span className={owner.isActive ? "status-pill mt-1" : "status-pill status-pill-muted mt-1"}>
                   {owner.isActive ? "نشط" : "موقوف"}
                 </span>
               </span>
-            </Link>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setFleetOwnerForFleet(owner)}>إضافة أسطول</Button>
+            </div>
           )}
         />
       )}
+      <CreateFleetOwnerDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <AddFleetToOwnerDialog open={Boolean(fleetOwnerForFleet)} owner={fleetOwnerForFleet} onClose={() => setFleetOwnerForFleet(null)} />
     </div>
   );
 }

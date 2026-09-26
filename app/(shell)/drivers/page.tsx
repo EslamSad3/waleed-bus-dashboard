@@ -1,37 +1,129 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ImagePicker } from "@/components/ui/image-picker";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { fetchSystemDriversPage, MEMBER_STATUS_AR, type SystemDriverRow } from "@/lib/actions/members";
+import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
+import { fetchSystemDriversPage, inviteDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
+import { uploadUserPicture } from "@/lib/actions/users";
+import { driverFreshSchema } from "@/lib/schemas/p1";
+import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 
-export default function DriversPage() {
-  const [drivers, setDrivers] = useState<SystemDriverRow[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
+
+/** نافذة إضافة سواق — الصورة بتترفع كملف (FormData) مش لينك. */
+function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [fleetId, setFleetId] = useState("");
+  const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSystemDriversPage(null).then((result) => {
-      if (!result.ok) {
-        setError(result.message);
-      } else {
-        setDrivers(result.data.items);
-        setNextCursor(result.data.nextCursor);
-        setError(null);
-      }
-      setLoading(false);
+  function resetForm() {
+    setFleetId(""); setName(""); setNickname(""); setPhone(""); setNationalId("");
+    setPassword(""); setPasswordConfirmation(""); setImageFile(null); setError(null);
+  }
+
+  async function submit() {
+    setError(null);
+    if (!fleetId) {
+      setError("اختار صاحب العربيات ثم الأسطول المطلوب");
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError("كلمتا السر غير متطابقتين");
+      return;
+    }
+    const parsed = driverFreshSchema.safeParse({
+      name: name.trim(),
+      nickname: nickname.trim(),
+      phone,
+      password,
+      nationalId: nationalId || undefined,
+      picture: undefined,
     });
-  }, []);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "أكمل البيانات المطلوبة.");
+      return;
+    }
+    setSaving(true);
+    const result = await inviteDriver(fleetId, {
+      name: name.trim(),
+      nickname: nickname.trim(),
+      phone,
+      password,
+      nationalId: nationalId || undefined,
+    });
+    if (!result.ok) {
+      setSaving(false);
+      setError(result.message);
+      return;
+    }
+    // الصورة بتترفع كملف FormData بعد إنشاء الحساب — مش لينك مكتوب بالإيد.
+    if (imageFile) {
+      const driverUserId = result.data.userId ?? result.data.id;
+      const uploaded = await uploadUserPicture(driverUserId, imageFile);
+      if (!uploaded.ok) setError(uploaded.message);
+    }
+    const refreshed = await fetchSystemDriversPage(null);
+    if (refreshed.ok) queryClient.setQueryData<DriverPage>(qk.drivers, refreshed.data);
+    else upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, { ...result.data, fleet: { id: fleetId, name: "" }, fleetOwner: { id: "", name: null, phoneNumber: null }, assignedBus: null });
+    setSaving(false);
+    resetForm();
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة سواق" description="اختار صاحب العربيات الأول. تعيين العربية بيتعمل لاحقًا من صفحة العربية." size="lg">
+      <div>
+        <div className="mb-5"><FleetOwnerFleetPicker fleetId={fleetId} onFleetChange={setFleetId} /></div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالكامل</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="كريم علي" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الشهرة</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="كريم" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">رقم الموبايل</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الرقم القومي (اختياري)</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder="14 رقم" /></label>
+          <ImagePicker
+            label="صورة السواق (اختياري)"
+            file={imageFile}
+            onChange={setImageFile}
+            uploading={saving && Boolean(imageFile)}
+            hint="بتترفع كملف للتخزين السحابي — من غير روابط."
+          />
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كلمة السر</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تأكيد كلمة السر</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
+          {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
+          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
+            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+            <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الإنشاء…" : "إنشاء حساب السواق"}</Button>
+          </div>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+export default function DriversPage() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const { data: page, isLoading, error } = useApiQuery<DriverPage>(qk.drivers, () => fetchSystemDriversPage(null));
+  const drivers = page?.items ?? [];
 
   const columns: CommunityColumnDef<SystemDriverRow>[] = [
     { field: "name", headerName: "السواق", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "بدون اسم" },
     { field: "phoneNumber", headerName: "الموبايل", filter: "agTextColumnFilter" },
     { field: "fleet.name", headerName: "الأسطول", valueGetter: (params) => params.data?.fleet.name },
-    { field: "fleetOwner.name", headerName: "مالك الأسطول", valueGetter: (params) => params.data?.fleetOwner.name || "بدون اسم" },
-    { field: "assignedBus.registrationNumber", headerName: "الأتوبيس المعيّن", valueGetter: (params) => params.data?.assignedBus?.registrationNumber || "غير معيّن" },
+    { field: "fleetOwner.name", headerName: "صاحب العربيات", valueGetter: (params) => params.data?.fleetOwner.name || "بدون اسم" },
+    { field: "assignedBus.registrationNumber", headerName: "العربية المعيّنة", valueGetter: (params) => params.data?.assignedBus?.registrationNumber || "غير معيّنة" },
     {
       field: "status",
       headerName: "الحالة",
@@ -56,27 +148,27 @@ export default function DriversPage() {
       <div className="page-heading">
         <div>
           <h1 className="page-title">السواقين</h1>
-          <p className="page-description">كل حسابات السواقين في النظام، مع الأسطول ومالك الأسطول والأتوبيس المعيّن حاليًا.</p>
+          <p className="page-description">كل حسابات السواقين في النظام، مع الأسطول وصاحب العربيات والعربية المعيّنة حاليًا.</p>
         </div>
-        <Button asChild><Link href="/drivers/new">إضافة سواق</Link></Button>
+        <Button onClick={() => setCreateOpen(true)}>إضافة سواق</Button>
       </div>
 
-      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       <AgGridTable<SystemDriverRow>
-        key={`${drivers[0]?.id ?? "loading"}-${drivers.length}`}
         gridId="drivers"
         rows={drivers}
         columnDefs={columns}
-        nextCursor={nextCursor}
+        nextCursor={page?.nextCursor ?? null}
         loadMore={async (cursor) => {
           const result = await fetchSystemDriversPage(cursor);
           if (!result.ok) throw new Error(result.message);
           return result.data;
         }}
-        loading={loading}
+        loading={isLoading}
         emptyMessage="لا يوجد سواقون مطابقون للبحث."
         getRowId={(driver) => driver.id}
       />
+      <CreateDriverDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

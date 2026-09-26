@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import { fetchPermissionCatalog, type Permission } from "@/lib/actions/permissions";
+import { qk, useApiQuery } from "@/lib/queries";
 import { presentPermission } from "@/lib/permission-presentation";
 
 type FirstPage = { items: Permission[]; nextCursor: string | null };
@@ -12,20 +13,13 @@ type FirstPage = { items: Permission[]; nextCursor: string | null };
  * entries do not create a feature; access is granted from a role instead.
  */
 export default function PermissionsPage() {
-  const [first, setFirst] = useState<FirstPage | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: catalog, isLoading, error } = useApiQuery<Permission[]>(qk.permissions, fetchPermissionCatalog);
+  const first: FirstPage | null = catalog ? { items: catalog, nextCursor: null } : null;
   const grouped = useMemo(() => (first?.items ?? []).reduce<Record<string, Permission[]>>((groups, permission) => {
     const group = presentPermission(permission).group;
     (groups[group] ??= []).push(permission);
     return groups;
   }, {}), [first]);
-
-  useEffect(() => {
-    fetchPermissionCatalog().then((result) => {
-      if (result.ok) { setFirst({ items: result.data, nextCursor: null }); setError(null); }
-      else setError(result.message);
-    });
-  }, []);
 
   return (
     <div className="dashboard-page">
@@ -35,8 +29,8 @@ export default function PermissionsPage() {
           <p className="page-description">شرح للمهام المتاحة داخل المنصة. لتحديد من يستطيع تنفيذها، افتح مستوى الوصول المناسب.</p>
         </div>
       </div>
-      {error ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {!first ? <p className="text-sm text-[#606060]">جاري التحميل…</p> : <div className="space-y-5">{Object.entries(grouped).map(([group, permissions]) => <section key={group} className="panel-card p-5 sm:p-6"><h2 className="section-title mb-4">{group}</h2><CursorList<Permission>
+      {error ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
+      {isLoading ? <p className="text-sm text-[#606060]">جاري التحميل…</p> : <div className="space-y-5">{Object.entries(grouped).map(([group, permissions]) => <section key={group} className="panel-card p-5 sm:p-6"><h2 className="section-title mb-4">{group}</h2><CursorList<Permission>
         initialItems={permissions}
         initialCursor={null}
         loadMore={async () => ({ items: [], nextCursor: null })}

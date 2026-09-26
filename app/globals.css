@@ -1,32 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #2f719e;
-  --color-primary-deep: #204c6b;
-  --color-primary-soft: #daeaf5;
-  --color-primary-wash: #edf6fc;
+  --color-primary: #00134c;
+  --color-primary-deep: #000b26;
+  --color-primary-soft: #d6eeff;
+  --color-primary-wash: #eaf6ff;
+  --color-secondary: #059ff8;
   --color-accent: #fff7e3;
   --color-ink: #17212b;
   --color-body: #5e6b78;
   --color-mute: #8b98a5;
-  --color-navy: #10153c;
-  --color-navy-deep: #0e0b2c;
+  --color-navy: #00134c;
+  --color-navy-deep: #000b26;
   --radius-xl: 1.25rem;
   --radius-2xl: 1.75rem;
 }
 
 :root {
-  --primary: #2f719e;
-  --primary-deep: #204c6b;
-  --primary-soft: #daeaf5;
-  --primary-wash: #edf6fc;
+  --primary: #00134c;
+  --primary-deep: #000b26;
+  --primary-soft: #d6eeff;
+  --primary-wash: #eaf6ff;
+  --secondary: #059ff8;
   --accent: #fff7e3;
   --foreground: #17212b;
   --muted-foreground: #5e6b78;
   --line: #dce6ee;
   --surface: rgba(255, 255, 255, 0.9);
-  --shadow-sm: 0 10px 35px rgba(29, 64, 89, 0.07);
-  --shadow-md: 0 18px 55px rgba(29, 64, 89, 0.11);
+  --shadow-sm: 0 10px 35px rgba(0, 19, 76, 0.07);
+  --shadow-md: 0 18px 55px rgba(0, 19, 76, 0.11);
   --radius: 1.25rem;
 }
 
@@ -55,7 +57,7 @@ select {
 }
 
 ::selection {
-  background: #c4def3;
+  background: #bfe4ff;
   color: #17212b;
 }
 
@@ -76,7 +78,7 @@ input:-webkit-autofill:focus {
 }
 
 .title-grad {
-  background: linear-gradient(91deg, #3e95d1 0.74%, #204c6b 95.01%);
+  background: linear-gradient(91deg, #059ff8 0.74%, #00134c 95.01%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -85,7 +87,7 @@ input:-webkit-autofill:focus {
 .navy-band {
   background:
     radial-gradient(circle at 15% 30%, rgba(62, 149, 209, 0.25), transparent 22rem),
-    linear-gradient(125deg, #0e0b2c 0%, #10153c 52%, #183d58 100%);
+    linear-gradient(125deg, #000b26 0%, #00134c 52%, #05468f 100%);
 }
 
 .dashboard-page {
@@ -107,7 +109,7 @@ input:-webkit-autofill:focus {
   line-height: 1.2;
   font-weight: 800;
   letter-spacing: -0.025em;
-  color: #204c6b;
+  color: #00134c;
 }
 
 .page-description {
@@ -151,7 +153,7 @@ input:-webkit-autofill:focus {
 
 .select-field:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(47, 113, 158, 0.12);
+  box-shadow: 0 0 0 4px rgba(5, 159, 248, 0.16);
 }
 
 .list-card {
@@ -170,7 +172,7 @@ input:-webkit-autofill:focus {
 
 .list-card:hover {
   transform: translateY(-2px);
-  border-color: #a9cce3;
+  border-color: #8fd2ff;
   background: #fff;
   box-shadow: 0 14px 38px rgba(29, 64, 89, 0.11);
 }
@@ -223,7 +225,7 @@ input:-webkit-autofill:focus {
   margin-bottom: 0.9rem;
   font-size: 1rem;
   font-weight: 800;
-  color: #204c6b;
+  color: #00134c;
 }
 
 .ag-grid-shell {
@@ -259,7 +261,7 @@ input:-webkit-autofill:focus {
 
 .ag-grid-search:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(47, 113, 158, 0.12);
+  box-shadow: 0 0 0 4px rgba(5, 159, 248, 0.16);
 }
 
 .ag-grid-export,
@@ -277,12 +279,12 @@ input:-webkit-autofill:focus {
 
 .ag-grid-export:hover,
 .ag-grid-load-more:hover {
-  background: #c4def3;
+  background: #bfe4ff;
 }
 
 .ag-grid-export:focus-visible,
 .ag-grid-load-more:focus-visible {
-  outline: 3px solid rgba(47, 113, 158, 0.3);
+  outline: 3px solid rgba(5, 159, 248, 0.35);
   outline-offset: 2px;
 }
 
@@ -334,7 +336,7 @@ input:-webkit-autofill:focus {
 }
 
 .ag-grid-viewport .ag-cell .list-card:hover {
-  background: #edf6fc;
+  background: #eaf6ff;
   box-shadow: none;
 }
 
@@ -345,7 +347,7 @@ input:-webkit-autofill:focus {
   min-width: 4.5rem;
   min-height: 2.2rem;
   border-radius: 0.65rem;
-  background: #edf6fc;
+  background: #eaf6ff;
   color: var(--primary-deep);
   font-size: 0.8rem;
   font-weight: 800;
@@ -353,11 +355,11 @@ input:-webkit-autofill:focus {
 }
 
 .ag-grid-row-action:hover {
-  background: #daeaf5;
+  background: #d6eeff;
 }
 
 .ag-grid-row-action:focus-visible {
-  outline: 3px solid rgba(47, 113, 158, 0.3);
+  outline: 3px solid rgba(5, 159, 248, 0.35);
   outline-offset: 2px;
 }
 

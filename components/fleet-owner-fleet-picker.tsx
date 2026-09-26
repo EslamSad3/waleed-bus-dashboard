@@ -62,15 +62,15 @@ export function FleetOwnerFleetPicker({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="block text-sm">
-        <span className="mb-2 block font-bold text-[#334454]">مالك الأسطول</span>
+        <span className="mb-2 block font-bold text-[#334454]">صاحب العربيات</span>
         <select
-          aria-label="مالك الأسطول"
+          aria-label="صاحب العربيات"
           value={ownerId}
           onChange={(event) => chooseOwner(event.target.value)}
           disabled={!loaded}
           className="select-field w-full"
         >
-          <option value="">اختار مالك الأسطول</option>
+          <option value="">اختار صاحب العربيات</option>
           {ownerOptions.map((owner) => <option key={owner.id} value={owner.id}>{owner.label}</option>)}
         </select>
       </label>
@@ -86,7 +86,7 @@ export function FleetOwnerFleetPicker({
       ) : null}
 
       {error ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">{error}</p> : null}
-      <p className="text-xs leading-5 text-[#606060] sm:col-span-2">سيُنشأ حساب السائق داخل أسطول هذا المالك فقط. تعيين الأتوبيس يتم لاحقًا من صفحة الأتوبيس.</p>
+      <p className="text-xs leading-5 text-[#606060] sm:col-span-2">سيُنشأ حساب السائق داخل أسطول هذا المالك فقط. تعيين العربية يتم لاحقًا من صفحة العربية.</p>
     </div>
   );
 }
