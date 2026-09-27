@@ -451,7 +451,36 @@ input:-webkit-autofill:focus {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
+}
+
+/* ---- 404 bus character ---- */
+.notfound-bus { animation: bus-bob 1.6s ease-in-out infinite; }
+.notfound-wheel { transform-box: fill-box; transform-origin: center; animation: bus-wheel 0.9s linear infinite; }
+.notfound-eye { transform-box: fill-box; transform-origin: center; animation: bus-blink 4s ease-in-out infinite; }
+.notfound-puff { transform-box: fill-box; transform-origin: center; animation: bus-puff 1.6s ease-out infinite; }
+.notfound-mark { transform-box: fill-box; transform-origin: center; animation: bus-float 2.4s ease-in-out infinite; }
+@keyframes bus-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes bus-wheel {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes bus-blink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94%, 97% { transform: scaleY(0.08); }
+}
+@keyframes bus-puff {
+  0% { opacity: 0.55; transform: translate(0, 0) scale(0.5); }
+  100% { opacity: 0; transform: translate(-38px, -16px) scale(1.6); }
+}
+@keyframes bus-float {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50% { transform: translateY(-12px) rotate(6deg); }
 }
 
 @keyframes fade-in {
