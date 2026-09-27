@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import {
   fetchDriver,
   removeDriver,
@@ -14,9 +15,10 @@ import {
 import { useFilterStore } from "@/stores/filters";
 import { qk, patchDetail, useApiQuery } from "@/lib/queries";
 import { Dialog } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 
@@ -26,6 +28,7 @@ type DriverAssignment = NonNullable<DriverRow["assignments"]>[number];
 export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const confirm = useConfirm();
   const searchParams = useSearchParams();
   const scopedFleetId = useFilterStore((s) => s.fleetId);
   const fleetId = searchParams.get("fleetId") || scopedFleetId;
@@ -58,7 +61,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     if (!fleetId) return;
     setError(null);
     setNote(null);
-    if (status !== "ACTIVE" && !window.confirm(REVOKE_WARNING)) return;
+    if (status !== "ACTIVE" && !(await confirm({ title: "تأكيد الإجراء", description: REVOKE_WARNING, confirmLabel: "تأكيد", destructive: true }))) return;
     const r = await updateDriver(fleetId, id, { status });
     if (!r.ok) {
       setError(r.message);
@@ -73,7 +76,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     if (!fleetId) return;
     setError(null);
     setNote(null);
-    if (!window.confirm(`${REVOKE_WARNING} تمسح السواق (بينهي العضوية والتعيين النشط)؟`)) return;
+    if (!(await confirm({ title: "تأكيد المسح", description: `${REVOKE_WARNING} — تمسح السواق (بينهي العضوية والتعيين النشط)؟`, confirmLabel: "مسح", destructive: true }))) return;
     const r = await removeDriver(fleetId, id);
     if (!r.ok) {
       setError(r.message);
@@ -111,7 +114,10 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="dashboard-page">
-      <div><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات العربيات.</p></div>
+      <div className="page-heading">
+        <div><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات العربيات.</p></div>
+        <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> حذف السواق</AsyncButton>
+      </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {note && <p role="status" className="text-sm text-green-700">{note}</p>}
@@ -128,7 +134,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <span className={status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[status]}</span>
             <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" aria-hidden="true" /> تعديل أو حذف
+              <Pencil className="size-4" aria-hidden="true" /> تعديل
             </Button>
           </div>
         </div>
@@ -147,7 +153,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen} title="إدارة السواق" description="يمكنك إيقاف حساب السواق أو إعادة تفعيله. الحذف ينهي تعيينه الحالي أيضًا." size="sm">
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title="إدارة السواق" description="يمكنك إيقاف حساب السواق أو إعادة تفعيله." size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">الحالة</span>
@@ -163,12 +169,9 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
             </select>
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">
-            <Button type="button" variant="destructive" onClick={remove}>حذف السواق</Button>
-            <div className="flex gap-2">
-              <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>إلغاء</Button>
-              <Button type="button" onClick={save}>حفظ التعديلات</Button>
-            </div>
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>إلغاء</Button>
+            <AsyncButton type="button" onClick={save}>حفظ التعديلات</AsyncButton>
           </div>
         </div>
       </Dialog>

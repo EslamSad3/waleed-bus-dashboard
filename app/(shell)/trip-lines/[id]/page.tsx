@@ -4,7 +4,9 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { deleteTripLine, fetchStops, fetchTripLine, updateTripLine, updateTripLineDirectionStops, type Stop, type TripLine, type TripLineStop } from "@/lib/actions/trip-lines";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -28,6 +30,7 @@ function routeSummary(stations: TripLineStop[]) {
 export default function TripLineDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const confirm = useConfirm();
   const [line, setLine] = useState<TripLine | null>(null);
   const [available, setAvailable] = useState<Stop[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +41,6 @@ export default function TripLineDetailPage({ params }: { params: Promise<{ id: s
   const [pick, setPick] = useState("");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [saving, setSaving] = useState(false);
   const keySeq = useRef(0);
   function nextRowKey(stopId: string) {
     keySeq.current += 1;
@@ -88,7 +90,7 @@ export default function TripLineDetailPage({ params }: { params: Promise<{ id: s
   }
 
   async function remove() {
-    if (!window.confirm("هل تريد حذف خط الرحلة؟")) return;
+    if (!(await confirm({ title: "تأكيد المسح", description: "الإجراء ده مينفعش يتراجع — تمسح خط الرحلة؟", confirmLabel: "مسح", destructive: true }))) return;
     const result = await deleteTripLine(id);
     if (!result.ok) return setError(result.message);
     router.push("/trip-lines");
@@ -127,9 +129,7 @@ export default function TripLineDetailPage({ params }: { params: Promise<{ id: s
   async function saveDirection() {
     if (!editingDirectionId || editStops.length < 2) return setError("اختر نقطتي توقف على الأقل.");
     if (editStops.some((item) => item.stopType === "BOTH")) return setError("غيّر نقاط «ركوب ونزول (قديم)» إلى ركوب فقط أو نزول فقط قبل الحفظ.");
-    setSaving(true);
     const result = await updateTripLineDirectionStops(id, editingDirectionId, editStops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType as "BOARDING" | "LANDING" })));
-    setSaving(false);
     if (!result.ok) return setError(result.message);
     setLine(result.data);
     setEditingDirectionId(null);
@@ -146,7 +146,7 @@ export default function TripLineDetailPage({ params }: { params: Promise<{ id: s
         <h1 className="page-title">{line.name}</h1>
         <p className="page-description">خط واحد باتجاهين مستقلين؛ توقفات العودة قابلة للتعديل دون التأثير على الذهاب.</p>
       </div>
-      <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={toggle}>{line.isActive ? "إيقاف الخط" : "تفعيل الخط"}</Button><Button onClick={() => setEditMeta(true)}><Pencil className="size-4" /> تعديل بيانات الخط</Button></div>
+      <div className="flex flex-wrap gap-2"><AsyncButton variant="secondary" onClick={toggle}>{line.isActive ? "إيقاف الخط" : "تفعيل الخط"}</AsyncButton><Button onClick={() => setEditMeta(true)}><Pencil className="size-4" /> تعديل بيانات الخط</Button></div>
     </div>
 
     {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -167,10 +167,10 @@ export default function TripLineDetailPage({ params }: { params: Promise<{ id: s
 
     <section className="grid gap-3 rounded-2xl bg-[#00134c] p-4 text-white sm:grid-cols-2"><p><span className="text-xs text-[#9ed0f0]">ذهاب</span><br /><strong>{routeSummary(line.directions.find((item) => item.direction === "OUTBOUND")?.stations ?? [])}</strong></p><p><span className="text-xs text-[#9ed0f0]">عودة</span><br /><strong>{routeSummary(line.directions.find((item) => item.direction === "RETURN")?.stations ?? [])}</strong></p></section>
 
-    <Dialog open={editMeta} onOpenChange={setEditMeta} title="تعديل بيانات خط الرحلة" description="اسم وكود الخط المشترك بين الاتجاهين." size="sm"><div className="space-y-4"><label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الخط</span><Input value={name} onChange={(event) => setName(event.target.value)} /></label><label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كود الخط</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} /></label><div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-between"><Button variant="destructive" onClick={remove}>حذف الخط</Button><Button onClick={saveMeta}>حفظ التعديلات</Button></div></div></Dialog>
+    <Dialog open={editMeta} onOpenChange={setEditMeta} title="تعديل بيانات خط الرحلة" description="اسم وكود الخط المشترك بين الاتجاهين." size="sm"><div className="space-y-4"><label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الخط</span><Input value={name} onChange={(event) => setName(event.target.value)} /></label><label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كود الخط</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} /></label><div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-between"><AsyncButton variant="destructive" onClick={remove}>حذف الخط</AsyncButton><AsyncButton onClick={saveMeta}>حفظ التعديلات</AsyncButton></div></div></Dialog>
 
     <Dialog open={Boolean(editingDirection)} onOpenChange={(open) => { if (!open) setEditingDirectionId(null); }} title={`تعديل ${editingDirection ? directionLabels[editingDirection.direction] : "المسار"}`} description="أضف أو احذف أو غيّر الترتيب وحدد ما إذا كانت كل نقطة للركوب أو النزول أو الاثنين." size="lg"><div className="space-y-5"><div className="flex gap-2 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-[#dbe7ee]"><select aria-label="اختيار نقطة توقف" value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent"><option value="">اختر نقطة لإضافتها إلى {editingDirection ? directionLabels[editingDirection.direction] : "المسار"}…</option>{remaining.map((stop) => <option key={stop.id} value={stop.id}>{stop.name} · {stop.address || stop.governorate?.nameAr}</option>)}</select><Button type="button" variant="secondary" onClick={addStop} disabled={!pick}><Plus className="size-4" /> إضافة</Button></div>
       {editStops.length === 0 ? <div className="rounded-2xl border border-dashed border-[#b9d2e3] bg-[#f8fbfd] px-5 py-9 text-center"><MapPin className="mx-auto mb-2 size-7 text-[#059ff8]" /><p className="font-bold text-[#334454]">أضف توقفات هذا الاتجاه</p></div> : <ol className="space-y-0">{editStops.map((item, index) => <li key={item.key} className="flex gap-3"><div className="flex w-8 shrink-0 flex-col items-center"><span className={`grid size-8 place-items-center rounded-full text-xs font-extrabold ${index === 0 ? "bg-[#00134c] text-white" : index === editStops.length - 1 ? "bg-[#059ff8] text-white" : "bg-[#d6eeff] text-[#00134c]"}`}>{index + 1}</span>{index < editStops.length - 1 && <span className="my-1 min-h-5 flex-1 border-r-2 border-dashed border-[#9dc2da]" />}</div><div className="mb-2 flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-white px-3 py-3 shadow-sm ring-1 ring-[#dbe7ee]"><MapPin className="size-4 shrink-0 text-[#059ff8]" /><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{item.stop.name}</strong><small className="block truncate text-xs text-[#687886]">{item.stop.address || item.stop.governorate?.nameAr}</small></span><select aria-label="نوع التوقف" value={item.stopType} onChange={(event) => setEditStops((items) => items.map((entry, entryIndex) => entryIndex === index ? { ...entry, stopType: event.target.value as StopUse } : entry))} className="select-field w-28 shrink-0 py-2 text-xs">{item.stopType === "BOTH" ? <option value="BOTH" disabled>ركوب ونزول (قديم)</option> : null}<option value="BOARDING">ركوب فقط</option><option value="LANDING">نزول فقط</option></select><div className="flex shrink-0"><Button type="button" variant="ghost" size="icon" aria-label="نقل للأعلى" onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp /></Button><Button type="button" variant="ghost" size="icon" aria-label="نقل للأسفل" onClick={() => move(index, 1)} disabled={index === editStops.length - 1}><ArrowDown /></Button><Button type="button" variant="ghost" size="icon" aria-label="حذف النقطة" onClick={() => setEditStops((items) => items.filter((_, entryIndex) => entryIndex !== index))}><Trash2 className="text-red-600" /></Button></div></div></li>)}</ol>}
-      <div className="rounded-2xl bg-[#00134c] p-4 text-white"><span className="text-xs text-[#9ed0f0]">ملخص {editingDirection ? directionLabels[editingDirection.direction] : "المسار"}</span><br /><strong>{editStops.length >= 2 ? `${editStops[0].stop.name} ← ${editStops.at(-1)?.stop.name}` : "غير مكتمل"}</strong></div><p className="text-xs text-[#687886]">لن تُحفظ التغييرات إلا عند وجود نقطتي توقف على الأقل. الاتجاهات المرتبطة برحلات لا يمكن تغيير توقفاتها للحفاظ على السجل التشغيلي.</p><div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={() => setEditingDirectionId(null)}>إلغاء</Button><Button onClick={saveDirection} disabled={saving || editStops.length < 2}>{saving ? "جاري الحفظ…" : "حفظ التوقفات"}</Button></div></div></Dialog>
+      <div className="rounded-2xl bg-[#00134c] p-4 text-white"><span className="text-xs text-[#9ed0f0]">ملخص {editingDirection ? directionLabels[editingDirection.direction] : "المسار"}</span><br /><strong>{editStops.length >= 2 ? `${editStops[0].stop.name} ← ${editStops.at(-1)?.stop.name}` : "غير مكتمل"}</strong></div><p className="text-xs text-[#687886]">لن تُحفظ التغييرات إلا عند وجود نقطتي توقف على الأقل. الاتجاهات المرتبطة برحلات لا يمكن تغيير توقفاتها للحفاظ على السجل التشغيلي.</p><div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end"><Button variant="secondary" onClick={() => setEditingDirectionId(null)}>إلغاء</Button><AsyncButton onClick={saveDirection} disabled={editStops.length < 2}>حفظ التوقفات</AsyncButton></div></div></Dialog>
   </div>;
 }

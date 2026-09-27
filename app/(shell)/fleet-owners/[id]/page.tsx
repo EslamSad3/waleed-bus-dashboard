@@ -58,7 +58,8 @@ export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id:
     }
     // الصورة الجديدة بتترفع كملف FormData — من غير روابط مكتوبة بالإيد.
     if (imageFile) {
-      const uploaded = await uploadFleetOwnerPicture(id, imageFile);
+      // The update toast already fired — the picture step stays silent.
+      const uploaded = await uploadFleetOwnerPicture(id, imageFile, { notify: false });
       if (!uploaded.ok) setError(uploaded.message);
     }
     const refreshed = await fetchFleetOwner(id);

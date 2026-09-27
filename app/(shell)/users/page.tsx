@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CursorList } from "@/components/tables/cursor-list";
 import { Dialog } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { fetchRolesPage, type Role } from "@/lib/actions/roles";
 import { PLATFORM_DEFAULT_MAX_BOOKING_SEATS, createAdminUser, deleteAdminUser, fetchAdminUser, fetchAdminUsers, setAdminUserRoles, updateAdminUser, type AdminUser } from "@/lib/actions/users";
@@ -14,6 +15,7 @@ type Page = { items: AdminUser[]; nextCursor: string | null };
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { data: first, isLoading, error: fetchError } = useApiQuery<Page>(qk.adminUsers, () => fetchAdminUsers(null));
   const { data: rolesPage } = useApiQuery(qk.roles, () => fetchRolesPage(null));
   const roles = (rolesPage?.items ?? []).filter((role) => role.isActive);
@@ -77,7 +79,8 @@ export default function UsersPage() {
   }
 
   async function remove() {
-    if (!selected || !window.confirm(`هل تريد حذف حساب «${selected.name || selected.email}»؟`)) return;
+    if (!selected) return;
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح حساب «${selected.name || selected.email}»؟`, confirmLabel: "مسح", destructive: true }))) return;
     setSaving(true);
     const result = await deleteAdminUser(selected.id);
     setSaving(false);

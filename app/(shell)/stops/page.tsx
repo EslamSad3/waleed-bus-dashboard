@@ -5,7 +5,9 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import {
   createStop,
@@ -121,7 +123,6 @@ function CreateStopDialog({
   const [mapLink, setMapLink] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chain = useChain();
 
@@ -146,7 +147,6 @@ function CreateStopDialog({
       setError("أكمل اسم النقطة والمحافظة والمركز والمدينة/القرية ورابط الموقع.");
       return;
     }
-    setSaving(true);
     const result = await createStop({
       name: name.trim(),
       address: address.trim() || undefined,
@@ -156,7 +156,6 @@ function CreateStopDialog({
       localityId: chain.localityId,
       isActive: true,
     });
-    setSaving(false);
     if (!result.ok) return setError(result.message);
     upsertInList(queryClient, qk.stops, result.data);
     resetForm();
@@ -195,6 +194,7 @@ function CreateStopDialog({
 
 export default function StopsPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { data: stops, isLoading, error } = useApiQuery<Stop[]>(qk.stops, fetchStops);
   const { data: governorates } = useApiQuery<Governorate[]>(qk.governorates, fetchGovernorates);
   const [editing, setEditing] = useState<Stop | null>(null);
@@ -271,7 +271,8 @@ export default function StopsPage() {
   }
 
   async function remove() {
-    if (!editing || !window.confirm(`هل تريد حذف نقطة التوقف «${editing.name}»؟`)) return;
+    if (!editing) return;
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح نقطة التوقف «${editing.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
     const result = await deleteStop(editing.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList(queryClient, qk.stops, editing.id);

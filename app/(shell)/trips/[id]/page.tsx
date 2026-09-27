@@ -4,16 +4,20 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import { deleteTrip, findTripAcrossFleets, updateTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { assignDriver, fetchBus, type Bus } from "@/lib/actions/buses";
 import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { qk, useApiQuery } from "@/lib/queries";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Trash2 } from "lucide-react";
 
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const confirm = useConfirm();
   const [fleetId, setFleetId] = useState<string | null>(null);
   const [trip, setTrip] = useState<Trip | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -27,7 +31,6 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [bus, setBus] = useState<Bus | null>(null);
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [driverId, setDriverId] = useState("");
-  const [assigning, setAssigning] = useState(false);
 
   // TanStack cache: الرحلة بتتجاب عبر طبقة الكاش والتعديلات بتكتب فيها فورًا
   const { data: tripData, error: tripError } = useApiQuery(
@@ -80,13 +83,13 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function cancel() {
-    if (!window.confirm("تلغي الرحلة دي؟")) return;
+    if (!(await confirm({ title: "تأكيد الإلغاء", description: "هتلغي الرحلة دي؟", confirmLabel: "إلغاء الرحلة", destructive: true }))) return;
     await move("CANCELLED");
   }
 
   async function remove() {
     if (!fleetId) return;
-    if (!window.confirm("تأكيد المسح — الإجراء ده مينفعش يتراجع. تمسح الرحلة؟")) return;
+    if (!(await confirm({ title: "تأكيد المسح", description: "الإجراء ده مينفعش يتراجع — تمسح الرحلة؟", confirmLabel: "مسح", destructive: true }))) return;
     const r = await deleteTrip(fleetId, id);
     if (!r.ok) {
       done(false, r.message);
@@ -101,9 +104,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       setError("اختار السواق الأول");
       return;
     }
-    setAssigning(true);
     const result = await assignDriver(fleetId, trip.busId, { driverUserId: driverId });
-    setAssigning(false);
     done(result.ok, result.ok ? "اتعين السواق على عربية الرحلة" : result.message);
     if (result.ok) {
       const refreshed = await apiGet<{ items: DriverRow[] }>("/api/fleet/drivers?limit=100", fleetId);
@@ -118,7 +119,10 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     <div className="dashboard-page">
       <div className="page-heading">
         <div><h1 className="page-title">{trip.origin} ← {trip.destination}</h1><p className="page-description">تفاصيل الخط والميعاد وحالة الرحلة.</p></div>
-        <span className={trip.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>{TRIP_STATUS_AR[trip.status]}</span>
+        <div className="flex items-center gap-3">
+          <span className={trip.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>{TRIP_STATUS_AR[trip.status]}</span>
+          <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> مسح الرحلة</AsyncButton>
+        </div>
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
@@ -149,16 +153,15 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
               <span className="mr-2 text-[#606060]">· السعة {bus?.capacity ?? "—"}</span>
               <label className="mt-3 block text-sm">
                 <span className="mb-1 block font-medium">تعيين سواق من نفس الأسطول</span>
-                <select aria-label="تعيين سواق الرحلة" value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus || assigning}>
+                <select aria-label="تعيين سواق الرحلة" value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus}>
                   <option value="">اختار السواق</option>
                   {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || "سواق بدون اسم"}</option>)}
                 </select>
               </label>
-              <Button type="button" className="mt-2" onClick={() => void assignTripDriver()} disabled={!driverId || assigning}>{assigning ? "جاري التعيين…" : "تعيين السواق"}</Button>
+              <AsyncButton type="button" className="mt-2" onClick={assignTripDriver} disabled={!driverId}>تعيين السواق</AsyncButton>
             </div>
             <div className="flex gap-2">
-              <Button type="button" onClick={save}>حفظ</Button>
-              <Button type="button" variant="destructive" onClick={remove}>مسح</Button>
+              <AsyncButton type="button" onClick={save}>حفظ</AsyncButton>
             </div>
           </div>
         </div>
@@ -166,7 +169,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
           <h2 className="section-title">الحالة</h2>
           <div className="flex flex-wrap gap-2">
             {(["SCHEDULED", "DEPARTED", "COMPLETED"] as const).map((s) => (
-              <Button
+              <AsyncButton
                 key={s}
                 type="button"
                 variant={status === s ? "default" : "secondary"}
@@ -174,11 +177,11 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
                 disabled={status === s}
               >
                 {TRIP_STATUS_AR[s]}
-              </Button>
+              </AsyncButton>
             ))}
-            <Button type="button" variant="destructive" onClick={cancel} disabled={status === "CANCELLED"}>
+            <AsyncButton type="button" variant="destructive" onClick={cancel} disabled={status === "CANCELLED"}>
               إلغاء الرحلة
-            </Button>
+            </AsyncButton>
           </div>
           <Button asChild variant="secondary" className="mt-4">
             <Link href={`/bookings?tripId=${encodeURIComponent(trip.id)}`}>كشف حجوزات الرحلة</Link>

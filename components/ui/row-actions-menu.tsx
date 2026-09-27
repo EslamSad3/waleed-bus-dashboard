@@ -2,11 +2,12 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Loader2 } from "lucide-react";
 
 export type RowAction = {
   label: string;
-  onSelect?: () => void;
+  /** May return a promise; while it is in flight every menu item is disabled. */
+  onSelect?: () => void | Promise<unknown>;
   href?: string;
   danger?: boolean;
   disabled?: boolean;
@@ -24,6 +25,7 @@ type RowActionsMenuProps = {
  */
 export function RowActionsMenu({ actions, label = "إجراءات" }: RowActionsMenuProps) {
   const [open, setOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
@@ -74,9 +76,10 @@ export function RowActionsMenu({ actions, label = "إجراءات" }: RowActions
             style={{ top: coords.top, left: coords.left, transform: "translateX(-100%)" }}
           >
             {actions.map((action) => {
+              const isPending = pendingAction === action.label;
               const className = `flex w-full items-center gap-2 px-4 py-2.5 text-right text-sm font-semibold transition hover:bg-[#eaf6ff] ${
                 action.danger ? "text-[#dc2626] hover:bg-red-50" : "text-[#17212b]"
-              } ${action.disabled ? "pointer-events-none opacity-40" : ""}`;
+              } ${action.disabled || pendingAction !== null ? "pointer-events-none opacity-40" : ""}`;
               if (action.href) {
                 return (
                   <a key={action.label} role="menuitem" href={action.href} className={className} onClick={() => setOpen(false)}>
@@ -89,13 +92,18 @@ export function RowActionsMenu({ actions, label = "إجراءات" }: RowActions
                   key={action.label}
                   type="button"
                   role="menuitem"
-                  disabled={action.disabled}
+                  disabled={action.disabled || pendingAction !== null}
                   className={className}
                   onClick={() => {
                     setOpen(false);
-                    action.onSelect?.();
+                    const result = action.onSelect?.();
+                    if (result && typeof result.then === "function") {
+                      setPendingAction(action.label);
+                      void Promise.resolve(result).finally(() => setPendingAction(null));
+                    }
                   }}
                 >
+                  {isPending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
                   {action.label}
                 </button>
               );

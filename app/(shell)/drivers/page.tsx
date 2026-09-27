@@ -73,7 +73,8 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
     // الصورة بتترفع كملف FormData بعد إنشاء الحساب — مش لينك مكتوب بالإيد.
     if (imageFile) {
       const driverUserId = result.data.userId ?? result.data.id;
-      const uploaded = await uploadUserPicture(driverUserId, imageFile);
+      // The invite toast already fired — the picture step stays silent.
+      const uploaded = await uploadUserPicture(driverUserId, imageFile, { notify: false });
       if (!uploaded.ok) setError(uploaded.message);
     }
     const refreshed = await fetchSystemDriversPage(null);

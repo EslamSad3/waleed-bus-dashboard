@@ -71,7 +71,8 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
     }
     // الصورة بتترفع كملف FormData بعد إنشاء الحساب — مش لينك مكتوب بالإيد.
     if (imageFile) {
-      const uploaded = await uploadFleetOwnerPicture(result.data.id, imageFile);
+      // The create toast already fired — the picture step stays silent.
+      const uploaded = await uploadFleetOwnerPicture(result.data.id, imageFile, { notify: false });
       if (!uploaded.ok) setError(uploaded.message);
     }
     setSaving(false);

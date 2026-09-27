@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
@@ -103,19 +104,20 @@ function AddMemberDialog({ open, fleetId, onClose }: { open: boolean; fleetId: s
 /** Fleet Members tab (US5) — جدول ag-grid: الاسم والتاريخ والحالة وتمت الإضافة بواسطة + إجراءات. */
 export function MembersTab({ fleetId }: { fleetId: string }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [addOpen, setAddOpen] = useState(false);
   const { data: page, isLoading, error } = useApiQuery<MemberPage>(qk.fleetMembers(fleetId), () => fetchMembersPage(fleetId, null));
   const members = page?.items ?? [];
 
   async function changeStatus(member: Member, next: Member["status"]) {
-    if (next !== "ACTIVE" && !window.confirm(REVOKE_WARNING)) return;
+    if (next !== "ACTIVE" && !(await confirm({ title: "تأكيد الإجراء", description: REVOKE_WARNING, confirmLabel: "تأكيد", destructive: true }))) return;
     const r = await updateMember(fleetId, member.id, { status: next });
     if (!r.ok) return;
     upsertInList(queryClient, qk.fleetMembers(fleetId), r.data);
   }
 
   async function remove(member: Member) {
-    if (!window.confirm(`${REVOKE_WARNING} تمسح العضوية؟`)) return;
+    if (!(await confirm({ title: "تأكيد المسح", description: `${REVOKE_WARNING} — تمسح العضوية؟`, confirmLabel: "مسح", destructive: true }))) return;
     const r = await removeMember(fleetId, member.id);
     if (!r.ok) return;
     removeFromList(queryClient, qk.fleetMembers(fleetId), member.id);

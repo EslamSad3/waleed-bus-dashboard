@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -27,10 +28,11 @@ import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { BUS_COLORS, busColorHex } from "@/lib/colors";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
-import { Pencil, UserPlus } from "lucide-react";
+import { Pencil, Trash2, UserPlus } from "lucide-react";
 
 export default function BusDetailPage({
   params,
@@ -47,6 +49,7 @@ export default function BusDetailPage({
   // الأسطول بيجي من اللينك نفسه (?fleetId=) أو من آخر نطاق مختار — من غير ما نطلب من المستخدم يختار.
   const fleetId = scopeFleetId || storeFleetId || null;
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<"overview" | "trips">("overview");
   const [plate, setPlate] = useState("");
   const [capacity, setCapacity] = useState("");
@@ -151,7 +154,16 @@ export default function BusDetailPage({
 
   async function remove() {
     if (!fleetId) return;
-    if (!window.confirm("تأكيد المسح — الإجراء ده مينفعش يتراجع. تمسح العربية؟")) return;
+    if (
+      !(await confirm({
+        title: "تأكيد المسح",
+        description: "الإجراء ده مينفعش يتراجع — تمسح العربية؟",
+        confirmLabel: "مسح",
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
     const r = await deleteBus(fleetId, id);
     if (!r.ok) {
       note(false, r.message);
@@ -190,7 +202,16 @@ export default function BusDetailPage({
 
   async function unassign() {
     if (!fleetId) return;
-    if (!window.confirm("تلغي تعيين السواق الحالي؟")) return;
+    if (
+      !(await confirm({
+        title: "تأكيد إلغاء التعيين",
+        description: "هتلغي تعيين السواق الحالي من العربية؟",
+        confirmLabel: "إلغاء التعيين",
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
     const r = await unassignDriver(fleetId, id);
     note(r.ok, r.ok ? "اتلغى التعيين" : r.message);
     if (r.ok) {
@@ -238,9 +259,12 @@ export default function BusDetailPage({
     <div className="dashboard-page">
       <div className="page-heading">
         <div><h1 className="page-title"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">بيانات العربية والحالة والسواق المعيّن وسجل الرحلات.</p></div>
-        <span className={bus.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
-          {bus.isActive ? "نشط" : "موقوف"}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={bus.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
+            {bus.isActive ? "نشط" : "موقوف"}
+          </span>
+          <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> مسح العربية</AsyncButton>
+        </div>
       </div>
 
       <nav aria-label="تبويبات العربية" className="flex gap-2 overflow-x-auto pb-1">
@@ -295,15 +319,15 @@ export default function BusDetailPage({
                 {bus.line ? <span dir="ltr" className="mr-2 text-[#606060]">{bus.line.code}</span> : null}
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>إيقاف</Button>
-                <Button type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>إعادة تشغيل</Button>
+                <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>إيقاف</AsyncButton>
+                <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>إعادة تشغيل</AsyncButton>
               </div>
               <Button type="button" onClick={() => setAssignOpen(true)}>
                 <UserPlus className="size-4" aria-hidden="true" /> تعيين سواق
               </Button>
-              <Button type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>إلغاء التعيين</Button>
+              <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>إلغاء التعيين</AsyncButton>
               <Button type="button" variant="secondary" onClick={() => setLineOpen(true)}>تعيين خط رحلة</Button>
-              <Button type="button" variant="secondary" onClick={clearLine} disabled={!bus.lineId}>إلغاء خط الرحلة</Button>
+              <AsyncButton type="button" variant="secondary" onClick={clearLine} disabled={!bus.lineId}>إلغاء خط الرحلة</AsyncButton>
             </div>
           </div>
         </div>
@@ -390,12 +414,9 @@ export default function BusDetailPage({
             مكيّف
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">
-            <Button type="button" variant="destructive" onClick={remove}>مسح العربية</Button>
-            <div className="flex gap-2">
-              <Button type="button" variant="danger" onClick={() => setEditOpen(false)}>إلغاء</Button>
-              <Button type="button" variant="success" onClick={save}>حفظ التعديلات</Button>
-            </div>
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="danger" onClick={() => setEditOpen(false)}>إلغاء</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>حفظ التعديلات</AsyncButton>
           </div>
         </div>
       </Dialog>
@@ -421,12 +442,12 @@ export default function BusDetailPage({
           {eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">لا يوجد سواقون نشطون في هذا الأسطول بعد. أضف سواقًا من صفحة السواقين أولًا.</p>}
           <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="danger" onClick={() => setAssignOpen(false)}>إلغاء</Button>
-            <Button type="button" variant="success" onClick={assign} disabled={!driverId}>تأكيد التعيين</Button>
+            <AsyncButton type="button" variant="success" onClick={assign} disabled={!driverId}>تأكيد التعيين</AsyncButton>
           </div>
         </div>
       </Dialog>
       <Dialog open={lineOpen} onOpenChange={setLineOpen} title="تعيين خط رحلة" description="الخطوط من الكتالوج المركزي ومتاحة لكل الأساطيل." size="sm">
-        <div className="space-y-4"><select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full"><option value="">اختار خط الرحلة</option>{(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}</select>{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="danger" onClick={() => setLineOpen(false)}>إلغاء</Button><Button type="button" variant="success" onClick={assignLine}>تأكيد التعيين</Button></div></div>
+        <div className="space-y-4"><select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full"><option value="">اختار خط الرحلة</option>{(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}</select>{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="danger" onClick={() => setLineOpen(false)}>إلغاء</Button><AsyncButton type="button" variant="success" onClick={assignLine}>تأكيد التعيين</AsyncButton></div></div>
       </Dialog>
     </div>
   );

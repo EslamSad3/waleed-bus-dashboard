@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 type ImagePickerProps = {
   label: string;
@@ -65,8 +66,10 @@ export function ImagePicker({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#eaf6ff] px-4 text-xs font-extrabold text-[#00134c] transition hover:bg-[#d6eeff]"
+            disabled={uploading}
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#eaf6ff] px-4 text-xs font-extrabold text-[#00134c] transition hover:bg-[#d6eeff] disabled:pointer-events-none disabled:opacity-50"
           >
+            {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
             اختار صورة
           </button>
           {file ? (

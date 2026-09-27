@@ -10,6 +10,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OverviewInsights } from "@/components/home/overview-insights";
 
 const MODULES = [
   {
@@ -78,6 +79,8 @@ export default function OverviewPage() {
           </div>
         </div>
       </section>
+
+      <OverviewInsights />
 
       <section>
         <div className="page-heading mb-4">

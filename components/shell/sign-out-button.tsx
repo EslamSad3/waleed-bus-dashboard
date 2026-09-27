@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export function SignOutButton() {
@@ -14,6 +15,8 @@ export function SignOutButton() {
     setBusy(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      toast.error("حصلت مشكلة", { description: "مشكلة في الاتصال بالسيرفر", duration: 6000 });
     } finally {
       router.push("/login");
       router.refresh();
