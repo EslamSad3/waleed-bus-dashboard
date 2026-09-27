@@ -13,11 +13,13 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   createFleetOwner,
   deleteFleetOwner,
+  discardFleetOwnerPicture,
   fetchFleetOwnersPage,
+  stageFleetOwnerPicture,
   updateFleetOwner,
-  uploadFleetOwnerPicture,
   type FleetOwnerAccount,
 } from "@/lib/actions/fleet-owners";
+import type { StagedUpload } from "@/lib/actions/http";
 import { createFleet } from "@/lib/actions/fleets";
 import { createFleetOwnerSchema } from "@/lib/schemas/p1";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -61,6 +63,18 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
       return;
     }
     setSaving(true);
+    // الصورة بتترفع الأول (مباشر للتخزين السحابي) قبل إنشاء الحساب — لو الرفع
+    // فشل مفيش سجل يتيم، ولو الإنشاء فشل بنمسح الصورة المرحلية.
+    let staged: StagedUpload | null = null;
+    if (imageFile) {
+      const s = await stageFleetOwnerPicture(imageFile);
+      if (!s.ok) {
+        setSaving(false);
+        setError(s.message);
+        return;
+      }
+      staged = s.data;
+    }
     const result = await createFleetOwner({
       name: name.trim(),
       nickname: nickname.trim(),
@@ -68,17 +82,13 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
       password,
       fleetName: fleetName.trim(),
       nationalId: nationalId || undefined,
+      ...(staged ? { picture: staged.publicUrl } : {}),
     });
     if (!result.ok) {
+      if (staged) await discardFleetOwnerPicture(staged);
       setSaving(false);
       setError(result.message);
       return;
-    }
-    // الصورة بتترفع كملف FormData بعد إنشاء الحساب — مش لينك مكتوب بالإيد.
-    if (imageFile) {
-      // The create toast already fired — the picture step stays silent.
-      const uploaded = await uploadFleetOwnerPicture(result.data.id, imageFile, { notify: false });
-      if (!uploaded.ok) setError(uploaded.message);
     }
     setSaving(false);
     const refreshed = await fetchFleetOwnersPage(null);
@@ -157,22 +167,31 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
       return;
     }
     setSaving(true);
+    // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
+    // يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
+    let staged: StagedUpload | null = null;
+    if (imageFile) {
+      const s = await stageFleetOwnerPicture(imageFile, owner.id);
+      if (!s.ok) {
+        setSaving(false);
+        setError(s.message);
+        return;
+      }
+      staged = s.data;
+    }
     const result = await updateFleetOwner(owner.id, {
       name: name.trim(),
       nickname: nickname.trim() || undefined,
       phone: phone.trim() || undefined,
       nationalId: nationalId.trim() || "",
       isActive,
+      ...(staged ? { picture: staged.publicUrl } : {}),
     });
     if (!result.ok) {
+      if (staged) await discardFleetOwnerPicture(staged);
       setSaving(false);
       setError(result.message);
       return;
-    }
-    if (imageFile) {
-      // الصورة بتترفع كملف FormData — نفس مسار الإضافة.
-      const uploaded = await uploadFleetOwnerPicture(owner.id, imageFile, { notify: false });
-      if (!uploaded.ok) setError(uploaded.message);
     }
     setSaving(false);
     const refreshed = await fetchFleetOwnersPage(null);

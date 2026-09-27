@@ -1,4 +1,4 @@
-import { apiGet, apiSend, apiSendFile, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { apiDiscardStaged, apiGet, apiSend, apiSendFile, apiStageImage, type ActionResult, type CursorPage, type StagedUpload } from "@/lib/actions/http";
 import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateFleetOwnerInput, UpdateFleetOwnerInput } from "@/lib/schemas/p1";
 
@@ -35,7 +35,24 @@ export function deleteFleetOwner(id: string): Promise<ActionResult<null>> {
   return notifyResult("اتمسح صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "DELETE"));
 }
 
-/** Multipart upload: the file goes up as FormData and the API sets the picture. */
+/**
+ * Stage a fleet-owner picture via direct browser→Supabase upload (Vercel-safe).
+ * Link `staged.publicUrl` as `picture` on create/update, and call
+ * `discardFleetOwnerPicture` when the user cancels or the record write fails.
+ */
+export function stageFleetOwnerPicture(file: File, userId?: string, signal?: AbortSignal): Promise<ActionResult<StagedUpload>> {
+  return apiStageImage("fleet-owner-picture", file, userId ? { userId } : {}, signal);
+}
+
+/** Best-effort cleanup of a staged picture (cancel / failed record write). */
+export function discardFleetOwnerPicture(staged: StagedUpload): Promise<void> {
+  return apiDiscardStaged(staged);
+}
+
+/**
+ * @deprecated Use stageFleetOwnerPicture + picture URL instead. The legacy
+ * multipart path proxies file bytes through Vercel and 503s under load.
+ */
 export function uploadFleetOwnerPicture(id: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(
     "اترفعت صورة مالك العربية",

@@ -1,4 +1,4 @@
-import { apiGet, apiSend, apiSendFile, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { apiDiscardStaged, apiGet, apiSend, apiSendFile, apiStageImage, type ActionResult, type CursorPage, type StagedUpload } from "@/lib/actions/http";
 import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 
 export type AdminUser = {
@@ -33,7 +33,20 @@ export const setAdminUserRoles = (id: string, roleSlugs: string[]) =>
   notifyResult("اتحدثت مستويات وصول المستخدم", apiSend<AdminUser>(`/api/users/${id}/roles`, "PUT", { roleSlugs }));
 export const deleteAdminUser = (id: string) =>
   notifyResult("اتمسح المستخدم", apiSend<null>(`/api/users/${id}`, "DELETE"));
-/** Multipart upload: the picture goes up as FormData and the API sets it (any user). */
+/**
+ * Stage a user/driver picture via direct browser→Supabase upload (Vercel-safe).
+ * The caller links the returned `publicUrl` on its own record update, and MUST
+ * discard the staged object on cancel / failed writes.
+ */
+export const stageUserPicture = (file: File, userId?: string, signal?: AbortSignal) =>
+  apiStageImage("user-picture", file, userId ? { userId } : {}, signal);
+
+export const discardUserPicture = (staged: StagedUpload) => apiDiscardStaged(staged);
+
+/**
+ * @deprecated Use stageUserPicture instead. The legacy multipart path proxies
+ * file bytes through Vercel and 503s under load.
+ */
 export const uploadUserPicture = (id: string, file: File, opts?: NotifyOptions) =>
   notifyResult(
     "اترفعت صورة المستخدم",

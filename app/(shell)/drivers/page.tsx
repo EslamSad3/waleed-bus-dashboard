@@ -12,7 +12,8 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
 import { fetchSystemDriversPage, inviteDriver, removeDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
-import { uploadUserPicture } from "@/lib/actions/users";
+import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
+import type { StagedUpload } from "@/lib/actions/http";
 import { driverFreshSchema } from "@/lib/schemas/p1";
 import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
@@ -61,24 +62,31 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
       return;
     }
     setSaving(true);
+    // الصورة بتترفع الأول مباشر للتخزين السحابي قبل الدعوة — لو الرفع فشل
+    // مفيش حساب يتعمل، ولو الدعوة فشلت بنمسح الصورة المرحلية.
+    let staged: StagedUpload | null = null;
+    if (imageFile) {
+      const s = await stageUserPicture(imageFile);
+      if (!s.ok) {
+        setSaving(false);
+        setError(s.message);
+        return;
+      }
+      staged = s.data;
+    }
     const result = await inviteDriver(fleetId, {
       name: name.trim(),
       nickname: nickname.trim(),
       phone,
       password,
       nationalId: nationalId || undefined,
+      ...(staged ? { picture: staged.publicUrl } : {}),
     });
     if (!result.ok) {
+      if (staged) await discardUserPicture(staged);
       setSaving(false);
       setError(result.message);
       return;
-    }
-    // الصورة بتترفع كملف FormData بعد إنشاء الحساب — مش لينك مكتوب بالإيد.
-    if (imageFile) {
-      const driverUserId = result.data.userId ?? result.data.id;
-      // The invite toast already fired — the picture step stays silent.
-      const uploaded = await uploadUserPicture(driverUserId, imageFile, { notify: false });
-      if (!uploaded.ok) setError(uploaded.message);
     }
     const refreshed = await fetchSystemDriversPage(null);
     if (refreshed.ok) queryClient.setQueryData<DriverPage>(qk.drivers, refreshed.data);

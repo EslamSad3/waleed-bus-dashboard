@@ -6,6 +6,9 @@ import { findRegistryEntry } from "@/lib/schemas/p1";
 
 type Ctx = { params: Promise<{ proxy: string[] }> };
 
+/** Multipart uploads stream through here — keep the window tight on Hobby. */
+export const maxDuration = 30;
+
 /**
  * Generic BFF forwarder (clarification Q2: full forwarder in P0).
  * Attaches the JWT server-side, unwraps `{statusCode, data}` once, maps
@@ -86,7 +89,10 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
   const result = await busFetch(path, { method, body, rawBody, fleetId });
 
   if (!result.ok) {
-    const status = result.status === 0 ? 503 : result.status;
+    // status 0 = the backend was never reached: timeouts are 504 (retryable),
+    // anything else is 503. Coded 5xx from the API pass through untouched.
+    const status =
+      result.status === 0 ? (result.code === "UPSTREAM_TIMEOUT" ? 504 : 503) : result.status;
     return NextResponse.json(
       {
         statusCode: status,

@@ -10,11 +10,13 @@ import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import {
   createBus,
+  discardBusImage,
   fetchBrands,
-  uploadBusImage,
+  stageBusImage,
   type Bus,
   type VehicleBrand,
 } from "@/lib/actions/buses";
+import { validateImageFile, type StagedUpload } from "@/lib/actions/http";
 import { fetchFleetsPage, type Fleet } from "@/lib/actions/fleets";
 import type { CursorPage } from "@/lib/actions/http";
 import { createBusSchema } from "@/lib/schemas/p1";
@@ -80,22 +82,23 @@ export function CreateBusDialog({
     form.reset();
   }
 
-  async function onFileSelect(file: File | null) {
+  function onFileSelect(file: File | null) {
     setImageFile(file);
     setFormError(null);
-    if (!file) return;
-    if (!fleetId) {
-      setFormError("اختار الأسطول الأول قبل رفع الصورة.");
+    if (!file) {
+      form.setValue("imageUrl", "", { shouldValidate: true });
       return;
     }
-    setUploading(true);
-    const uploaded = await uploadBusImage(fleetId, file);
-    setUploading(false);
-    if (!uploaded.ok) {
-      setFormError(uploaded.message);
+    // الرفع الفعلي بيحصل مع الحفظ (بعد اختيار الأسطول) مباشر للتخزين
+    // السحابي — مفيش صور يتيمة لو المستخدم لغى.
+    const invalid = validateImageFile(file);
+    if (invalid) {
+      setFormError(invalid);
       return;
     }
-    form.setValue("imageUrl", uploaded.data.url, { shouldValidate: true });
+    // عنصر نائب https صالح لاجتياز تحقق النموذج — يُستبدل برابط التخزين
+    // الفعلي عند الحفظ ولا يصل للسيرفر أبدًا.
+    form.setValue("imageUrl", "https://upload.pending/placeholder", { shouldValidate: true });
   }
 
   async function onSubmit(values: CreateValues) {
@@ -104,15 +107,30 @@ export function CreateBusDialog({
       setFormError("اختار الأسطول الأول قبل إضافة العربية.");
       return;
     }
+    if (!imageFile) {
+      setFormError("صورة العربية مطلوبة.");
+      return;
+    }
     setFleetId(fleetId);
     setFleetScopeCookie(fleetId);
+    setUploading(true);
+    const stagedResult = await stageBusImage(fleetId, imageFile);
+    if (!stagedResult.ok) {
+      setUploading(false);
+      setFormError(stagedResult.message);
+      return;
+    }
+    const staged: StagedUpload = stagedResult.data;
     const r = await createBus(fleetId, {
       ...values,
+      imageUrl: staged.publicUrl,
       registrationNumber: values.registrationNumber || undefined,
       brandId: values.brandId || null,
       modelYear: values.modelYear ?? undefined,
     });
+    setUploading(false);
     if (!r.ok) {
+      await discardBusImage(fleetId, staged);
       setFormError(r.message);
       return;
     }
@@ -133,7 +151,18 @@ export function CreateBusDialog({
             <FleetPicker value={fleetId} onChange={setLocalFleetId} />
           </div>
         )}
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <form
+          onSubmit={(event) => {
+            if (!imageFile) {
+              event.preventDefault();
+              setFormError("صورة العربية مطلوبة.");
+              return;
+            }
+            void form.handleSubmit(onSubmit)(event);
+          }}
+          className="space-y-4"
+          noValidate
+        >
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">رقم اللوحة</span>
             <Input dir="ltr" placeholder="أ ب ج 1234" {...form.register("plateNumber")} />

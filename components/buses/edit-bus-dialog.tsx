@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
-import { fetchBrands, fetchBus, updateBus, uploadBusImage, type Bus, type VehicleBrand } from "@/lib/actions/buses";
+import { discardBusImage, fetchBrands, fetchBus, stageBusImage, updateBus, type Bus, type VehicleBrand } from "@/lib/actions/buses";
+import type { StagedUpload } from "@/lib/actions/http";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 
@@ -85,6 +86,20 @@ export function EditBusDialog({
       return;
     }
     setSaving(true);
+    // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
+    // يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
+    let staged: StagedUpload | null = null;
+    if (imageFile) {
+      setUploading(true);
+      const s = await stageBusImage(bus.fleetId, imageFile);
+      setUploading(false);
+      if (!s.ok) {
+        setSaving(false);
+        setError(s.message);
+        return;
+      }
+      staged = s.data;
+    }
     const result = await updateBus(bus.fleetId, bus.id, {
       plateNumber: plateNumber.trim(),
       color,
@@ -92,15 +107,13 @@ export function EditBusDialog({
       isAirConditioned,
       ...(year !== undefined ? { modelYear: year } : {}),
       capacity: seats,
+      ...(staged ? { imageUrl: staged.publicUrl } : {}),
     });
     if (!result.ok) {
+      if (staged) await discardBusImage(bus.fleetId, staged);
       setSaving(false);
       setError(result.message);
       return;
-    }
-    if (imageFile) {
-      const uploaded = await uploadBusImage(bus.fleetId, imageFile, { notify: false });
-      if (!uploaded.ok) setError(uploaded.message);
     }
     setSaving(false);
     // الصورة بتتحدّث من غير رفريش — نجيب الـ row المحدث ونحطه في الكاش
