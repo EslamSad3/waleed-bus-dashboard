@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Filter, Plus, RotateCcw, Ticket } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   BOOKING_STATUS_AR,
+  deleteBooking,
   fetchAdminBookingsPage,
   PAYMENT_METHOD_AR,
   PAYMENT_STATUS_AR,
@@ -18,16 +19,20 @@ import {
 } from "@/lib/actions/bookings";
 import { apiGet } from "@/lib/actions/http";
 import { findTripAcrossFleets } from "@/lib/actions/trips";
+import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
+import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
 
 type FleetOption = { id: string; name: string };
 
 export default function BookingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [items, setItems] = useState<AdminBookingListItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const [createOpen, setCreateOpen] = useState(false);
   const [fleets, setFleets] = useState<FleetOption[]>([]);
   const [, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,19 +92,25 @@ export default function BookingsPage() {
     return params;
   }, [fleetId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchAdminBookingsPage(buildFilterParams(), null).then((result) => {
-      if (cancelled) return;
-      setLoading(false);
-      if (result.ok) {
-        setItems(result.data.items);
-        setNextCursor(result.data.nextCursor);
-        setError(null);
-      } else setError(result.message);
-    });
-    return () => { cancelled = true; };
-  }, [buildFilterParams]);
+  const filterParams = buildFilterParams();
+  const { data: pageData, isPending, error: fetchError } = useDataQuery(
+    qk.adminBookingsParams(filterParams),
+    async () => {
+      const result = await fetchAdminBookingsPage(filterParams, null);
+      if (!result.ok) throw new Error(result.message);
+      return result.data;
+    },
+  );
+  const items = pageData?.items ?? [];
+  const nextCursor = pageData?.nextCursor ?? null;
+  const error = fetchError ? fetchError.message : null;
+
+  async function removeBooking(booking: AdminBookingListItem) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح حجز «${booking.passengerName || booking.passengerPhone}»؟ الإجراء ده مينفعش يتراجع.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteBooking(booking.fleetId, booking.id);
+    if (!result.ok) return;
+    removeFromCursorList<AdminBookingListItem>(queryClient, qk.adminBookingsParams(filterParams), booking.id);
+  }
 
   function resetFilters() {
     startTransition(() => {
@@ -129,39 +140,32 @@ export default function BookingsPage() {
     { field: "totalAmount", headerName: "الإجمالي", filter: "agNumberColumnFilter" },
     { field: "hasReports", headerName: "بلاغات", valueFormatter: (params) => params.value ? "نعم" : "لا" },
     { field: "createdAt", headerName: "تاريخ الحجز", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: AdminBookingListItem }) => params.data ? <Button asChild size="sm" variant="secondary"><Link href={`/bookings/${params.data.id}`}>عرض التفاصيل</Link></Button> : null,
-    },
-  ];
+];
 
   return (
     <div className="dashboard-page space-y-6">
       <div className="page-heading">
-        <div>
-          <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#daeaf5] text-[#204c6b]"><Ticket className="size-5" /></span><h1 className="page-title">مراجعة وإدارة الحجوزات</h1></div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d6eeff] text-[#00134c]"><Ticket className="size-5" /></span><h1 className="page-title min-w-0">مراجعة وإدارة الحجوزات</h1></div>
           <p className="page-description">رؤية مركزية شاملة لجميع الحجوزات عبر كل الأساطيل، فحص العمليات، وتدقيق المدفوعات والاسترداد.</p>
         </div>
-        <Button asChild className="gap-2"><Link href="/bookings/new"><Plus className="size-4" /> حجز جديد</Link></Button>
+        <Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="size-4" /> حجز جديد</Button>
       </div>
 
       {tripId ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#daeaf5] bg-[#f3f8fc] p-4 shadow-sm">
-          <div>
-            <p className="text-sm font-bold text-[#204c6b]">حجوزات رحلة محددة</p>
-            <p className="text-xs text-[#606060]" dir="auto">{activeTripLabel ?? "جاري تحديد الرحلة…"}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d6eeff] bg-[#f3f8fc] p-4 shadow-sm">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[#00134c]">حجوزات رحلة محددة</p>
+            <p className="text-xs text-[#606060]">{activeTripLabel ? <span dir="auto">{activeTripLabel}</span> : <InlineBlockSkeleton className="h-3.5 w-44" />}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>تفاصيل الرحلة</Link></Button>
             <Button size="sm" variant="outline" onClick={() => router.replace("/bookings")}>عرض كل الحجوزات</Button>
           </div>
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-[#daeaf5] bg-white p-4 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-[#d6eeff] bg-white p-4 shadow-sm space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input aria-label="بحث باسم الراكب أو رقم الموبايل" placeholder="اسم الراكب أو رقم الموبايل…" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-white" />
           <select aria-label="تصفية حسب الأسطول" value={fleetId} onChange={(event) => setFleetId(event.target.value)} className="select-field w-full"><option value="">كل الأساطيل ({fleets.length})</option>{fleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}</select>
@@ -172,7 +176,7 @@ export default function BookingsPage() {
           <div className="flex flex-wrap items-center gap-3">
             <select aria-label="طريقة الدفع" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="select-field text-xs sm:text-sm"><option value="all">كل طرق الدفع</option><option value="VODAFONE_CASH">فودافون كاش</option><option value="INSTAPAY">إنستاباي</option><option value="WALLET">محفظة إلكترونية</option><option value="CASH">نقدي</option><option value="CARD">بطاقة بنكية</option></select>
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d8e4ec] bg-[#f8fbfd] px-3 py-1.5 text-xs sm:text-sm"><input type="checkbox" checked={hasReports} onChange={(event) => setHasReports(event.target.checked)} className="size-4" /><span className="flex items-center gap-1 font-semibold text-red-700"><AlertTriangle className="size-3.5" /> حجوزات بها بلاغات</span></label>
-            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="flex items-center gap-1 text-xs font-semibold text-[#2f719e] hover:underline sm:text-sm"><Filter className="size-3.5" /> {showAdvanced ? "إخفاء تصفية التاريخ" : "تصفية بالتواريخ"}</button>
+            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="flex items-center gap-1 text-xs font-semibold text-[#059ff8] hover:underline sm:text-sm"><Filter className="size-3.5" /> {showAdvanced ? "إخفاء تصفية التاريخ" : "تصفية بالتواريخ"}</button>
           </div>
           {hasActiveFilters ? <button type="button" onClick={resetFilters} className="flex items-center gap-1 text-xs font-medium text-[#606060] hover:text-red-700 sm:text-sm"><RotateCcw className="size-3.5" /> إعادة ضبط الفلاتر</button> : null}
         </div>
@@ -180,22 +184,34 @@ export default function BookingsPage() {
       </div>
 
       {error ? <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      <AgGridTable<AdminBookingListItem>
-        key={`${items[0]?.id ?? "empty"}-${items.length}`}
-        gridId="bookings"
-        rows={items}
-        columnDefs={columns}
-        showSearch={false}
-        nextCursor={nextCursor}
-        loadMore={async (cursor) => {
-          const result = await fetchAdminBookingsPage(buildFilterParams(), cursor);
-          if (!result.ok) throw new Error(result.message);
-          return result.data;
-        }}
-        loading={loading}
-        emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
-        getRowId={(booking) => booking.id}
-      />
+      {isPending && !fetchError ? (
+        // أول تحميل (أو مفتاح فلترة جديد بدون كاش) — هيكل الجدول بدل الوميض الفارغ
+        <TableSkeleton rows={10} columns={6} />
+      ) : (
+        <CursorList<AdminBookingListItem>
+          gridId="bookings"
+          initialItems={items}
+          initialCursor={nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchAdminBookingsPage(filterParams, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(booking) => booking.id}
+          columnDefs={columns}
+          emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
+          renderItem={(booking) => (
+            <RowActionsMenu
+              label={`إجراءات حجز ${booking.passengerName || booking.passengerPhone || ""}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/bookings/${booking.id}` },
+                { label: "مسح", danger: true, onSelect: () => void removeBooking(booking) },
+              ]}
+            />
+          )}
+        />
+      )}
+      <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

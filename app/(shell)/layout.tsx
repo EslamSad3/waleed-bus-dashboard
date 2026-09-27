@@ -16,19 +16,13 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   return (
     <div className="page-bg min-h-screen">
       <Topbar email={session.email} />
-      <div className="mx-auto max-w-[1480px] px-4 sm:px-6 lg:px-8">
-        <div className="md:hidden">
-          <Sidebar />
-        </div>
-      </div>
-      <div className="mx-auto flex max-w-[1480px] gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
+      <div className="mx-auto flex max-w-[1480px] gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-5 lg:px-8 lg:py-7">
+        {/* Desktop sidebar; on phones the drawer in the topbar takes over */}
+        <Sidebar />
         <main className="min-w-0 flex-1">{children}</main>
       </div>
-      <footer className="border-t border-slate-200/70 px-4 py-5 text-center text-xs text-[#5e6b78]">
-        منصة الأتوبيسات — لوحة تحكم المشرف العام
+      <footer className="border-t border-slate-200/70 px-3 py-5 text-center text-xs text-[#5e6b78] sm:px-6 lg:px-8">
+        منصة العربيات — لوحة تحكم المشرف العام
       </footer>
     </div>
   );

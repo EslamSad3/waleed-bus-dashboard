@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet } from "@/lib/actions/http";
 
 type FleetOption = { id: string; name: string };
@@ -31,20 +32,26 @@ export function FleetPicker({
   return (
     <label className="block text-sm">
       <span className="mb-1 block font-medium">{label}</span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={!loaded}
-        className="select-field w-full"
-      >
-        <option value="">اختار الأسطول</option>
-        {fleets.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.name}
-          </option>
-        ))}
-      </select>
+      {loaded ? (
+        <select
+          aria-label={label}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="select-field w-full"
+        >
+          <option value="">اختار الأسطول</option>
+          {fleets.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span role="status" className="block">
+          <span className="sr-only">جاري التحميل…</span>
+          <Skeleton aria-hidden="true" className="h-11 w-full rounded-xl" />
+        </span>
+      )}
     </label>
   );
 }

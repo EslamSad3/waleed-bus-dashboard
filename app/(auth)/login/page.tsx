@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BusFront, Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { loginSchema, type LoginFormValues, type LoginInput } from "@/lib/schemas/auth";
+import { loginSchema, type LoginFormValues } from "@/lib/schemas/auth";
 import {
   Form,
   FormField,
@@ -74,7 +74,7 @@ export default function LoginPage() {
 
   return (
     <main className="page-bg relative isolate flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6">
-      <div aria-hidden="true" className="absolute -end-20 -top-24 h-72 w-72 rounded-full bg-[#daeaf5]/70 blur-3xl" />
+      <div aria-hidden="true" className="absolute -end-20 -top-24 h-72 w-72 rounded-full bg-[#d6eeff]/70 blur-3xl" />
       <div aria-hidden="true" className="absolute -bottom-28 -start-20 h-80 w-80 rounded-full bg-[#fff7e3]/90 blur-3xl" />
 
       <section className="panel-card relative grid w-full max-w-5xl overflow-hidden lg:grid-cols-[1.05fr_0.95fr]">
@@ -88,7 +88,7 @@ export default function LoginPage() {
               إدارة الأساطيل والسائقين من مكان واحد.
             </h2>
             <p className="mt-5 max-w-sm text-sm leading-7 text-white/70">
-              لوحة واضحة وسريعة لمتابعة الملاك والأساطيل والأتوبيسات وتوزيع السائقين.
+              لوحة واضحة وسريعة لمتابعة الملاك والأساطيل والعربيات وتوزيع السائقين.
             </p>
           </div>
 
@@ -101,11 +101,11 @@ export default function LoginPage() {
         <div className="flex min-h-[560px] items-center p-6 sm:p-10 lg:p-12">
           <div className="w-full">
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#204c6b] text-white shadow-lg shadow-[#204c6b]/20">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00134c] text-white shadow-lg shadow-[#00134c]/20">
                 <BusFront className="h-6 w-6" aria-hidden="true" />
               </span>
-              <div>
-                <p className="font-extrabold text-[#204c6b]">وليد باص</p>
+              <div className="min-w-0">
+                <p className="font-extrabold text-[#00134c]">وليد باص</p>
                 <p className="text-xs text-[#5e6b78]">لوحة الإدارة</p>
               </div>
             </div>
@@ -156,7 +156,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
                         aria-label={showPassword ? "إخفاء كلمة السر" : "إظهار كلمة السر"}
-                        className="absolute left-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#667786] transition hover:bg-[#edf6fc] hover:text-[#204c6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f719e]/30"
+                        className="absolute end-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#667786] transition hover:bg-[#eaf6ff] hover:text-[#00134c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]/30"
                       >
                         {showPassword ? (
                           <EyeOff aria-hidden="true" />
@@ -183,11 +183,11 @@ export default function LoginPage() {
                     onChange={field.onChange}
                     className="peer sr-only"
                   />
-                  <label htmlFor="rememberMe" className="flex cursor-pointer items-start gap-3 rounded-xl peer-focus-visible:ring-4 peer-focus-visible:ring-[#2f719e]/15">
-                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition ${field.value ? "border-[#2f719e] bg-[#2f719e] text-white" : "border-[#9babb8] bg-white text-transparent"}`}>
+                  <label htmlFor="rememberMe" className="flex cursor-pointer items-start gap-3 rounded-xl peer-focus-visible:ring-4 peer-focus-visible:ring-[#059ff8]/15">
+                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition ${field.value ? "border-[#059ff8] bg-[#059ff8] text-white" : "border-[#9babb8] bg-white text-transparent"}`}>
                       <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                     </span>
-                    <span>
+                    <span className="min-w-0">
                       <span className="block text-sm font-bold text-[#243442]">تذكرني</span>
                       <span className="mt-0.5 block text-xs leading-5 text-[#6f7e8b]">احتفظ بتسجيل الدخول على هذا الجهاز لمدة 7 أيام.</span>
                     </span>
@@ -202,7 +202,7 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button type="submit" className="mt-2 w-full" size="lg" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="mt-2 w-full" size="lg" loading={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الدخول…" : "دخول"}
             </Button>
               </form>

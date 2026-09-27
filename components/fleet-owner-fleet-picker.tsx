@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchUserOptions, type Fleet } from "@/lib/actions/fleets";
 import { apiGet } from "@/lib/actions/http";
 
@@ -62,17 +63,23 @@ export function FleetOwnerFleetPicker({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="block text-sm">
-        <span className="mb-2 block font-bold text-[#334454]">مالك الأسطول</span>
-        <select
-          aria-label="مالك الأسطول"
-          value={ownerId}
-          onChange={(event) => chooseOwner(event.target.value)}
-          disabled={!loaded}
-          className="select-field w-full"
-        >
-          <option value="">اختار مالك الأسطول</option>
-          {ownerOptions.map((owner) => <option key={owner.id} value={owner.id}>{owner.label}</option>)}
-        </select>
+        <span className="mb-2 block font-bold text-[#334454]">صاحب العربيات</span>
+        {loaded ? (
+          <select
+            aria-label="صاحب العربيات"
+            value={ownerId}
+            onChange={(event) => chooseOwner(event.target.value)}
+            className="select-field w-full"
+          >
+            <option value="">اختار صاحب العربيات</option>
+            {ownerOptions.map((owner) => <option key={owner.id} value={owner.id}>{owner.label}</option>)}
+          </select>
+        ) : (
+          <span role="status" className="block">
+            <span className="sr-only">جاري التحميل…</span>
+            <Skeleton aria-hidden="true" className="h-11 w-full rounded-xl" />
+          </span>
+        )}
       </label>
 
       {ownerId && ownerFleets.length > 1 ? (
@@ -86,7 +93,7 @@ export function FleetOwnerFleetPicker({
       ) : null}
 
       {error ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">{error}</p> : null}
-      <p className="text-xs leading-5 text-[#606060] sm:col-span-2">سيُنشأ حساب السائق داخل أسطول هذا المالك فقط. تعيين الأتوبيس يتم لاحقًا من صفحة الأتوبيس.</p>
+      <p className="text-xs leading-5 text-[#606060] sm:col-span-2">سيُنشأ حساب السائق داخل أسطول هذا المالك فقط. تعيين العربية يتم لاحقًا من صفحة العربية.</p>
     </div>
   );
 }

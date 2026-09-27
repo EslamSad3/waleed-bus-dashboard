@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   sendPlatformNotification,
   type SendNotificationInput,
@@ -12,6 +13,7 @@ import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { fetchPromotions, type Promotion } from "@/lib/actions/promotions";
 import { fetchTripsPage, type Trip } from "@/lib/actions/trips";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { useApiQuery, useDataQuery, qk } from "@/lib/queries";
 import {
   AlertCircle,
   Send,
@@ -47,6 +49,34 @@ function matchesPhone(phone: string | null | undefined, query: string): boolean 
   );
 }
 
+/** Pending placeholder for the trip/promotion selects (same rounded control shape). */
+function PendingSelectSkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">جاري التحميل…</span>
+      <Skeleton className="h-11 w-full rounded-xl" />
+    </div>
+  );
+}
+
+/** Pending placeholder for the user-picker results list (rows mirror the loaded rows). */
+function PickerRowsSkeleton() {
+  return (
+    <div role="status" className="space-y-3 p-3">
+      <span className="sr-only">جاري التحميل…</span>
+      {Array.from({ length: 4 }, (_, row) => (
+        <div key={row} className="flex items-center gap-2.5">
+          <Skeleton className="size-7 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-3 w-2/3 max-w-full" />
+            <Skeleton className="h-2.5 w-1/3 max-w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props) {
   const [isGlobal, setIsGlobal] = useState(true);
   const [userId, setUserId] = useState("");
@@ -63,10 +93,35 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
   const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(false);
+  // False until the on-open user fetch settles once; drives the pending skeleton
+  // in the picker (refetches on reopen stay silent, like before).
+  const [usersSettled, setUsersSettled] = useState(false);
   const searchRequestId = useRef(0);
 
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [trips, setTrips] = useState<Trip[]>([]);
+  // Promotions + trips load through TanStack cache (enabled by category),
+  // so the pickers show skeletons while pending and cache on reopen.
+  const { data: promoPage, isLoading: promotionsLoading } = useApiQuery(qk.promotions, () => fetchPromotions(), {
+    enabled: open && category === "DISCOUNT_CODE",
+  });
+  const promotions = useMemo(
+    () => (promoPage?.items ?? []).filter((promo) => promo.isActive),
+    [promoPage],
+  );
+  const { data: tripsData, isLoading: tripsLoading } = useDataQuery<Trip[]>(
+    ["notification-trips"],
+    async () => {
+      const fleetsRes = await fetchFleetsPage(null);
+      if (!fleetsRes.ok) throw new Error(fleetsRes.message);
+      const collected: Trip[] = [];
+      for (const fleet of fleetsRes.data.items.slice(0, 5)) {
+        const tRes = await fetchTripsPage(fleet.id, null);
+        if (tRes.ok) collected.push(...tRes.data.items);
+      }
+      return collected;
+    },
+    { enabled: open && category === "TRIP" },
+  );
+  const trips = tripsData ?? [];
 
   // Load initial users when dialog opens
   useEffect(() => {
@@ -74,6 +129,8 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     let active = true;
     fetchTargetOptions("").then((res) => {
       if (active && res.ok) setUserOptions(res.data);
+    }).finally(() => {
+      if (active) setUsersSettled(true);
     });
     return () => {
       active = false;
@@ -113,41 +170,6 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         matchesQuery(u.email, q),
     );
   }, [userOptions, userSearch]);
-
-  // Load promotions when category is DISCOUNT_CODE
-  useEffect(() => {
-    if (!open || category !== "DISCOUNT_CODE") return;
-    if (promotions.length > 0) return;
-    let active = true;
-    fetchPromotions().then((res) => {
-      if (active && res.ok) {
-        setPromotions(res.data.items.filter((p) => p.isActive));
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [open, category, promotions.length]);
-
-  // Load trips when category is TRIP
-  useEffect(() => {
-    if (!open || category !== "TRIP") return;
-    if (trips.length > 0) return;
-    let active = true;
-    fetchFleetsPage(null).then(async (fleetsRes) => {
-      if (active && fleetsRes.ok) {
-        const collected: Trip[] = [];
-        for (const fleet of fleetsRes.data.items.slice(0, 5)) {
-          const tRes = await fetchTripsPage(fleet.id, null);
-          if (tRes.ok) collected.push(...tRes.data.items);
-        }
-        if (active) setTrips(collected);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [open, category, trips.length]);
 
   function resetForm() {
     setIsGlobal(true);
@@ -250,14 +272,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Target Mode Toggle */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-[#10153c]">المستهدفون بالإشعار</label>
-          <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs font-bold text-[#00134c]">المستهدفون بالإشعار</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
               onClick={() => setIsGlobal(true)}
               className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition-colors ${
                 isGlobal
-                  ? "border-[#2f719e] bg-[#daeaf5] text-[#204c6b]"
+                  ? "border-[#059ff8] bg-[#d6eeff] text-[#00134c]"
                   : "border-[#d7e1ea] bg-white text-[#5e6b78] hover:bg-slate-50"
               }`}
             >
@@ -269,7 +291,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               onClick={() => setIsGlobal(false)}
               className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition-colors ${
                 !isGlobal
-                  ? "border-[#2f719e] bg-[#daeaf5] text-[#204c6b]"
+                  ? "border-[#059ff8] bg-[#d6eeff] text-[#00134c]"
                   : "border-[#d7e1ea] bg-white text-[#5e6b78] hover:bg-slate-50"
               }`}
             >
@@ -281,9 +303,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* User Selection (NO UUID, Searchable Autocomplete Picker) */}
         {!isGlobal && (
-          <div className="space-y-2 rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-3">
+          <div className="space-y-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#10153c]">
+              <label className="text-xs font-bold text-[#00134c]">
                 اختر المستخدم المستهدف *
               </label>
               {userId && (
@@ -355,9 +377,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                     className="text-xs pe-8"
                     autoFocus
                   />
-                  <div className="absolute left-2.5 top-2.5 flex items-center gap-1 text-[#5e6b78]">
+                  <div className="absolute end-2.5 top-2.5 flex items-center gap-1 text-[#5e6b78]">
                     {loadingUsers ? (
-                      <Loader2 className="size-3.5 animate-spin text-[#2f719e]" />
+                      <Loader2 className="size-3.5 animate-spin text-[#059ff8]" />
                     ) : (
                       <Search className="size-3.5 pointer-events-none" />
                     )}
@@ -376,14 +398,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                           setSelectedUserObj(u);
                           setUserSearch("");
                         }}
-                        className="flex w-full items-center justify-between gap-3 p-2.5 text-right transition-colors hover:bg-[#daeaf5]/40"
+                        className="flex w-full items-center justify-between gap-3 p-2.5 text-right transition-colors hover:bg-[#d6eeff]/40"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#daeaf5] text-[#204c6b]">
+                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#d6eeff] text-[#00134c]">
                             <User className="size-3.5" />
                           </div>
                           <div className="min-w-0 text-right">
-                            <div className="truncate text-xs font-bold text-[#10153c]">
+                            <div className="truncate text-xs font-bold text-[#00134c]">
                               {u.name || "مستخدم بدون اسم"}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#5e6b78]">
@@ -392,16 +414,18 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                             </div>
                           </div>
                         </div>
-                        <span className="shrink-0 rounded-lg bg-[#daeaf5] px-2 py-0.5 text-[11px] font-bold text-[#204c6b]">
+                        <span className="shrink-0 rounded-lg bg-[#d6eeff] px-2 py-0.5 text-[11px] font-bold text-[#00134c]">
                           اختيار
                         </span>
                       </button>
                     ))
                   ) : loadingUsers ? (
                     <div className="flex items-center justify-center gap-2 p-4 text-xs text-slate-500">
-                      <Loader2 className="size-4 animate-spin text-[#2f719e]" />
+                      <Loader2 className="size-4 animate-spin text-[#059ff8]" />
                       <span>جاري البحث…</span>
                     </div>
+                  ) : !usersSettled ? (
+                    <PickerRowsSkeleton />
                   ) : (
                     <div className="p-4 text-center text-xs text-slate-500">
                       {userSearch.trim()
@@ -422,9 +446,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Category select */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#10153c]">نوع الإشعار</label>
+          <label className="text-xs font-bold text-[#00134c]">نوع الإشعار</label>
           <select
-            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
             value={category}
             onChange={(e) => setCategory(e.target.value as "TEXT" | "TRIP" | "DISCOUNT_CODE")}
           >
@@ -437,21 +461,27 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Trip Dropdown if TRIP (NO UUID) */}
         {category === "TRIP" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">اختر الرحلة *</label>
-            <select
-              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
-              value={tripId}
-              onChange={(e) => setTripId(e.target.value)}
-            >
-              <option value="">-- اختر الرحلة من القائمة --</option>
-              {trips.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.origin} ← {t.destination} ({new Date(t.departAt).toLocaleString("ar-EG")})
-                </option>
-              ))}
-            </select>
-            {trips.length === 0 && (
-              <p className="text-[11px] text-amber-700">لا توجد رحلات مجدولة حاليًا في النظام.</p>
+            <label className="text-xs font-bold text-[#00134c]">اختر الرحلة *</label>
+            {tripsLoading ? (
+              <PendingSelectSkeleton />
+            ) : (
+              <>
+                <select
+                  className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
+                  value={tripId}
+                  onChange={(e) => setTripId(e.target.value)}
+                >
+                  <option value="">-- اختر الرحلة من القائمة --</option>
+                  {trips.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.origin} ← {t.destination} ({new Date(t.departAt).toLocaleString("ar-EG")})
+                    </option>
+                  ))}
+                </select>
+                {trips.length === 0 && (
+                  <p className="text-[11px] text-amber-700">لا توجد رحلات مجدولة حاليًا في النظام.</p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -459,28 +489,34 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Promotion Dropdown if DISCOUNT_CODE (NO UUID) */}
         {category === "DISCOUNT_CODE" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#10153c]">اختر كود الخصم *</label>
-            <select
-              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
-              value={promotionId}
-              onChange={(e) => setPromotionId(e.target.value)}
-            >
-              <option value="">-- اختر كود الخصم من القائمة --</option>
-              {promotions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — خصم {p.value} جنيه ({p.isGlobal ? "كود عام" : "كود مخصص"})
-                </option>
-              ))}
-            </select>
-            {promotions.length === 0 && (
-              <p className="text-[11px] text-amber-700">لا توجد أكواد خصم نشطة حاليًا في النظام.</p>
+            <label className="text-xs font-bold text-[#00134c]">اختر كود الخصم *</label>
+            {promotionsLoading ? (
+              <PendingSelectSkeleton />
+            ) : (
+              <>
+                <select
+                  className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
+                  value={promotionId}
+                  onChange={(e) => setPromotionId(e.target.value)}
+                >
+                  <option value="">-- اختر كود الخصم من القائمة --</option>
+                  {promotions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} — خصم {p.value} جنيه ({p.isGlobal ? "كود عام" : "كود مخصص"})
+                    </option>
+                  ))}
+                </select>
+                {promotions.length === 0 && (
+                  <p className="text-[11px] text-amber-700">لا توجد أكواد خصم نشطة حاليًا في النظام.</p>
+                )}
+              </>
             )}
           </div>
         )}
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#10153c]">عنوان الإشعار *</label>
+          <label className="text-xs font-bold text-[#00134c]">عنوان الإشعار *</label>
           <Input
             placeholder="مثال: تنبيه هام بخصوص مواعيد الرحلات"
             value={title}
@@ -491,14 +527,14 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Body */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#10153c]">نص ومحتوى الإشعار *</label>
+          <label className="text-xs font-bold text-[#00134c]">نص ومحتوى الإشعار *</label>
           <textarea
             rows={4}
             placeholder="اكتب تفاصيل الإشعار هنا..."
             value={body}
             onChange={(e) => setBody(e.target.value)}
             maxLength={2000}
-            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#2f719e] focus:ring-1 focus:ring-[#2f719e]"
+            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
           />
           <p className="text-left text-[11px] text-[#5e6b78]" dir="ltr">
             {body.length} / 2000
@@ -506,7 +542,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         </div>
 
         {/* Dialog Actions */}
-        <div className="flex items-center justify-end gap-2 border-t border-[#e4ecf2] pt-3">
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-3 sm:flex-row sm:items-center sm:justify-end">
           <Button
             type="button"
             variant="secondary"
@@ -517,8 +553,8 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           </Button>
           <Button
             type="submit"
-            disabled={submitting}
-            className="gap-2 bg-[#2f719e] hover:bg-[#204c6b]"
+            loading={submitting}
+            className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
           >
             <Send className="size-4" />
             <span>{submitting ? "جاري الإرسال…" : "إرسال الإشعار"}</span>

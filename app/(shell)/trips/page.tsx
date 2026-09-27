@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { deleteTrip, fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { fetchBusesPage } from "@/lib/actions/buses";
 import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/members";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
+import { TableSkeleton } from "@/components/ui/skeletons";
+import { qk, removeFromCursorList, useDataQuery } from "@/lib/queries";
+import { mapWithConcurrency } from "@/lib/actions/http";
+import { useQueryClient } from "@/lib/queries";
 
 type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -21,7 +28,8 @@ async function fetchFleetBuses(fleetId: string) {
   do {
     const result = await fetchBusesPage(fleetId, cursor);
     if (!result.ok) throw new Error(result.message);
-    result.data.items.forEach((bus) => buses.set(bus.id, bus.registrationNumber));
+    // عمود العربية بيعرض رقم اللوحة — رقم التسجيل احتياطي لو مفيش لوحة
+    result.data.items.forEach((bus) => buses.set(bus.id, bus.plateNumber ?? bus.registrationNumber));
     cursor = result.data.nextCursor;
   } while (cursor);
   return buses;
@@ -57,16 +65,14 @@ async function fetchAggregateTripPage(cursorState: string | null): Promise<TripA
   const states: FleetCursor[] = cursorState ? JSON.parse(cursorState) as FleetCursor[] : await fetchAllFleetStates();
   const [assignedDrivers, fleetBuses] = await Promise.all([
     fetchAssignedDrivers(),
-    Promise.all(states.map(async (state) => [state.fleetId, await fetchFleetBuses(state.fleetId)] as const)),
+    mapWithConcurrency(states, 4, async (state) => [state.fleetId, await fetchFleetBuses(state.fleetId)] as const),
   ]);
   const busesByFleet = new Map(fleetBuses);
-  const results = await Promise.all(
-    states.map(async (state) => {
-      const result = await fetchTripsPage(state.fleetId, state.cursor);
-      if (!result.ok) throw new Error(result.message);
-      return { state, page: result.data };
-    }),
-  );
+  const results = await mapWithConcurrency(states, 4, async (state) => {
+    const result = await fetchTripsPage(state.fleetId, state.cursor);
+    if (!result.ok) throw new Error(result.message);
+    return { state, page: result.data };
+  });
   const nextStates = results.map(({ state, page }) => ({ ...state, cursor: page.nextCursor }));
   const items = results.flatMap(({ state, page }) => page.items.map((trip) => ({
     ...trip,
@@ -81,13 +87,22 @@ async function fetchAggregateTripPage(cursorState: string | null): Promise<TripA
 }
 
 export default function TripsPage() {
-  const [first, setFirst] = useState<TripAggregatePage | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [tripForEdit, setTripForEdit] = useState<TripRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; from?: string; to?: string }>({});
+  const { data: first, isLoading, error } = useDataQuery<TripAggregatePage>(
+    qk.trips(null),
+    () => fetchAggregateTripPage(null),
+  );
 
-  useEffect(() => {
-    fetchAggregateTripPage(null).then(setFirst).catch((error: Error) => setFailed(error.message));
-  }, []);
+  async function removeTrip(trip: TripRow) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح الرحلة «${trip.origin} → ${trip.destination}»؟ لو الرحلة عليها حجوزات هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteTrip(trip.fleetId, trip.id);
+    if (!result.ok) return;
+    removeFromCursorList<TripRow>(queryClient, qk.trips(null), trip.id);
+  }
 
   const query = (listFilters.q ?? "").trim();
   const status = listFilters.status ?? "all";
@@ -103,7 +118,7 @@ export default function TripsPage() {
     { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
     { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
     { field: "fleetName", headerName: "اسم الأسطول", filter: "agTextColumnFilter" },
-    { field: "busName", headerName: "الأتوبيس", filter: "agTextColumnFilter" },
+    { field: "busName", headerName: "العربية", filter: "agTextColumnFilter" },
     { field: "driverName", headerName: "السواق", filter: "agTextColumnFilter" },
     { field: "departAt", headerName: "موعد الرحلة", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
     { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
@@ -112,34 +127,45 @@ export default function TripsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">الرحلات</h1>
           <p className="page-description">كل الرحلات في الأساطيل المسجلة، مع الخط والميعاد وحالة التشغيل.</p>
         </div>
-        <Button asChild><Link href="/trips/new">رحلة جديدة</Link></Button>
+        <Button onClick={() => setCreateOpen(true)}>رحلة جديدة</Button>
       </div>
 
-      {failed ? <p role="alert" className="text-sm text-red-600">{failed}</p> : null}
-      {!first ? <p className="text-sm text-[#606060]">جاري تحميل الرحلات…</p> : (
+      {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
+      {isLoading ? <TableSkeleton columns={8} /> : (
         <CursorList<TripRow>
-          initialItems={first.items}
-          initialCursor={first.nextCursor}
+          initialItems={first?.items ?? []}
+          initialCursor={first?.nextCursor ?? null}
           loadMore={fetchAggregateTripPage}
           keyOf={(trip) => trip.id}
           filter={predicate}
           columnDefs={columns}
           filterBar={
             <div className="contents">
-              <Input aria-label="بحث بالمنشأ أو الوجهة أو الأسطول" placeholder="من / إلى / الأسطول" value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="max-w-52 bg-white" />
-              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field"><option value="all">كل الحالات</option><option value="SCHEDULED">مجدولة</option><option value="DEPARTED">شغالة</option><option value="COMPLETED">خلصت</option><option value="CANCELLED">ملغية</option></select>
-              <Input aria-label="من تاريخ" type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="max-w-44 bg-white" />
-              <Input aria-label="إلى تاريخ" type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="max-w-44 bg-white" />
+              <Input aria-label="بحث بالمنشأ أو الوجهة أو الأسطول" placeholder="من / إلى / الأسطول" value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="w-full bg-white md:min-w-0 md:w-auto md:max-w-52 md:flex-1" />
+              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-auto"><option value="all">كل الحالات</option><option value="SCHEDULED">مجدولة</option><option value="DEPARTED">شغالة</option><option value="COMPLETED">خلصت</option><option value="CANCELLED">ملغية</option></select>
+              <Input aria-label="من تاريخ" type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
+              <Input aria-label="إلى تاريخ" type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
             </div>
           }
           emptyMessage="لا توجد رحلات مسجلة في الأساطيل."
-          renderItem={(trip) => <Link href={`/trips/${trip.id}`} className="list-card"><span className="font-semibold">{trip.origin} ← {trip.destination}<span className="mt-1 block text-xs text-[#606060]">{trip.fleetName} · {trip.busName} · {trip.driverName}</span></span><span className="text-sm text-[#606060]">فتح</span></Link>}
+          renderItem={(trip) => (
+            <RowActionsMenu
+              label={`إجراءات رحلة ${trip.origin} → ${trip.destination}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/trips/${trip.id}` },
+                { label: "تعديل", onSelect: () => setTripForEdit(trip) },
+                { label: "مسح", danger: true, onSelect: () => void removeTrip(trip) },
+              ]}
+            />
+          )}
         />
       )}
+      <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} onClose={() => setTripForEdit(null)} />
     </div>
   );
 }

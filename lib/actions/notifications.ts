@@ -1,4 +1,5 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult } from "@/lib/actions/toast";
 
 export type OpsNotification = {
   id: string;
@@ -47,5 +48,8 @@ export type SendNotificationResult = {
 export function sendPlatformNotification(
   input: SendNotificationInput,
 ): Promise<ActionResult<SendNotificationResult>> {
-  return apiSend("/api/platform/notifications", "POST", input);
+  return notifyResult(
+    input.isGlobal ? "اتبعت الإشعار لكل المستخدمين" : "اتبعت الإشعار بنجاح",
+    apiSend("/api/platform/notifications", "POST", input),
+  );
 }

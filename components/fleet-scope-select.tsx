@@ -61,9 +61,9 @@ export function FleetScopeSelect() {
     <div className="flex items-center gap-2">
       <label
         htmlFor="global-fleet-select"
-        className="flex items-center gap-2 rounded-2xl border border-[#c4def3] bg-white px-3 py-1.5 shadow-sm transition hover:border-[#2f719e]"
+        className="flex items-center gap-2 rounded-2xl border border-[#bfe4ff] bg-white px-3 py-1.5 shadow-sm transition hover:border-[#059ff8]"
       >
-        <span className="grid size-7 place-items-center rounded-lg bg-[#daeaf5] text-[#204c6b]">
+        <span className="grid size-7 place-items-center rounded-lg bg-[#d6eeff] text-[#00134c]">
           <Building2 className="size-4" />
         </span>
         <div className="flex flex-col text-start">
@@ -75,7 +75,7 @@ export function FleetScopeSelect() {
               value={fleetId ?? ""}
               onChange={(e) => handleChange(e.target.value)}
               disabled={!loaded}
-              className="appearance-none bg-transparent pe-6 text-xs sm:text-sm font-extrabold text-[#204c6b] focus:outline-none cursor-pointer max-w-[160px] sm:max-w-[220px] truncate"
+              className="appearance-none bg-transparent pe-6 text-xs sm:text-sm font-extrabold text-[#00134c] focus:outline-none cursor-pointer max-w-[160px] sm:max-w-[220px] truncate"
             >
               <option value="">-- اختار الأسطول --</option>
               {fleets.map((f) => (
@@ -84,7 +84,7 @@ export function FleetScopeSelect() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute end-0 size-3.5 text-[#2f719e]" />
+            <ChevronDown className="pointer-events-none absolute end-0 size-3.5 text-[#059ff8]" />
           </div>
         </div>
       </label>

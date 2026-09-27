@@ -1,4 +1,5 @@
-import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { apiGet, apiSend, apiSendFile, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateFleetOwnerInput, UpdateFleetOwnerInput } from "@/lib/schemas/p1";
 
 export type FleetOwnerAccount = {
@@ -23,9 +24,22 @@ export function fetchFleetOwner(id: string): Promise<ActionResult<FleetOwnerAcco
 }
 
 export function createFleetOwner(input: CreateFleetOwnerInput): Promise<ActionResult<FleetOwnerAccount>> {
-  return apiSend("/api/fleet-owners", "POST", input);
+  return notifyResult("اتضاف مالك العربية بنجاح", apiSend("/api/fleet-owners", "POST", input));
 }
 
 export function updateFleetOwner(id: string, input: UpdateFleetOwnerInput): Promise<ActionResult<FleetOwnerAccount>> {
-  return apiSend(`/api/fleet-owners/${id}`, "PATCH", input);
+  return notifyResult("اتحفظت بيانات صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "PATCH", input));
+}
+
+export function deleteFleetOwner(id: string): Promise<ActionResult<null>> {
+  return notifyResult("اتمسح صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "DELETE"));
+}
+
+/** Multipart upload: the file goes up as FormData and the API sets the picture. */
+export function uploadFleetOwnerPicture(id: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
+  return notifyResult(
+    "اترفعت صورة مالك العربية",
+    apiSendFile<{ url: string }>(`/api/fleet-owners/${id}/picture`, file),
+    opts,
+  );
 }

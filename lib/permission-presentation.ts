@@ -9,11 +9,11 @@ type PermissionPresentation = {
 const RESOURCES: Record<string, { group: string; name: string }> = {
   users: { group: "الحسابات", name: "حسابات المستخدمين" },
   fleets: { group: "التشغيل", name: "الأساطيل" },
-  buses: { group: "التشغيل", name: "الأتوبيسات" },
+  buses: { group: "التشغيل", name: "العربيات" },
   trips: { group: "التشغيل", name: "الرحلات" },
   bookings: { group: "التشغيل", name: "الحجوزات" },
   members: { group: "التشغيل", name: "أعضاء الأسطول" },
-  "fleet.buses": { group: "تشغيل الأسطول", name: "أتوبيسات الأسطول" },
+  "fleet.buses": { group: "تشغيل الأسطول", name: "عربيات الأسطول" },
   "fleet.trips": { group: "تشغيل الأسطول", name: "رحلات الأسطول" },
   "fleet.drivers": { group: "تشغيل الأسطول", name: "سائقي الأسطول" },
   "fleet.reports": { group: "تشغيل الأسطول", name: "تقارير الأسطول" },

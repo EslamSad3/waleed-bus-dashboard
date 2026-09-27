@@ -1,35 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Pencil, Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { TableSkeleton } from "@/components/ui/skeletons";
+import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
+import { rankOrdinalAr } from "@/lib/ordinals";
+import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 export default function VipTiersPage() {
-  const [rows, setRows] = useState<VipTier[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  // TanStack cache: edits land here instantly on dialog close — no reload.
+  const { data: rows, isLoading, error } = useApiQuery<VipTier[]>(qk.vipTiers, () => fetchVipTiers(true));
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VipTier | null>(null);
-  const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [rank, setRank] = useState("1");
-
-  useEffect(() => {
-    fetchVipTiers(true).then((result) => {
-      if (result.ok) { setRows(result.data); setError(null); }
-      else setError(result.message);
-    });
-  }, []);
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   function openCreate() {
     setEditing(null);
     setName("");
     setRank(String((rows?.length ?? 0) + 1));
-    setError(null);
+    setDialogError(null);
     setCreating(true);
   }
 
@@ -38,34 +39,41 @@ export default function VipTiersPage() {
     setEditing(tier);
     setName(tier.name);
     setRank(String(tier.rank));
-    setError(null);
+    setDialogError(null);
+  }
+
+  function closeDialog() {
+    setCreating(false);
+    setEditing(null);
+    setDialogError(null);
   }
 
   async function save() {
     if (!name.trim() || !rank) {
-      setError("أدخل اسم المستوى والترتيب.");
+      setDialogError("أدخل اسم المستوى والترتيب.");
       return;
     }
-    setSaving(true);
     const result = editing
       ? await updateVipTier(editing.id, { name: name.trim(), rank: Number(rank) })
       : await createVipTier({ name: name.trim(), rank: Number(rank) });
-    setSaving(false);
-    if (!result.ok) return setError(result.message);
-    if (editing) {
-      setRows((items) => items?.map((t) => (t.id === result.data.id ? result.data : t)) ?? [result.data]);
-      setEditing(null);
-    } else {
-      setRows((items) => [...(items ?? []), result.data].sort((a, b) => a.rank - b.rank));
-      setCreating(false);
-    }
-    setError(null);
+    if (!result.ok) return setDialogError(result.message);
+    // Instant cache write → الجدول بيتحدث في نفس اللحظة.
+    upsertInList(queryClient, qk.vipTiers, result.data);
+    queryClient.invalidateQueries({ queryKey: qk.vipTiers });
+    closeDialog();
   }
 
   async function toggleActive(tier: VipTier) {
     const result = await updateVipTier(tier.id, { isActive: !tier.isActive });
-    if (!result.ok) return setError(result.message);
-    setRows((items) => items?.map((t) => (t.id === result.data.id ? result.data : t)) ?? []);
+    if (!result.ok) return setDialogError(result.message);
+    upsertInList(queryClient, qk.vipTiers, result.data);
+  }
+
+  async function removeTier(tier: VipTier) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مستوى «${tier.name}»؟ لو فيه أساطيل مرتبطة بيه هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteVipTier(tier.id);
+    if (!result.ok) return setDialogError(result.message);
+    removeFromList<VipTier>(queryClient, qk.vipTiers, tier.id);
   }
 
   const dialogOpen = creating || editing !== null;
@@ -75,53 +83,52 @@ export default function VipTiersPage() {
       field: "rank",
       headerName: "الترتيب",
       filter: "agNumberColumnFilter",
-      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">VIP {params.data.rank}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
+      valueFormatter: (params) => rankOrdinalAr(params.value as number),
+      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
     },
     { field: "name", headerName: "الاسم" },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: VipTier }) => {
-        const tier = params.data;
-        if (!tier) return null;
-        return (
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(tier)}><Pencil className="size-4" /> تعديل</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(tier)}>{tier.isActive ? "إيقاف" : "تفعيل"}</Button>
-          </div>
-        );
-      },
-    },
   ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">مستويات VIP</h1>
-          <p className="page-description">ترتيب ظهور ملاك الأساطيل في نتائج البحث — الأقل ترتيبًا يظهر أولًا.</p>
+          <p className="page-description">ترتيب ظهور أصحاب العربيات في نتائج البحث — الأقل ترتيبًا يظهر أولًا.</p>
         </div>
         <Button onClick={openCreate}><Plus className="size-4" /> مستوى جديد</Button>
       </div>
-      {error && !dialogOpen ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {!rows ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<VipTier>
-          key={rows.map((t) => `${t.id}:${t.rank}:${t.isActive}`).join("|")}
+      {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
+      {isLoading ? <TableSkeleton columns={3} /> : (
+        <CursorList<VipTier>
           gridId="vip-tiers"
-          rows={rows}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(tier) => tier.id}
           columnDefs={columns}
-          emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة VIP 1."
-          getRowId={(t) => t.id}
+          emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة أول مستوى."
+          renderItem={(tier) => (
+            <RowActionsMenu
+              label={`إجراءات مستوى ${tier.name}`}
+              actions={[
+                { label: "تعديل", onSelect: () => openEdit(tier) },
+                { label: tier.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(tier) },
+                { label: "مسح", danger: true, onSelect: () => void removeTier(tier) },
+              ]}
+            />
+          )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? "تعديل المستوى" : "مستوى جديد"} description="الترتيب رقم فريد — 1 يظهر أولًا." size="sm">
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المستوى" : "مستوى جديد"} description="الترتيب رقم فريد — الأول في القائمه يظهر أولًا." size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="VIP 1" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ذهبي" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الترتيب</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={rank} onChange={(event) => setRank(event.target.value)} /></label>
-          {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>إلغاء</Button><Button type="button" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button></div>
+          {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
+            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
+          </div>
         </div>
       </Dialog>
     </div>

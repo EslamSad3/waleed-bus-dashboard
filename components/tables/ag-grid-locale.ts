@@ -80,7 +80,7 @@ export const arabicGridHeaders: Record<string, string> = {
   updatedAt: "آخر تحديث",
   governorateId: "المحافظة",
   userId: "معرف المستخدم",
-  busId: "الأتوبيس",
+  busId: "العربية",
   tripId: "الرحلة",
   lineId: "خط الرحلة",
   driverId: "السواق",

@@ -4,7 +4,7 @@ import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import {
   fetchAdminBookingDetail,
@@ -16,6 +16,8 @@ import {
   type AdminBookingDetail,
   type IncidentReport,
 } from "@/lib/actions/bookings";
+import { DetailPageSkeleton } from "@/components/ui/skeletons";
+import { qk, useDataQuery } from "@/lib/queries";
 import {
   VerifyPaymentDialog,
   FailPaymentDialog,
@@ -56,7 +58,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
 
   const [booking, setBooking] = useState<AdminBookingDetail | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
 
@@ -81,22 +82,24 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     { field: "metadata", headerName: "التفاصيل والبيانات الوصفية", valueFormatter: (params) => params.value ? JSON.stringify(params.value) : "—" },
   ];
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchAdminBookingDetail(id).then((res) => {
-      if (cancelled) return;
-      setLoading(false);
-      if (res.ok) {
-        setBooking(res.data);
-        setError(null);
-      } else {
-        setError(res.message);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [id, reloadKey]);
+  // TanStack cache: تفاصيل الحجز من طبقة الكاش — والتحديثات بتحصل في الخلفية
+  const { data: bookingData, isFetching, error: bookingError } = useDataQuery<AdminBookingDetail>(
+    qk.adminBooking(id),
+    async () => {
+      const res = await fetchAdminBookingDetail(id);
+      if (!res.ok) throw new Error(res.message);
+      return res.data;
+    },
+  );
+  // Render-phase sync from the query cache (setState-in-effect is not allowed)
+  const [seenBooking, setSeenBooking] = useState<AdminBookingDetail | undefined>(bookingData);
+  if (bookingData && bookingData !== seenBooking) {
+    setSeenBooking(bookingData);
+    setBooking(bookingData);
+    setError(null);
+  }
+  const fetchFailed = bookingError?.message ?? null;
+  const loading = !bookingData && isFetching;
 
   function handleActionSuccess(note?: string) {
     if (note) {
@@ -107,19 +110,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (loading) {
-    return (
-      <div className="dashboard-page space-y-4 animate-pulse">
-        <div className="h-10 w-48 bg-white/60 rounded-xl" />
-        <div className="h-32 bg-white/70 rounded-2xl" />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="h-64 bg-white/70 rounded-2xl" />
-          <div className="h-64 bg-white/70 rounded-2xl" />
-        </div>
-      </div>
-    );
+    return <DetailPageSkeleton sections={6} />;
   }
 
-  if (error || !booking) {
+  if (error || fetchFailed || !booking) {
     return (
       <div className="dashboard-page">
         <div className="mb-4">
@@ -133,7 +127,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
           <AlertTriangle className="size-8 mx-auto mb-2 text-red-600" />
           <h2 className="text-lg font-bold">تعذر تحميل بيانات الحجز</h2>
-          <p className="text-sm mt-1">{error ?? "الحجز غير موجود"}</p>
+          <p className="text-sm mt-1">{error ?? fetchFailed ?? "الحجز غير موجود"}</p>
         </div>
       </div>
     );
@@ -152,14 +146,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="dashboard-page space-y-6">
       {/* Top Breadcrumb & Return Link */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="secondary" asChild className="gap-2 text-xs sm:text-sm">
           <Link href="/bookings">
             <ArrowRight className="size-4" />
             <span>العودة للحجوزات</span>
           </Link>
         </Button>
-        <span className="text-xs text-[#5e6b78]" dir="ltr">
+        <span className="min-w-0 truncate text-xs text-[#5e6b78]" dir="ltr">
           UUID: {booking.id}
         </span>
       </div>
@@ -168,24 +162,24 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       {successNote && (
         <div role="status" className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 animate-in fade-in duration-200">
           <CheckCircle2 className="size-5 shrink-0 text-emerald-600" />
-          <span>{successNote}</span>
+          <span className="min-w-0">{successNote}</span>
         </div>
       )}
 
       {/* Main Inspection Header Card */}
-      <div className="rounded-2xl border border-[#daeaf5] bg-white p-5 sm:p-7 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-[#d6eeff] bg-white p-5 sm:p-7 shadow-sm space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="grid size-10 place-items-center rounded-xl bg-[#10153c] text-white">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00134c] text-white">
                 <Ticket className="size-5" />
               </span>
-              <h1 className="text-2xl font-black text-[#10153c]">
+              <h1 className="min-w-0 break-words text-xl font-black text-[#00134c] sm:text-2xl">
                 حجز: {booking.passenger?.name ?? "راكب غير مسمى"}
               </h1>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-[#daeaf5] px-2.5 py-0.5 text-xs font-bold text-[#204c6b]">
-                <Building2 className="size-3.5" />
-                <span>{booking.fleetName}</span>
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-lg bg-[#d6eeff] px-2.5 py-0.5 text-xs font-bold text-[#00134c]">
+                <Building2 className="size-3.5 shrink-0" />
+                <span className="truncate">{booking.fleetName}</span>
               </span>
             </div>
             <p className="mt-1.5 text-xs sm:text-sm text-[#5e6b78]">
@@ -239,7 +233,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               type="button"
               size="sm"
               onClick={() => setVerifyOpen(true)}
-              className="gap-1.5 bg-[#2f719e] hover:bg-[#204c6b]"
+              className="gap-1.5 bg-[#059ff8] hover:bg-[#00134c]"
             >
               <CheckCircle2 className="size-4" />
               <span>تأكيد الدفع (Verify)</span>
@@ -267,7 +261,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               size="sm"
               variant="secondary"
               onClick={() => setRefundOpen(true)}
-              className="gap-1.5 border border-[#2f719e]/30 text-[#204c6b] hover:bg-[#daeaf5]"
+              className="gap-1.5 border border-[#059ff8]/30 text-[#00134c] hover:bg-[#d6eeff]"
             >
               <RotateCcw className="size-4" />
               <span>استرداد مالي (Refund)</span>
@@ -317,19 +311,19 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         {/* Card 1: Passenger Profile */}
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
-            <User className="size-5 text-[#2f719e]" />
-            <h2 className="text-lg font-bold text-[#10153c]">بيانات الراكب المسافر</h2>
+            <User className="size-5 text-[#059ff8]" />
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">بيانات الراكب المسافر</h2>
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">اسم الراكب:</span>
-              <span className="font-bold text-[#1a1a1a]">{booking.passenger?.name ?? "—"}</span>
+              <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passenger?.name ?? "—"}</span>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">رقم الموبايل:</span>
-              <div className="flex items-center gap-1.5 font-semibold text-[#1a1a1a]">
+              <div className="flex min-w-0 items-center gap-1.5 font-semibold text-[#1a1a1a]">
                 <span dir="ltr">{booking.passenger?.phoneNumber ?? "—"}</span>
                 {booking.passenger?.phoneVerifiedAt ? (
                   <span className="inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.2 text-[10px] font-bold text-green-800" title="الموبايل موثق">
@@ -345,27 +339,27 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">الرقم القومي:</span>
-              <span className="font-mono text-[#1a1a1a]" dir="ltr">
+              <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">
                 {booking.passenger?.nationalId ?? "غير مسجل"}
               </span>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">معرف المستخدم (User ID):</span>
-              <span className="font-mono text-xs text-[#5e6b78]" dir="ltr">
+              <span className="min-w-0 break-all font-mono text-xs text-[#5e6b78]" dir="ltr">
                 {booking.passenger?.id ? `${booking.passenger.id.slice(0, 16)}…` : "—"}
               </span>
             </div>
 
             <div className="rounded-xl bg-[#f8fbfd] p-3">
               <p className="mb-2 text-xs font-bold text-[#71808d]">بيانات الحجز المحفوظة تاريخيًا + <span className={booking.bookingFor === "OTHER" ? "status-pill" : "status-pill status-pill-muted"}>{booking.bookingFor === "OTHER" ? "لراكب آخر" : "لنفسه"}</span></p>
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-[#5e6b78]">الاسم المحفوظ:</span>
-                <span className="font-bold text-[#1a1a1a]">{booking.passengerName ?? "—"}</span>
+                <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passengerName ?? "—"}</span>
               </div>
-              <div className="mt-2 flex justify-between items-center">
+              <div className="mt-2 flex items-center justify-between gap-3">
                 <span className="text-[#5e6b78]">الموبايل المحفوظ:</span>
-                <span dir="ltr" className="font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
+                <span dir="ltr" className="min-w-0 font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
               </div>
               {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">ملاحظة: {booking.note}</p> : null}
               {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">كود الخصم: <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> (خصم {booking.discountAmount} جنيه)</span> : null}</p> : null}
@@ -376,29 +370,29 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         {/* Card 2: Trip, Bus & Driver */}
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
-            <Bus className="size-5 text-[#2f719e]" />
-            <h2 className="text-lg font-bold text-[#10153c]">تفاصيل الرحلة والمركبة والسائق</h2>
+            <Bus className="size-5 text-[#059ff8]" />
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">تفاصيل الرحلة والمركبة والسائق</h2>
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">خط السير:</span>
-              <span className="font-extrabold text-[#1a1a1a]">
+              <span className="min-w-0 font-extrabold text-[#1a1a1a]">
                 {booking.trip.originName} ← {booking.trip.destinationName}
               </span>
             </div>
 
             {(booking.boardingStationName || booking.landingStationName || booking.boardingStationId || booking.landingStationId) && (
-              <div className="rounded-xl border border-[#daeaf5] bg-[#f8fbfd] p-2.5 text-xs space-y-1.5">
-                <div className="flex justify-between items-center">
+              <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-2.5 text-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-[#5e6b78]">محطة الركوب:</span>
-                  <span className="font-bold text-[#1a1a1a]">
+                  <span className="min-w-0 font-bold text-[#1a1a1a]">
                     {booking.boardingStationName ?? (booking.boardingStationId ? `معرف: ${booking.boardingStationId.slice(0, 8)}…` : "نقطة الانطلاق")}
                   </span>
                 </div>
-                <div className="flex justify-between items-center border-t border-[#e4ecf2] pt-1.5">
+                <div className="flex items-center justify-between gap-3 border-t border-[#e4ecf2] pt-1.5">
                   <span className="text-[#5e6b78]">محطة النزول:</span>
-                  <span className="font-bold text-[#1a1a1a]">
+                  <span className="min-w-0 font-bold text-[#1a1a1a]">
                     {booking.landingStationName ?? (booking.landingStationId ? `معرف: ${booking.landingStationId.slice(0, 8)}…` : "نقطة الوصول")}
                   </span>
                 </div>
@@ -407,8 +401,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">موعد الإقلاع:</span>
-              <span className="font-semibold text-[#1a1a1a] flex items-center gap-1">
-                <Clock className="size-3.5 text-[#2f719e]" />
+              <span className="min-w-0 font-semibold text-[#1a1a1a] flex items-center gap-1">
+                <Clock className="size-3.5 text-[#059ff8]" />
                 <time dateTime={booking.trip.departureTime}>
                   {new Date(booking.trip.departureTime).toLocaleString("ar-EG")}
                 </time>
@@ -417,13 +411,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">سعر المقعد / الإجمالي:</span>
-              <span className="font-bold text-[#10153c]" dir="ltr">
+              <span className="font-bold text-[#00134c]" dir="ltr">
                 {booking.trip.fare} EGP / مقعد
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">الأتوبيس / المركبة:</span>
+              <span className="text-[#5e6b78]">العربية / المركبة:</span>
               <span className="font-semibold text-[#1a1a1a]">
                 {booking.trip.bus ? (
                   <>
@@ -463,8 +457,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         {/* Card 3: Financial Reconciliation & Settlement */}
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
-            <CreditCard className="size-5 text-[#2f719e]" />
-            <h2 className="text-lg font-bold text-[#10153c]">المعاملات المالية والتسوية</h2>
+            <CreditCard className="size-5 text-[#059ff8]" />
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">المعاملات المالية والتسوية</h2>
           </div>
 
           <div className="space-y-3 text-sm">
@@ -477,7 +471,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">إجمالي قيمة الحجز:</span>
-              <span className="font-extrabold text-base text-[#10153c]" dir="ltr">
+              <span className="font-extrabold text-base text-[#00134c]" dir="ltr">
                 {booking.totalAmount} EGP
               </span>
             </div>
@@ -498,7 +492,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center pt-2 border-t border-[#f0f4f8]">
               <span className="text-[#5e6b78]">المرجع الخارجي للتحويل:</span>
-              <span className="font-mono font-bold text-[#204c6b]" dir="ltr">
+              <span className="min-w-0 font-mono font-bold text-[#00134c]" dir="ltr">
                 {booking.paymentReference ?? "غير متوفر"}
               </span>
             </div>
@@ -534,13 +528,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         {/* Card 4: Operational Lifecycle (Boarding & Drop) */}
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
-            <Clock className="size-5 text-[#2f719e]" />
-            <h2 className="text-lg font-bold text-[#10153c]">الحالة التشغيلية والصعود</h2>
+            <Clock className="size-5 text-[#059ff8]" />
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">الحالة التشغيلية والصعود</h2>
           </div>
 
           <div className="space-y-3 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">حالة الصعود للأتوبيس:</span>
+              <span className="text-[#5e6b78]">حالة الصعود للعربية:</span>
               {booking.boardedAt ? (
                 <span className="font-bold text-green-700 flex items-center gap-1">
                   <CheckCircle2 className="size-4" />
@@ -568,7 +562,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             {booking.dropStationId && (
               <div className="flex justify-between items-center text-xs text-[#5e6b78]">
                 <span>محطة النزول:</span>
-                <span className="font-mono text-[#1a1a1a]" dir="ltr">{booking.dropStationId}</span>
+                <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">{booking.dropStationId}</span>
               </div>
             )}
 
@@ -584,13 +578,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         {/* Card 5: Service Ratings */}
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
-            <Star className="size-5 text-[#2f719e]" />
-            <h2 className="text-lg font-bold text-[#10153c]">تقييمات الرحلة المتبادلة</h2>
+            <Star className="size-5 text-[#059ff8]" />
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">تقييمات الرحلة المتبادلة</h2>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
             <div className="rounded-xl border border-[#e4ecf2] bg-[#f8fbfd] p-3">
-              <span className="text-xs text-[#5e6b78] block mb-1">تقييم الأتوبيس</span>
+              <span className="text-xs text-[#5e6b78] block mb-1">تقييم العربية</span>
               <div className="flex items-center justify-center gap-1 font-extrabold text-lg text-amber-600">
                 <Star className="size-4 fill-amber-500 text-amber-500" />
                 <span>{booking.ratings?.busRating ?? "—"}</span>
@@ -620,7 +614,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between border-b border-[#e4ecf2] pb-3">
             <div className="flex items-center gap-2">
               <ShieldAlert className="size-5 text-red-600" />
-              <h2 className="text-lg font-bold text-[#10153c]">بلاغات السائق ضد الراكب ({booking.reports.length})</h2>
+              <h2 className="min-w-0 text-lg font-bold text-[#00134c]">بلاغات السائق ضد الراكب ({booking.reports.length})</h2>
             </div>
           </div>
 
@@ -650,7 +644,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-[#1a1a1a] leading-relaxed">{rep.note}</p>
 
                   {rep.resolutionNote && (
-                    <div className="rounded-lg bg-white p-2.5 text-xs text-[#204c6b] border border-blue-100 mt-2">
+                    <div className="rounded-lg bg-white p-2.5 text-xs text-[#00134c] border border-blue-100 mt-2">
                       <strong>قرار الإدارة:</strong> {rep.resolutionNote}
                       {rep.resolvedAt && (
                         <span className="block text-[11px] text-[#5e6b78] mt-1">
@@ -683,16 +677,19 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       {/* Card 7: Inline Administrative Audit Trail (Full Width) */}
       <div className="panel-card p-5 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
-          <History className="size-5 text-[#2f719e]" />
-          <h2 className="text-lg font-bold text-[#10153c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
+          <History className="size-5 text-[#059ff8]" />
+          <h2 className="min-w-0 text-lg font-bold text-[#00134c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
         </div>
 
-        <AgGridTable<AuditLog>
+        <CursorList<AuditLog>
           gridId={`booking-audit-${booking.id}`}
-          rows={booking.auditTrail}
+          initialItems={booking.auditTrail}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(log) => log.id}
           columnDefs={auditColumns}
+          withActions={false}
           emptyMessage="لا توجد عمليات تدقيق مسجلة حتى الآن."
-          getRowId={(log) => log.id}
         />
       </div>
 

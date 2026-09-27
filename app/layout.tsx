@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cairo, Poppins } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -15,15 +16,15 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "منصة الأتوبيسات | لوحة تحكم المشرف",
-  description: "لوحة تحكم المشرف العام لمنصة الأتوبيسات",
+  title: "منصة العربيات | لوحة تحكم المشرف",
+  description: "لوحة تحكم المشرف العام لمنصة العربيات",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
       <body className={`${cairo.variable} ${poppins.variable} antialiased`} style={{ fontFamily: "var(--font-cairo), var(--font-poppins), sans-serif" }}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

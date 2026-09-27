@@ -8,6 +8,7 @@ import {
   themeQuartz,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
+import { Loader2 } from "lucide-react";
 import { arabicGridDefaultColDef, arabicGridLocale } from "./ag-grid-locale";
 import type { AgGridTableProps } from "./ag-grid-types";
 
@@ -36,6 +37,17 @@ export function AgGridTable<T>({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [quickFilterText, setQuickFilterText] = useState("");
   const [gridApi, setGridApi] = useState<GridApi<T> | null>(null);
+
+  // Sync with fresh prop data (cache writes after dialog mutations) so the
+  // grid updates instantly — no remount, no loading state.
+  const [seenRows, setSeenRows] = useState(initialRows);
+  const [seenCursor, setSeenCursor] = useState(initialCursor);
+  if (seenRows !== initialRows || seenCursor !== initialCursor) {
+    setSeenRows(initialRows);
+    setSeenCursor(initialCursor);
+    setRows(initialRows);
+    setCursor(initialCursor);
+  }
 
   function onGridReady(event: GridReadyEvent<T>) {
     setGridApi(event.api);
@@ -132,7 +144,10 @@ export function AgGridTable<T>({
 
       {cursor && loadMore ? (
         <button type="button" onClick={() => void loadNextPage()} disabled={loadingMore} className="ag-grid-load-more">
-          {loadingMore ? "جاري التحميل…" : "عرض المزيد"}
+          <span className="inline-flex items-center gap-2">
+            {loadingMore ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            {loadingMore ? "جاري التحميل…" : "عرض المزيد"}
+          </span>
         </button>
       ) : null}
     </div>
