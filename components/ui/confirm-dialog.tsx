@@ -52,7 +52,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
         description={options?.description}
         size="sm"
       >
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="outline" onClick={() => settle(false)}>
             {options?.cancelLabel ?? "إلغاء"}
           </Button>

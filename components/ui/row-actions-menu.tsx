@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical, Loader2 } from "lucide-react";
 
@@ -28,7 +28,25 @@ export function RowActionsMenu({ actions, label = "إجراءات" }: RowActions
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+
+  // The portal is anchored with translateX(-100%), so a trigger near the
+  // viewport's left edge (RTL actions columns) — or a menu taller than the
+  // estimate in toggle() — can end up off-screen on narrow phones. Once the
+  // menu is measured, nudge the coordinates back inside the viewport.
+  useLayoutEffect(() => {
+    if (!open || !coords) return;
+    const menu = menuRef.current;
+    if (!menu) return;
+    const margin = 8;
+    const { offsetWidth: width, offsetHeight: height } = menu;
+    const left = Math.max(Math.min(coords.left, window.innerWidth - margin), width + margin);
+    const top = Math.max(Math.min(coords.top, window.innerHeight - margin - height), margin);
+    if (left !== coords.left || top !== coords.top) {
+      setCoords({ top, left });
+    }
+  }, [open, coords]);
 
   useEffect(() => {
     if (!open) return;
@@ -68,6 +86,7 @@ export function RowActionsMenu({ actions, label = "إجراءات" }: RowActions
     open && coords
       ? createPortal(
           <div
+            ref={menuRef}
             id={menuId}
             role="menu"
             aria-label={label}

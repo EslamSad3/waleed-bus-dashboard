@@ -32,7 +32,8 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { BUS_COLORS, busColorHex } from "@/lib/colors";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
-import { Pencil, Trash2, UserPlus } from "lucide-react";
+import { Pencil, Trash2, UserPlus, Route as RouteIcon } from "lucide-react";
+import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 
 export default function BusDetailPage({
   params,
@@ -65,6 +66,8 @@ export default function BusDetailPage({
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tripsFirst, setTripsFirst] = useState<{ key: string; items: TripRef[]; nextCursor: string | null } | null>(null);
+  const [createTripOpen, setCreateTripOpen] = useState(false);
+  const [tripsReloadKey, setTripsReloadKey] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [lineOpen, setLineOpen] = useState(false);
@@ -114,7 +117,7 @@ export default function BusDetailPage({
       if (r.ok) setTripsFirst({ key, items: r.data.items, nextCursor: r.data.nextCursor });
       else setError(r.message);
     });
-  }, [tab, fleetId, id]);
+  }, [tab, fleetId, id, tripsReloadKey]);
 
   async function onImageFile(file: File | null) {
     if (!file || !fleetId) return;
@@ -267,6 +270,7 @@ export default function BusDetailPage({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <nav aria-label="تبويبات العربية" className="flex gap-2 overflow-x-auto pb-1">
         {(["overview", "trips"] as const).map((t) => (
           <button
@@ -280,6 +284,10 @@ export default function BusDetailPage({
           </button>
         ))}
       </nav>
+        <Button type="button" onClick={() => setCreateTripOpen(true)}>
+          <RouteIcon className="size-4" aria-hidden="true" /> رحلة جديدة
+        </Button>
+      </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {status && <p role="status" className="text-sm text-green-700">{status}</p>}
@@ -446,6 +454,16 @@ export default function BusDetailPage({
           </div>
         </div>
       </Dialog>
+      <CreateTripDialog
+        open={createTripOpen}
+        lockedFleetId={fleetId ?? undefined}
+        lockedBusId={id}
+        onCreated={() => {
+          setTripsReloadKey((key) => key + 1);
+          setStatus("اتضافت الرحلة على العربية دي بنجاح");
+        }}
+        onClose={() => setCreateTripOpen(false)}
+      />
       <Dialog open={lineOpen} onOpenChange={setLineOpen} title="تعيين خط رحلة" description="الخطوط من الكتالوج المركزي ومتاحة لكل الأساطيل." size="sm">
         <div className="space-y-4"><select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full"><option value="">اختار خط الرحلة</option>{(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}</select>{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="danger" onClick={() => setLineOpen(false)}>إلغاء</Button><AsyncButton type="button" variant="success" onClick={assignLine}>تأكيد التعيين</AsyncButton></div></div>
       </Dialog>

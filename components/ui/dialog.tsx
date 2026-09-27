@@ -101,7 +101,7 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-white/80 bg-white shadow-[0_28px_90px_rgba(14,11,44,.28)] outline-none motion-safe:animate-[dialog-in_200ms_ease-out] sm:rounded-[2rem]",
+          "relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-white/80 bg-white shadow-[0_28px_90px_rgba(14,11,44,.28)] outline-none motion-safe:animate-[dialog-in_200ms_ease-out] sm:rounded-[2rem]",
           size === "sm" && "sm:max-w-lg",
           size === "md" && "sm:max-w-2xl",
           size === "lg" && "sm:max-w-4xl",

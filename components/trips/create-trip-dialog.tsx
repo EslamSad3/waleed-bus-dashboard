@@ -19,20 +19,26 @@ import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queri
 type Values = z.input<typeof createTripSchema>;
 type BusOpt = { id: string; registrationNumber: string; lineId?: string | null; line?: { id: string; name: string; code: string } | null };
 
-/** نافذة إضافة رحلة — بتفتح في صفحة الرحلات نفسها من غير تنقل. */
+/** نافذة إضافة رحلة — بتفتح في نفس الصفحة من غير تنقل، وتقدر تتثبت على أسطول/عربية معينة. */
 export function CreateTripDialog({
   open,
   onClose,
   onCreated,
+  lockedFleetId,
+  lockedBusId,
 }: {
   open: boolean;
   onClose: () => void;
   /** Extra cache hook for callers with their own list (e.g. fleet tab). */
   onCreated?: (trip: Trip) => void;
+  /** When set, the fleet is fixed and the picker is hidden. */
+  lockedFleetId?: string;
+  /** When set, the bus is fixed and the picker is hidden (e.g. from a bus page). */
+  lockedBusId?: string;
 }) {
   const queryClient = useQueryClient();
   const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
-  const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
+  const [fleetId, setLocalFleetId] = useState(lockedFleetId ?? scopedFleetId ?? "");
   const [buses, setBuses] = useState<BusOpt[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -40,7 +46,7 @@ export function CreateTripDialog({
 
   const form = useForm<Values>({
     resolver: zodResolver(createTripSchema),
-    defaultValues: { busId: "", origin: "", destination: "", departAt: "", routeId: undefined },
+    defaultValues: { busId: lockedBusId ?? "", origin: "", destination: "", departAt: "", routeId: undefined },
   });
 
   useEffect(() => {
@@ -49,6 +55,15 @@ export function CreateTripDialog({
       if (r.ok) setBuses(r.data.items);
     });
   }, [open, fleetId]);
+
+  // العربية المقفولة بتتعاد تسجيلها في الفورم بعد تحميل قايمة عربيات الأسطول
+  useEffect(() => {
+    if (open && lockedBusId && buses.some((bus) => bus.id === lockedBusId)) {
+      if (form.getValues("busId") !== lockedBusId) {
+        form.setValue("busId", lockedBusId, { shouldValidate: true });
+      }
+    }
+  }, [open, lockedBusId, buses, form]);
 
   const selectedBus = buses.find((bus) => bus.id === form.watch("busId"));
   const selectedLine = selectedBus?.lineId ? (tripLines ?? []).find((line) => line.id === selectedBus.lineId) : undefined;
@@ -138,19 +153,23 @@ export function CreateTripDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="رحلة جديدة" description="اختار العربية وحدد خط الرحلة وميعاد المغادرة." size="md">
       <div>
-        <div className="mb-4">
-          <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("busId", ""); form.setValue("routeId", undefined); }} />
-        </div>
+        {lockedFleetId ? null : (
+          <div className="mb-4">
+            <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("busId", ""); form.setValue("routeId", undefined); }} />
+          </div>
+        )}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">العربية (من نفس الأسطول)</span>
-            <select aria-label="اختار العربية" value={form.watch("busId")} onChange={(event) => { form.setValue("busId", event.target.value, { shouldValidate: true }); form.setValue("routeId", undefined); form.setValue("origin", ""); form.setValue("destination", ""); }} onBlur={() => form.trigger("busId")} className="select-field w-full">
-              <option value="">اختار العربية</option>
-              {buses.map((b) => (
-                <option key={b.id} value={b.id}>{b.registrationNumber}</option>
-              ))}
-            </select>
-          </label>
+          {lockedBusId ? null : (
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-bold text-[#334454]">العربية (من نفس الأسطول)</span>
+              <select aria-label="اختار العربية" value={form.watch("busId")} onChange={(event) => { form.setValue("busId", event.target.value, { shouldValidate: true }); form.setValue("routeId", undefined); form.setValue("origin", ""); form.setValue("destination", ""); }} onBlur={() => form.trigger("busId")} className="select-field w-full">
+                <option value="">اختار العربية</option>
+                {buses.map((b) => (
+                  <option key={b.id} value={b.id}>{b.registrationNumber}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {selectedBus && !selectedLine && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">العربية دي ملهاش خط رحلة بعد. ارجع لصفحة العربية وعيّن ليها خط أولًا.</p>}
           {selectedLine && <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اتجاه الرحلة</span><select aria-label="اختار اتجاه الرحلة" value={form.watch("routeId") ?? ""} onChange={(event) => selectDirection(event.target.value)} className="select-field w-full"><option value="">اختار الذهاب أو العودة</option>{selectedLine.directions.map((direction) => <option key={direction.id} value={direction.id}>{direction.direction === "OUTBOUND" ? "ذهاب" : "عودة"} · {direction.origin} ← {direction.destination}</option>)}</select></label>}
           <div className="grid gap-3 sm:grid-cols-2">

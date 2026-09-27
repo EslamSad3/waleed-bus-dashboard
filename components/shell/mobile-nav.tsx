@@ -18,13 +18,17 @@ export function MobileNav() {
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Close whenever the route changes.
-  useEffect(() => {
+  // Close whenever the route changes (render-time state reset).
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!open) return;
+    const panel = panelRef.current;
+    const toggle = toggleRef.current;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -42,14 +46,14 @@ export function MobileNav() {
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    panel?.focus();
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       desktopMql.removeEventListener("change", onDesktopChange);
       document.body.style.overflow = previousOverflow;
-      if (panelRef.current?.contains(document.activeElement)) {
-        toggleRef.current?.focus();
+      if (panel?.contains(document.activeElement)) {
+        toggle?.focus();
       }
     };
   }, [open]);
