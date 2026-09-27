@@ -4,6 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { Button } from "@/components/ui/button";
+import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
 import { disableBus, fetchBusesPage, reactivateBus, type Bus } from "@/lib/actions/buses";
 import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { fetchBookingsPage, BOOKING_STATUS_AR, PAYMENT_STATUS_AR, type Booking } from "@/lib/actions/bookings";
@@ -29,17 +33,20 @@ function ListingShell({
   return <>{children}</>;
 }
 
-function TabHeader({ title, actionHref, actionLabel }: { title: string; actionHref?: string; actionLabel?: string }) {
+function TabHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 className="section-title mb-0">{title}</h2>
-      {actionHref && actionLabel ? <a href={actionHref} className="text-sm font-extrabold text-[#059ff8] hover:underline">{actionLabel}</a> : null}
+      {actionLabel && onAction ? (
+        <Button type="button" size="sm" onClick={onAction}>{actionLabel}</Button>
+      ) : null}
     </div>
   );
 }
 
 export function FleetBusesTab({ fleetId }: { fleetId: string }) {
   const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
   const { data: page, isLoading, error } = useApiQuery(qk.fleetBuses(fleetId), () => fetchBusesPage(fleetId, null));
 
   async function toggleActive(bus: Bus) {
@@ -78,7 +85,7 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="عربيات الأسطول" actionHref="/buses" actionLabel="إضافة عربية" />
+      <TabHeader title="عربيات الأسطول" actionLabel="إضافة عربية" onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading}>
         <AgGridTable<Bus>
           gridId={`fleet-buses-${fleetId}`}
@@ -94,11 +101,19 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
           getRowId={(bus) => bus.id}
         />
       </ListingShell>
+      <CreateBusDialog
+        open={createOpen}
+        lockedFleetId={fleetId}
+        onCreated={(bus) => upsertInList(queryClient, qk.fleetBuses(fleetId), bus)}
+        onClose={() => setCreateOpen(false)}
+      />
     </section>
   );
 }
 
 export function FleetTripsTab({ fleetId }: { fleetId: string }) {
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
   const { data: page, isLoading, error } = useApiQuery(qk.fleetTrips(fleetId), () => fetchTripsPage(fleetId, null));
 
   const columns: CommunityColumnDef<Trip>[] = [
@@ -127,7 +142,7 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="رحلات الأسطول" actionHref="/trips" actionLabel="إضافة رحلة" />
+      <TabHeader title="رحلات الأسطول" actionLabel="إضافة رحلة" onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading}>
         <AgGridTable<Trip>
           gridId={`fleet-trips-${fleetId}`}
@@ -143,11 +158,18 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
           getRowId={(trip) => trip.id}
         />
       </ListingShell>
+      <CreateTripDialog
+        open={createOpen}
+        onCreated={(trip) => upsertInList(queryClient, qk.fleetTrips(fleetId), trip)}
+        onClose={() => setCreateOpen(false)}
+      />
     </section>
   );
 }
 
 export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
   const { data: page, isLoading, error } = useApiQuery(qk.fleetBookings(fleetId), () => fetchBookingsPage(fleetId, null));
 
   const columns: CommunityColumnDef<Booking>[] = [
@@ -177,7 +199,7 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="حجوزات الأسطول" actionHref="/bookings" actionLabel="إضافة حجز" />
+      <TabHeader title="حجوزات الأسطول" actionLabel="إضافة حجز" onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading}>
         <AgGridTable<Booking>
           gridId={`fleet-bookings-${fleetId}`}
@@ -193,6 +215,11 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
           getRowId={(booking) => booking.id}
         />
       </ListingShell>
+      <CreateBookingDialog
+        open={createOpen}
+        onCreated={(booking) => upsertInList(queryClient, qk.fleetBookings(fleetId), booking)}
+        onClose={() => setCreateOpen(false)}
+      />
     </section>
   );
 }

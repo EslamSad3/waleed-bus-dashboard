@@ -193,7 +193,7 @@ export default function BookingsPage() {
         emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
         getRowId={(booking) => booking.id}
       />
-      <CreateBookingDialog open={createOpen} onCreated={() => undefined} onClose={() => setCreateOpen(false)} />
+      <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { createTripSchema } from "@/lib/schemas/p1";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { createTrip } from "@/lib/actions/trips";
+import { createTrip, type Trip } from "@/lib/actions/trips";
 import { apiGet, type CursorPage } from "@/lib/actions/http";
 import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
@@ -20,7 +20,16 @@ type Values = z.input<typeof createTripSchema>;
 type BusOpt = { id: string; registrationNumber: string; lineId?: string | null; line?: { id: string; name: string; code: string } | null };
 
 /** نافذة إضافة رحلة — بتفتح في صفحة الرحلات نفسها من غير تنقل. */
-export function CreateTripDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreateTripDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Extra cache hook for callers with their own list (e.g. fleet tab). */
+  onCreated?: (trip: Trip) => void;
+}) {
   const queryClient = useQueryClient();
   const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
   const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
@@ -114,6 +123,7 @@ export function CreateTripDialog({ open, onClose }: { open: boolean; onClose: ()
     }
     // تحديث فوري لجدول الرحلات من غير إعادة تحميل
     upsertInCursorList(queryClient, qk.trips(null), { ...r.data, fleetName: fleetLabel, busName: selectedBus.registrationNumber, driverName: "غير معيّن" });
+    onCreated?.(r.data);
     resetForm();
     onClose();
   }

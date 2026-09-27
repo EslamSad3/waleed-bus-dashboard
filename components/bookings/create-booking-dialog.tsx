@@ -8,7 +8,7 @@ import { createBookingSchema } from "@/lib/schemas/p1";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { createBooking } from "@/lib/actions/bookings";
+import { createBooking, type Booking } from "@/lib/actions/bookings";
 import { apiGet, type CursorPage } from "@/lib/actions/http";
 import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
@@ -19,7 +19,16 @@ type Values = z.input<typeof createBookingSchema>;
 type TripOpt = { id: string; origin: string; destination: string };
 
 /** نافذة حجز جديد — بتفتح في صفحة الحجوزات نفسها من غير تنقل. */
-export function CreateBookingDialog({ open, onCreated, onClose }: { open: boolean; onCreated: () => void; onClose: () => void }) {
+export function CreateBookingDialog({
+  open,
+  onCreated,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Extra cache hook for callers with their own list (e.g. fleet tab). */
+  onCreated?: (booking: Booking) => void;
+}) {
   const queryClient = useQueryClient();
   const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
   const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
@@ -58,7 +67,7 @@ export function CreateBookingDialog({ open, onCreated, onClose }: { open: boolea
     }
     // نفضّل كاش الحجوزات — الجدول بيتحدث فورًا من غير إعادة تحميل
     queryClient.invalidateQueries({ queryKey: ["admin-bookings"] });
-    onCreated();
+    onCreated?.(r.data);
     resetForm();
     onClose();
   }
