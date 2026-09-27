@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,27 +93,16 @@ export default function NotificationsOpsPage() {
   }
 
   // Filter rows locally if a search query is typed (matches user name, phone, email, or title/body)
-  const displayRows = useMemo(() => {
-    if (!rows) return null;
-    let list = rows;
-
-    if (selectedUserId) {
-      list = list.filter((r) => r.userId === selectedUserId);
-    }
-
+  const filterPredicate = (notification: OpsNotification) => {
     const q = searchQuery.trim();
-    if (q) {
-      list = list.filter((r) => {
-        const nameMatch = matchesQuery(r.user?.name, q);
-        const phoneMatch = matchesPhone(r.user?.phoneNumber, q);
-        const titleMatch = matchesQuery(r.title, q);
-        const bodyMatch = matchesQuery(r.body, q);
-        return nameMatch || phoneMatch || titleMatch || bodyMatch;
-      });
-    }
-
-    return list;
-  }, [rows, selectedUserId, searchQuery]);
+    if (!q) return true;
+    return (
+      matchesQuery(notification.user?.name, q) ||
+      matchesPhone(notification.user?.phoneNumber, q) ||
+      matchesQuery(notification.title, q) ||
+      matchesQuery(notification.body, q)
+    );
+  };
 
   const isFiltered = Boolean(selectedUserId || searchQuery || category);
 
@@ -295,20 +284,27 @@ export default function NotificationsOpsPage() {
         </p>
       ) : null}
 
-      {!displayRows ? (
+      {rowsLoading ? (
         <p className="text-sm text-slate-500">جاري التحميل…</p>
       ) : (
-        <AgGridTable<OpsNotification>
-          key={displayRows.map((n) => `${n.id}:${n.isRead}`).join("|")}
+        <CursorList<OpsNotification>
           gridId="notifications-ops"
-          rows={displayRows}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(notification) => notification.id}
+          filter={filterPredicate}
           columnDefs={columns}
           emptyMessage={
             isFiltered
               ? "لا توجد إشعارات مطابقة لمعايير البحث المحددة."
               : "لا توجد إشعارات مسجلة حتى الآن."
           }
-          getRowId={(n) => n.id}
+          renderItem={(notification) => (
+            <span className={notification.isRead ? "status-pill status-pill-muted" : "status-pill"}>
+              {notification.isRead ? "اتقريت" : "جديدة"}
+            </span>
+          )}
         />
       )}
 

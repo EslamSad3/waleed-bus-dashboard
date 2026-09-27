@@ -10,6 +10,8 @@ import type { CommunityColumnDef } from "./ag-grid-types";
 export type CursorPage<T> = { items: T[]; nextCursor: string | null };
 
 type Props<T> = {
+  /** Grid id used for data-grid-id and the CSV export filename. */
+  gridId?: string;
   initialItems: T[];
   initialCursor: string | null;
   /** Server action: fetch one cursor page. Closed-over args must be serializable. */
@@ -29,6 +31,7 @@ type Props<T> = {
  * pages only — the backend exposes cursor+limit and nothing else.
  */
 export function CursorList<T>({
+  gridId = "cursor-list",
   initialItems,
   initialCursor,
   loadMore,
@@ -115,7 +118,7 @@ export function CursorList<T>({
 
   return (
     <AgGridTable<T>
-      gridId="cursor-list"
+      gridId={gridId}
       rows={visible}
       columnDefs={columns}
       nextCursor={cursor}

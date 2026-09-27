@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -56,15 +56,12 @@ export default function LocalitiesPage() {
     { enabled: Boolean(dialogGovernorateId) },
   );
 
-  const filtered = useMemo(
-    () =>
-      (rows ?? []).filter((locality) => {
-        if (governorateFilter && locality.markaz?.governorateId !== governorateFilter) return false;
-        if (markazFilter && locality.markazId !== markazFilter) return false;
-        return true;
-      }),
-    [rows, governorateFilter, markazFilter],
-  );
+  // فلاتر المحافظة والمركز — CursorList بيطبقها على الصفوف الظاهرة
+  const filterPredicate = (locality: Locality) => {
+    if (governorateFilter && locality.markaz?.governorateId !== governorateFilter) return false;
+    if (markazFilter && locality.markazId !== markazFilter) return false;
+    return true;
+  };
 
   function openCreate() {
     setEditing(null);
@@ -149,22 +146,6 @@ export default function LocalitiesPage() {
       filter: "agTextColumnFilter",
       valueGetter: (params) => params.data?.markaz?.governorate ? `${params.data.markaz.governorate.nameAr} · ${params.data.markaz.governorate.nameEn}` : "",
     },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: Locality }) => {
-        const locality = params.data;
-        if (!locality) return null;
-        return (
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(locality)}><Pencil className="size-4" /> تعديل</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(locality)}>{locality.isActive ? "إيقاف" : "تفعيل"}</Button>
-          </div>
-        );
-      },
-    },
   ];
 
   return (
@@ -201,13 +182,21 @@ export default function LocalitiesPage() {
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<Locality>
-          key={filtered.map((l) => `${l.id}:${l.nameAr}:${l.isActive}`).join("|") || "empty"}
+        <CursorList<Locality>
           gridId="localities"
-          rows={filtered}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(locality) => locality.id}
+          filter={filterPredicate}
           columnDefs={columns}
           emptyMessage="لا توجد مناطق مطابقة — ابدأ بإضافة أول مدينة أو قرية."
-          getRowId={(l) => l.id}
+          renderItem={(locality) => (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(locality)}><Pencil className="size-4" /> تعديل</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(locality)}>{locality.isActive ? "إيقاف" : "تفعيل"}</Button>
+            </div>
+          )}
         />
       )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المنطقة" : "منطقة جديدة"} description={editing ? "المركز ثابت — عدّل الأسماء والنوع فقط." : "اختار المحافظة الأول، بعدها تظهر مراكزها في قايمة المركز."} size="sm">

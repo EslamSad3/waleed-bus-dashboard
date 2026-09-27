@@ -4,7 +4,7 @@ import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import {
   fetchAdminBookingDetail,
@@ -689,12 +689,15 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <h2 className="text-lg font-bold text-[#00134c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
         </div>
 
-        <AgGridTable<AuditLog>
+        <CursorList<AuditLog>
           gridId={`booking-audit-${booking.id}`}
-          rows={booking.auditTrail}
+          initialItems={booking.auditTrail}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(log) => log.id}
           columnDefs={auditColumns}
           emptyMessage="لا توجد عمليات تدقيق مسجلة حتى الآن."
-          getRowId={(log) => log.id}
+          renderItem={() => <span className="text-xs text-[#8b98a5]">سجل</span>}
         />
       </div>
 

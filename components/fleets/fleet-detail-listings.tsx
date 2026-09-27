@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import { Button } from "@/components/ui/button";
@@ -61,44 +61,33 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
     { field: "capacity", headerName: "السعة", filter: "agNumberColumnFilter" },
     { field: "isActive", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? "نشط" : "موقوف") },
     { field: "createdAt", headerName: "تاريخ الإنشاء", filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      maxWidth: 90,
-      cellRenderer: (params: { data?: Bus }) => {
-        const bus = params.data;
-        if (!bus) return null;
-        return (
-          <RowActionsMenu
-            label={`إجراءات عربية ${bus.registrationNumber}`}
-            actions={[
-              { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${fleetId}` },
-              { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => void toggleActive(bus) },
-            ]}
-          />
-        );
-      },
-    },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="عربيات الأسطول" actionLabel="إضافة عربية" onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading}>
-        <AgGridTable<Bus>
+        <CursorList<Bus>
           gridId={`fleet-buses-${fleetId}`}
-          rows={page?.items ?? []}
-          columnDefs={columns}
-          nextCursor={page?.nextCursor ?? null}
+          initialItems={page?.items ?? []}
+          initialCursor={page?.nextCursor ?? null}
           loadMore={async (cursor) => {
             const result = await fetchBusesPage(fleetId, cursor);
             if (!result.ok) throw new Error(result.message);
             return result.data;
           }}
+          keyOf={(bus) => bus.id}
+          columnDefs={columns}
           emptyMessage="لا توجد عربيات مسجلة في هذا الأسطول"
-          getRowId={(bus) => bus.id}
+          renderItem={(bus) => (
+            <RowActionsMenu
+              label={`إجراءات عربية ${bus.registrationNumber}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${fleetId}` },
+                { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => void toggleActive(bus) },
+              ]}
+            />
+          )}
         />
       </ListingShell>
       <CreateBusDialog
@@ -121,41 +110,30 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
     { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
     { field: "departAt", headerName: "الميعاد", filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleString("ar-EG") : "—") },
     { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      maxWidth: 90,
-      cellRenderer: (params: { data?: Trip }) => {
-        const trip = params.data;
-        if (!trip) return null;
-        return (
-          <RowActionsMenu
-            label="إجراءات الرحلة"
-            actions={[{ label: "فتح التفاصيل", href: `/trips/${trip.id}` }]}
-          />
-        );
-      },
-    },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="رحلات الأسطول" actionLabel="إضافة رحلة" onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading}>
-        <AgGridTable<Trip>
+        <CursorList<Trip>
           gridId={`fleet-trips-${fleetId}`}
-          rows={page?.items ?? []}
-          columnDefs={columns}
-          nextCursor={page?.nextCursor ?? null}
+          initialItems={page?.items ?? []}
+          initialCursor={page?.nextCursor ?? null}
           loadMore={async (cursor) => {
             const result = await fetchTripsPage(fleetId, cursor);
             if (!result.ok) throw new Error(result.message);
             return result.data;
           }}
+          keyOf={(trip) => trip.id}
+          columnDefs={columns}
           emptyMessage="لا توجد رحلات مسجلة في هذا الأسطول"
-          getRowId={(trip) => trip.id}
+          renderItem={(trip) => (
+            <RowActionsMenu
+              label="إجراءات الرحلة"
+              actions={[{ label: "فتح التفاصيل", href: `/trips/${trip.id}` }]}
+            />
+          )}
         />
       </ListingShell>
       <CreateTripDialog
@@ -178,41 +156,30 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
     { field: "status", headerName: "حالة الحجز", cellDataType: "text", valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
     { field: "paymentStatus", headerName: "الدفع", cellDataType: "text", valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
     { field: "totalAmount", headerName: "الإجمالي", filter: "agNumberColumnFilter", valueFormatter: (params) => (params.value == null ? "—" : String(params.value)) },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      maxWidth: 90,
-      cellRenderer: (params: { data?: Booking }) => {
-        const booking = params.data;
-        if (!booking) return null;
-        return (
-          <RowActionsMenu
-            label="إجراءات الحجز"
-            actions={[{ label: "فتح التفاصيل", href: `/bookings/${booking.id}` }]}
-          />
-        );
-      },
-    },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="حجوزات الأسطول" actionLabel="إضافة حجز" onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading}>
-        <AgGridTable<Booking>
+        <CursorList<Booking>
           gridId={`fleet-bookings-${fleetId}`}
-          rows={page?.items ?? []}
-          columnDefs={columns}
-          nextCursor={page?.nextCursor ?? null}
+          initialItems={page?.items ?? []}
+          initialCursor={page?.nextCursor ?? null}
           loadMore={async (cursor) => {
             const result = await fetchBookingsPage(fleetId, cursor);
             if (!result.ok) throw new Error(result.message);
             return result.data;
           }}
+          keyOf={(booking) => booking.id}
+          columnDefs={columns}
           emptyMessage="لا توجد حجوزات مسجلة في هذا الأسطول"
-          getRowId={(booking) => booking.id}
+          renderItem={(booking) => (
+            <RowActionsMenu
+              label="إجراءات الحجز"
+              actions={[{ label: "فتح التفاصيل", href: `/bookings/${booking.id}` }]}
+            />
+          )}
         />
       </ListingShell>
       <CreateBookingDialog
@@ -259,12 +226,15 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
             <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم السائق</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.driverAvg?.toFixed(1) ?? "—"}</dd></div>
             <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">الحجوزات المُقيّمة</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.count}</dd></div>
           </dl>
-          <AgGridTable<FleetReport>
+          <CursorList<FleetReport>
             gridId={`fleet-reports-${fleetId}`}
-            rows={data.reports}
+            initialItems={data.reports}
+            initialCursor={null}
+            loadMore={async () => ({ items: [], nextCursor: null })}
+            keyOf={(report) => report.id}
             columnDefs={reportColumns}
             emptyMessage="لا توجد بلاغات ركاب لهذا الأسطول"
-            getRowId={(report) => report.id}
+            renderItem={() => <span className="text-xs text-[#8b98a5]">بلاغ</span>}
           />
         </div>}
       </ListingShell>

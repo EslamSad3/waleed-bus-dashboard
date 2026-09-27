@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -78,22 +78,6 @@ export default function BrandsPage() {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => rankOrdinalAr(params.value as number),
     },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: VehicleBrand }) => {
-        const brand = params.data;
-        if (!brand) return null;
-        return (
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(brand)}><Pencil className="size-4" /> تعديل</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(brand)}>{brand.isActive ? "إيقاف" : "تفعيل"}</Button>
-          </div>
-        );
-      },
-    },
   ];
 
   return (
@@ -107,13 +91,20 @@ export default function BrandsPage() {
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<VehicleBrand>
-          key={rows?.map((b) => `${b.id}:${b.name}:${b.isActive}`).join("|") ?? "empty"}
+        <CursorList<VehicleBrand>
           gridId="brands"
-          rows={rows ?? []}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(brand) => brand.id}
           columnDefs={columns}
           emptyMessage="لا توجد ماركات بعد — ابدأ بإضافة أول ماركة."
-          getRowId={(b) => b.id}
+          renderItem={(brand) => (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(brand)}><Pencil className="size-4" /> تعديل</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(brand)}>{brand.isActive ? "إيقاف" : "تفعيل"}</Button>
+            </div>
+          )}
         />
       )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل الماركة" : "ماركة جديدة"} description="اسم فريد للماركة وترتيب ظهورها في القوائم." size="sm">

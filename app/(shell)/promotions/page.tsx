@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -165,24 +165,7 @@ export default function PromotionsPage() {
       headerName: "السقف الكلي",
       cellRenderer: (params: { data?: Promotion }) => <span>{params.data?.maxTotalUses ?? "∞"}</span>,
     },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: Promotion }) => {
-        const promo = params.data;
-        if (!promo) return null;
-        return (
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(promo)}><Pencil className="size-4" /> تعديل</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void openUsages(promo)}>الاستخدام</Button>
-            {promo.isActive ? <Button type="button" size="sm" variant="secondary" onClick={() => void expire(promo)}>إيقاف</Button> : null}
-          </div>
-        );
-      },
-    },
-  ];
+];
 
   return (
     <div className="dashboard-page">
@@ -194,14 +177,22 @@ export default function PromotionsPage() {
         <Button onClick={openCreate}><Plus className="size-4" /> كود جديد</Button>
       </div>
       {error && !dialogOpen && !usagesFor ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {!rows ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<Promotion>
-          key={rows.map((p) => `${p.id}:${p.isActive}`).join("|")}
+      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+        <CursorList<Promotion>
           gridId="promotions"
-          rows={rows}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(promo) => promo.id}
           columnDefs={columns}
           emptyMessage="لا توجد أكواد بعد — ابدأ بإضافة كود عام."
-          getRowId={(p) => p.id}
+          renderItem={(promo) => (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(promo)}><Pencil className="size-4" /> تعديل</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void openUsages(promo)}>الاستخدام</Button>
+              {promo.isActive ? <Button type="button" size="sm" variant="secondary" onClick={() => void expire(promo)}>إيقاف</Button> : null}
+            </div>
+          )}
         />
       )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? `تعديل ${editing.code}` : "كود جديد"} description={editing ? "الكود نفسه لا يتغير بعد الإنشاء." : "الكود يتحول لحروف كبيرة تلقائيًا (A-Z 0-9 _ -)."} size="sm">

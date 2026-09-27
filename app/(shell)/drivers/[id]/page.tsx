@@ -17,7 +17,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { Pencil } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 
 const REVOKE_WARNING = "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟";
@@ -134,12 +134,15 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         </div>
         <div className="panel-card p-5 sm:p-6">
           <h2 className="section-title">سجل التعيينات</h2>
-          <AgGridTable<DriverAssignment>
+          <CursorList<DriverAssignment>
             gridId={`driver-assignments-${driver.id}`}
-            rows={driver.assignments ?? []}
+            initialItems={driver.assignments ?? []}
+            initialCursor={null}
+            loadMore={async () => ({ items: [], nextCursor: null })}
+            keyOf={(assignment) => assignment.id}
             columnDefs={assignmentColumns}
             emptyMessage="لا توجد تعيينات مسجلة"
-            getRowId={(assignment) => assignment.id}
+            renderItem={() => <span className="text-xs text-[#8b98a5]">تعيين</span>}
           />
         </div>
       </div>

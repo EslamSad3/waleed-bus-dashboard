@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
@@ -21,13 +21,6 @@ export default function TripLinesPage() {
     { field: "destination", headerName: "الوجهة" },
     { colId: "stationCount", headerName: "نقاط التوقف", valueGetter: (params) => params.data?.stations.length, filter: "agNumberColumnFilter" },
     { field: "isActive", headerName: "الحالة", valueFormatter: (params) => params.value ? "نشط" : "موقوف" },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: TripLine }) => params.data ? <Button asChild size="sm" variant="secondary"><Link href={`/trip-lines/${params.data.id}`}>إدارة</Link></Button> : null,
-    },
   ];
 
   return (
@@ -41,12 +34,17 @@ export default function TripLinesPage() {
       </div>
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<TripLine>
+        <CursorList<TripLine>
           gridId="trip-lines"
-          rows={lines ?? []}
+          initialItems={lines ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(line) => line.id}
           columnDefs={columns}
           emptyMessage="لا توجد خطوط رحلة بعد — أضف نقاط التوقف أولًا."
-          getRowId={(line) => line.id}
+          renderItem={(line) => (
+            <Button asChild size="sm" variant="secondary"><Link href={`/trip-lines/${line.id}`}>إدارة</Link></Button>
+          )}
         />
       )}
       <CreateTripLineDialog open={createOpen} onClose={() => setCreateOpen(false)} />

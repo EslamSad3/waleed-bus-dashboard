@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
 import { fetchSystemDriversPage, inviteDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
@@ -130,18 +130,7 @@ export default function DriversPage() {
       filter: "agTextColumnFilter",
       valueFormatter: (params) => MEMBER_STATUS_AR[params.value as keyof typeof MEMBER_STATUS_AR] ?? params.value,
     },
-    {
-      headerName: "إدارة",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: SystemDriverRow }) => params.data ? (
-        <Button asChild size="sm" variant="secondary">
-          <Link href={`/drivers/${params.data.id}?fleetId=${params.data.fleet.id}`}>إدارة</Link>
-        </Button>
-      ) : null,
-    },
-  ];
+];
 
   return (
     <div className="dashboard-page">
@@ -154,19 +143,23 @@ export default function DriversPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      <AgGridTable<SystemDriverRow>
+      <CursorList<SystemDriverRow>
         gridId="drivers"
-        rows={drivers}
-        columnDefs={columns}
-        nextCursor={page?.nextCursor ?? null}
+        initialItems={drivers}
+        initialCursor={page?.nextCursor ?? null}
         loadMore={async (cursor) => {
           const result = await fetchSystemDriversPage(cursor);
           if (!result.ok) throw new Error(result.message);
           return result.data;
         }}
-        loading={isLoading}
+        keyOf={(driver) => driver.id}
+        columnDefs={columns}
         emptyMessage="لا يوجد سواقون مطابقون للبحث."
-        getRowId={(driver) => driver.id}
+        renderItem={(driver) => (
+          <Button asChild size="sm" variant="secondary">
+            <Link href={`/drivers/${driver.id}?fleetId=${driver.fleet.id}`}>إدارة</Link>
+          </Button>
+        )}
       />
       <CreateDriverDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>

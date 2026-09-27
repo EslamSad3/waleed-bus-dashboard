@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -289,16 +289,6 @@ export default function StopsPage() {
     { field: "governorate.nameAr", headerName: "المحافظة", valueGetter: (params) => params.data?.governorate.nameAr },
     { headerName: "المدينة / القرية", valueGetter: (params) => params.data?.locality ? `${params.data.locality.nameAr} (${params.data.locality.markaz?.nameAr ?? ""})` : "—" },
     { field: "address", headerName: "العنوان", valueFormatter: (params) => params.value || "—" },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: Stop }) => {
-        const stop = params.data;
-        return stop ? <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(stop)}><Pencil className="size-4" /> تعديل</Button> : null;
-      },
-    },
   ];
 
   return (
@@ -312,12 +302,17 @@ export default function StopsPage() {
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<Stop>
+        <CursorList<Stop>
           gridId="stops"
-          rows={stops ?? []}
+          initialItems={stops ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(stop) => stop.id}
           columnDefs={columns}
           emptyMessage="لا توجد نقاط توقف بعد — ابدأ بتسجيل أول مكان."
-          getRowId={(stop) => stop.id}
+          renderItem={(stop) => (
+            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(stop)}><Pencil className="size-4" /> تعديل</Button>
+          )}
         />
       )}
 

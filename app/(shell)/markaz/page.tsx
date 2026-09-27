@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -32,10 +32,8 @@ export default function MarkazPage() {
   const [nameEn, setNameEn] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
 
-  const filtered = useMemo(
-    () => (rows ?? []).filter((m) => !governorateFilter || m.governorateId === governorateFilter),
-    [rows, governorateFilter],
-  );
+  // فلتر المحافظة — CursorList بيطبقه على الصفوف الظاهرة وصفحات "عرض المزيد"
+  const filterPredicate = (markaz: Markaz) => !governorateFilter || markaz.governorateId === governorateFilter;
 
   function openCreate() {
     setEditing(null);
@@ -115,22 +113,6 @@ export default function MarkazPage() {
       filter: "agTextColumnFilter",
       valueGetter: (params) => params.data?.governorate ? `${params.data.governorate.nameAr} · ${params.data.governorate.nameEn}` : "",
     },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: Markaz }) => {
-        const markaz = params.data;
-        if (!markaz) return null;
-        return (
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(markaz)}><Pencil className="size-4" /> تعديل</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(markaz)}>{markaz.isActive ? "إيقاف" : "تفعيل"}</Button>
-          </div>
-        );
-      },
-    },
   ];
 
   return (
@@ -151,13 +133,21 @@ export default function MarkazPage() {
       </label>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<Markaz>
-          key={filtered.map((m) => `${m.id}:${m.code}:${m.isActive}`).join("|") || "empty"}
+        <CursorList<Markaz>
           gridId="markaz"
-          rows={filtered}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(markaz) => markaz.id}
+          filter={filterPredicate}
           columnDefs={columns}
           emptyMessage="لا توجد مراكز مطابقة — ابدأ بإضافة أول مركز."
-          getRowId={(m) => m.id}
+          renderItem={(markaz) => (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(markaz)}><Pencil className="size-4" /> تعديل</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(markaz)}>{markaz.isActive ? "إيقاف" : "تفعيل"}</Button>
+            </div>
+          )}
         />
       )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المركز" : "مركز جديد"} description={editing ? "الكود والمحافظة ثابتين — عدّل الأسماء فقط." : "اختار المحافظة من القايمة، والكود إنجليزي بحروف كبيرة (مثال: BANHA)."} size="sm">

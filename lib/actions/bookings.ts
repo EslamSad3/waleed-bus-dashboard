@@ -1,4 +1,5 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult } from "@/lib/actions/toast";
 import type {
   AdminVerifyPaymentInput,
   AdminFailPaymentInput,
@@ -244,14 +245,20 @@ export function verifyBookingPayment(
   id: string,
   input: AdminVerifyPaymentInput,
 ): Promise<ActionResult<{ bookingId: string; paymentStatus: string; paymentReference: string; paidAt: string }>> {
-  return apiSend(`/api/admin/bookings/${id}/payment/verify`, "POST", input);
+  return notifyResult(
+    "تم تأكيد الدفعة بنجاح",
+    apiSend(`/api/admin/bookings/${id}/payment/verify`, "POST", input),
+  );
 }
 
 export function failBookingPayment(
   id: string,
   input: AdminFailPaymentInput,
 ): Promise<ActionResult<{ bookingId: string; paymentStatus: string; updatedAt: string }>> {
-  return apiSend(`/api/admin/bookings/${id}/payment/fail`, "POST", input);
+  return notifyResult(
+    "تم تسجيل فشل الدفع",
+    apiSend(`/api/admin/bookings/${id}/payment/fail`, "POST", input),
+  );
 }
 
 export function refundBookingPayment(
@@ -268,7 +275,10 @@ export function refundBookingPayment(
     updatedAt: string;
   }>
 > {
-  return apiSend(`/api/admin/bookings/${id}/payment/refund`, "POST", input);
+  return notifyResult(
+    "تم تنفيذ الاسترداد بنجاح",
+    apiSend(`/api/admin/bookings/${id}/payment/refund`, "POST", input),
+  );
 }
 
 export function forceCancelBooking(
@@ -284,14 +294,20 @@ export function forceCancelBooking(
     seatsRestored: boolean;
   }>
 > {
-  return apiSend(`/api/admin/bookings/${id}/cancel`, "POST", input);
+  return notifyResult(
+    "تم إلغاء الحجز",
+    apiSend(`/api/admin/bookings/${id}/cancel`, "POST", input),
+  );
 }
 
 export function reinstateBooking(
   id: string,
   input: AdminReinstateInput,
 ): Promise<ActionResult<{ id: string; status: string; reinstatedAt: string }>> {
-  return apiSend(`/api/admin/bookings/${id}/reinstate`, "POST", input);
+  return notifyResult(
+    "تم إعادة تنشيط الحجز",
+    apiSend(`/api/admin/bookings/${id}/reinstate`, "POST", input),
+  );
 }
 
 export function overrideBookingOperational(
@@ -306,7 +322,10 @@ export function overrideBookingOperational(
     updatedAt: string;
   }>
 > {
-  return apiSend(`/api/admin/bookings/${id}/operational`, "PATCH", input);
+  return notifyResult(
+    "تم حفظ حالة الصعود والنزول",
+    apiSend(`/api/admin/bookings/${id}/operational`, "PATCH", input),
+  );
 }
 
 export function resolveIncidentReport(
@@ -314,7 +333,10 @@ export function resolveIncidentReport(
   reportId: string,
   input: AdminResolveReportInput,
 ): Promise<ActionResult<IncidentReport>> {
-  return apiSend(`/api/admin/bookings/${bookingId}/reports/${reportId}`, "PATCH", input);
+  return notifyResult(
+    "تم إغلاق البلاغ بنجاح",
+    apiSend(`/api/admin/bookings/${bookingId}/reports/${reportId}`, "PATCH", input),
+  );
 }
 
 // Backward compatibility functions
@@ -336,7 +358,10 @@ export function createBooking(
   fleetId: string,
   input: CreateBookingInput,
 ): Promise<ActionResult<AdminBookingListItem>> {
-  return apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings`, "POST", input);
+  return notifyResult(
+    "اتضاف الحجز بنجاح",
+    apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings`, "POST", input),
+  );
 }
 
 export function updateBooking(
@@ -344,9 +369,12 @@ export function updateBooking(
   id: string,
   input: { passengerName?: string; passengerPhone?: string; status?: BookingStatus },
 ): Promise<ActionResult<AdminBookingListItem>> {
-  return apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings/${id}`, "PATCH", input);
+  return notifyResult(
+    "اتحفظت بيانات الحجز",
+    apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings/${id}`, "PATCH", input),
+  );
 }
 
 export function deleteBooking(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return apiSend<null>(`/api/fleets/${fleetId}/bookings/${id}`, "DELETE");
+  return notifyResult("اتمسح الحجز", apiSend<null>(`/api/fleets/${fleetId}/bookings/${id}`, "DELETE"));
 }

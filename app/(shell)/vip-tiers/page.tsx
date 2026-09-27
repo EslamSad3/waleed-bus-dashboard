@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -78,22 +78,6 @@ export default function VipTiersPage() {
       cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
     },
     { field: "name", headerName: "الاسم" },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: VipTier }) => {
-        const tier = params.data;
-        if (!tier) return null;
-        return (
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(tier)}><Pencil className="size-4" /> تعديل</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(tier)}>{tier.isActive ? "إيقاف" : "تفعيل"}</Button>
-          </div>
-        );
-      },
-    },
   ];
 
   return (
@@ -107,13 +91,20 @@ export default function VipTiersPage() {
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
-        <AgGridTable<VipTier>
-          key={rows?.map((t) => `${t.id}:${t.rank}:${t.isActive}`).join("|") ?? "empty"}
+        <CursorList<VipTier>
           gridId="vip-tiers"
-          rows={rows ?? []}
+          initialItems={rows ?? []}
+          initialCursor={null}
+          loadMore={async () => ({ items: [], nextCursor: null })}
+          keyOf={(tier) => tier.id}
           columnDefs={columns}
           emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة أول مستوى."
-          getRowId={(t) => t.id}
+          renderItem={(tier) => (
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(tier)}><Pencil className="size-4" /> تعديل</Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(tier)}>{tier.isActive ? "إيقاف" : "تفعيل"}</Button>
+            </div>
+          )}
         />
       )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المستوى" : "مستوى جديد"} description="الترتيب رقم فريد — الأول في القائمه يظهر أولًا." size="sm">

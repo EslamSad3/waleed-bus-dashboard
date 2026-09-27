@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Filter, Plus, RotateCcw, Ticket } from "lucide-react";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,14 +127,7 @@ export default function BookingsPage() {
     { field: "totalAmount", headerName: "الإجمالي", filter: "agNumberColumnFilter" },
     { field: "hasReports", headerName: "بلاغات", valueFormatter: (params) => params.value ? "نعم" : "لا" },
     { field: "createdAt", headerName: "تاريخ الحجز", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      cellRenderer: (params: { data?: AdminBookingListItem }) => params.data ? <Button asChild size="sm" variant="secondary"><Link href={`/bookings/${params.data.id}`}>عرض التفاصيل</Link></Button> : null,
-    },
-  ];
+];
 
   return (
     <div className="dashboard-page space-y-6">
@@ -178,20 +171,21 @@ export default function BookingsPage() {
       </div>
 
       {error ? <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      <AgGridTable<AdminBookingListItem>
+      <CursorList<AdminBookingListItem>
         gridId="bookings"
-        rows={items}
-        columnDefs={columns}
-        showSearch={false}
-        nextCursor={nextCursor}
+        initialItems={items}
+        initialCursor={nextCursor}
         loadMore={async (cursor) => {
-          const result = await fetchAdminBookingsPage(buildFilterParams(), cursor);
+          const result = await fetchAdminBookingsPage(filterParams, cursor);
           if (!result.ok) throw new Error(result.message);
           return result.data;
         }}
-        loading={isFetching && items.length === 0}
+        keyOf={(booking) => booking.id}
+        columnDefs={columns}
         emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
-        getRowId={(booking) => booking.id}
+        renderItem={(booking) => (
+          <Button asChild size="sm" variant="secondary"><Link href={`/bookings/${booking.id}`}>عرض التفاصيل</Link></Button>
+        )}
       />
       <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>

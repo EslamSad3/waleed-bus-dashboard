@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { AgGridTable } from "@/components/tables/ag-grid-table";
+import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import {
@@ -148,16 +148,28 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
       valueGetter: (params) => params.data?.assignedByUser?.name ?? "—",
     },
     { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => MEMBER_STATUS_AR[params.value as Member["status"]] ?? params.value },
-    {
-      headerName: "إجراء",
-      filter: false,
-      sortable: false,
-      exportable: false,
-      maxWidth: 90,
-      cellRenderer: (params: { data?: Member }) => {
-        const member = params.data;
-        if (!member) return null;
-        return (
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="section-title mb-0">أعضاء الأسطول</h2>
+        <Button type="button" onClick={() => setAddOpen(true)}>إضافة عضو</Button>
+      </div>
+
+      <CursorList<Member>
+        gridId={`fleet-members-${fleetId}`}
+        initialItems={members}
+        initialCursor={page?.nextCursor ?? null}
+        loadMore={async (cursor) => {
+          const result = await fetchMembersPage(fleetId, cursor);
+          if (!result.ok) throw new Error(result.message);
+          return result.data;
+        }}
+        keyOf={(member) => member.id}
+        columnDefs={columns}
+        emptyMessage="لا يوجد أعضاء في الأسطول ده — ابدأ بإضافة عضو."
+        renderItem={(member) => (
           <RowActionsMenu
             label={`إجراءات عضو ${member.user?.name ?? ""}`}
             actions={[
@@ -170,32 +182,7 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
               { label: "مسح العضوية", danger: true, onSelect: () => void remove(member) },
             ]}
           />
-        );
-      },
-    },
-  ];
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="section-title mb-0">أعضاء الأسطول</h2>
-        <Button type="button" onClick={() => setAddOpen(true)}>إضافة عضو</Button>
-      </div>
-
-      <AgGridTable<Member>
-        gridId={`fleet-members-${fleetId}`}
-        rows={members}
-        columnDefs={columns}
-        nextCursor={page?.nextCursor ?? null}
-        loadMore={async (cursor) => {
-          const result = await fetchMembersPage(fleetId, cursor);
-          if (!result.ok) throw new Error(result.message);
-          return result.data;
-        }}
-        loading={isLoading}
-        errorMessage={error?.message ?? null}
-        emptyMessage="لا يوجد أعضاء في الأسطول ده — ابدأ بإضافة عضو."
-        getRowId={(member) => member.id}
+        )}
       />
 
       <AddMemberDialog open={addOpen} fleetId={fleetId} onClose={() => setAddOpen(false)} />
