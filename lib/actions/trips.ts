@@ -1,4 +1,5 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult } from "@/lib/actions/toast";
 import type { CreateTripInput } from "@/lib/schemas/p1";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
 
@@ -48,13 +49,22 @@ export async function findTripAcrossFleets(id: string): Promise<ActionResult<{ f
 }
 
 export function createTrip(fleetId: string, input: CreateTripInput): Promise<ActionResult<Trip>> {
-  return apiSend<Trip>(`/api/fleets/${fleetId}/trips`, "POST", input);
+  return notifyResult("اتضافت الرحلة بنجاح", apiSend<Trip>(`/api/fleets/${fleetId}/trips`, "POST", input));
 }
 
 export function updateTrip(fleetId: string, id: string, input: { origin?: string; destination?: string; departAt?: string; status?: Trip["status"] }): Promise<ActionResult<Trip>> {
-  return apiSend<Trip>(`/api/fleets/${fleetId}/trips/${id}`, "PATCH", input);
+  return notifyResult(
+    input.status === "DEPARTED"
+      ? "تم تشغيل الرحلة"
+      : input.status === "COMPLETED"
+        ? "تم إنهاء الرحلة"
+        : input.status === "CANCELLED"
+          ? "تم إلغاء الرحلة"
+          : "اتحفظت بيانات الرحلة",
+    apiSend<Trip>(`/api/fleets/${fleetId}/trips/${id}`, "PATCH", input),
+  );
 }
 
 export function deleteTrip(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return apiSend<null>(`/api/fleets/${fleetId}/trips/${id}`, "DELETE");
+  return notifyResult("اتمسحت الرحلة", apiSend<null>(`/api/fleets/${fleetId}/trips/${id}`, "DELETE"));
 }

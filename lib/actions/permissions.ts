@@ -1,4 +1,5 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult } from "@/lib/actions/toast";
 
 export type Permission = {
   id: string;
@@ -29,9 +30,16 @@ export async function fetchPermissionCatalog(): Promise<ActionResult<Permission[
 }
 
 export function createPermission(input: { key: string; resource: string; action: string; description?: string }): Promise<ActionResult<Permission>> {
-  return apiSend<Permission>("/api/permissions", "POST", input);
+  return notifyResult("اتضافت المهمة بنجاح", apiSend<Permission>("/api/permissions", "POST", input));
 }
 
 export function updatePermission(id: string, input: { description?: string; isActive?: boolean }): Promise<ActionResult<Permission>> {
-  return apiSend<Permission>(`/api/permissions/${id}`, "PATCH", input);
+  return notifyResult(
+    input.isActive === undefined
+      ? "اتحفظت بيانات المهمة"
+      : input.isActive
+        ? "تم تنشيط المهمة"
+        : "تم إيقاف المهمة",
+    apiSend<Permission>(`/api/permissions/${id}`, "PATCH", input),
+  );
 }

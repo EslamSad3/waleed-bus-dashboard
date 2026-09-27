@@ -1,4 +1,5 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult } from "@/lib/actions/toast";
 
 export type Role = {
   id: string;
@@ -23,13 +24,23 @@ export function fetchRole(id: string): Promise<ActionResult<RoleDetail>> {
 }
 
 export function createRole(input: { name: string; slug: string; description?: string }): Promise<ActionResult<Role>> {
-  return apiSend<Role>("/api/roles", "POST", input);
+  return notifyResult("اتضاف مستوى الوصول بنجاح", apiSend<Role>("/api/roles", "POST", input));
 }
 
 export function updateRole(id: string, input: { name?: string; description?: string; isActive?: boolean }): Promise<ActionResult<Role>> {
-  return apiSend<Role>(`/api/roles/${id}`, "PATCH", input);
+  return notifyResult(
+    input.isActive === undefined
+      ? "اتحفظت بيانات مستوى الوصول"
+      : input.isActive
+        ? "تم تنشيط مستوى الوصول"
+        : "تم إيقاف مستوى الوصول",
+    apiSend<Role>(`/api/roles/${id}`, "PATCH", input),
+  );
 }
 
 export function replaceRolePermissions(id: string, permissionKeys: string[]): Promise<ActionResult<Role>> {
-  return apiSend<Role>(`/api/roles/${id}/permissions`, "PUT", { permissionKeys });
+  return notifyResult(
+    "تم تحديث مهام مستوى الوصول",
+    apiSend<Role>(`/api/roles/${id}/permissions`, "PUT", { permissionKeys }),
+  );
 }

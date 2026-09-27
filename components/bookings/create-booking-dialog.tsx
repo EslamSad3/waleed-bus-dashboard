@@ -60,7 +60,7 @@ export function CreateBookingDialog({
     }
     setFleetId(fleetId);
     setFleetScopeCookie(fleetId);
-    const r = await createBooking(fleetId, { ...values, passengerPhone: values.passengerPhone || undefined });
+    const r = await createBooking(fleetId, values);
     if (!r.ok) {
       setFormError(r.message);
       return;
@@ -80,21 +80,24 @@ export function CreateBookingDialog({
         </div>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">الرحلة (من نفس الأسطول)</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">الرحلة (من نفس الأسطول)<span className="text-[#dc2626]"> *</span></span>
             <select aria-label="اختار الرحلة" {...form.register("tripId")} className="select-field w-full">
               <option value="">اختار الرحلة</option>
               {trips.map((t) => (
                 <option key={t.id} value={t.id}>{t.origin} ← {t.destination}</option>
               ))}
             </select>
+            {form.formState.errors.tripId ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.tripId.message}</p> : null}
           </label>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">اسم الراكب</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">اسم الراكب<span className="text-[#dc2626]"> *</span></span>
             <Input placeholder="اسم الراكب" {...form.register("passengerName")} />
+            {form.formState.errors.passengerName ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.passengerName.message}</p> : null}
           </label>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">موبايل الراكب (اختياري)</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">موبايل الراكب<span className="text-[#dc2626]"> *</span></span>
             <Input dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" {...form.register("passengerPhone")} />
+            {form.formState.errors.passengerPhone ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.passengerPhone.message}</p> : null}
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">

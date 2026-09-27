@@ -1,4 +1,5 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { notifyResult } from "@/lib/actions/toast";
 import type { AddMemberInput, AddDriverInput } from "@/lib/schemas/p1";
 
 export type Member = {
@@ -51,15 +52,30 @@ export function fetchMembersPage(fleetId: string, cursor: string | null): Promis
 }
 
 export function addMember(fleetId: string, input: AddMemberInput): Promise<ActionResult<Member>> {
-  return apiSend<Member>(`/api/fleets/${fleetId}/members`, "POST", input, "MEMBER_EXISTS");
+  return notifyResult(
+    "اتضاف العضو للأسطول",
+    apiSend<Member>(`/api/fleets/${fleetId}/members`, "POST", input, "MEMBER_EXISTS"),
+  );
 }
 
 export function updateMember(fleetId: string, memberId: string, input: { roleSlug?: string; status?: Member["status"] }): Promise<ActionResult<Member>> {
-  return apiSend<Member>(`/api/fleets/${fleetId}/members/${memberId}`, "PATCH", input);
+  return notifyResult(
+    input.status === "ACTIVE"
+      ? "تم تنشيط العضو"
+      : input.status === "SUSPENDED"
+        ? "تم إيقاف العضو"
+        : input.status === "REVOKED"
+          ? "تم إلغاء صلاحية العضو"
+          : "اتحفظت بيانات العضو",
+    apiSend<Member>(`/api/fleets/${fleetId}/members/${memberId}`, "PATCH", input),
+  );
 }
 
 export function removeMember(fleetId: string, memberId: string): Promise<ActionResult<null>> {
-  return apiSend<null>(`/api/fleets/${fleetId}/members/${memberId}`, "DELETE");
+  return notifyResult(
+    "اتمسح العضو من الأسطول",
+    apiSend<null>(`/api/fleets/${fleetId}/members/${memberId}`, "DELETE"),
+  );
 }
 
 /** Tenant driver roster (research R1) — fleetId sent as x-fleet-id. */
@@ -74,7 +90,10 @@ export function fetchSystemDriversPage(cursor: string | null): Promise<ActionRes
 }
 
 export function inviteDriver(fleetId: string, input: AddDriverInput): Promise<ActionResult<DriverRow>> {
-  return apiSend(`/api/fleet/drivers`, "POST", input, "MEMBER_EXISTS", fleetId);
+  return notifyResult(
+    "اتبعتت دعوة السواق بنجاح",
+    apiSend(`/api/fleet/drivers`, "POST", input, "MEMBER_EXISTS", fleetId),
+  );
 }
 
 export function fetchDriver(fleetId: string, driverId: string): Promise<ActionResult<DriverRow>> {
@@ -82,11 +101,23 @@ export function fetchDriver(fleetId: string, driverId: string): Promise<ActionRe
 }
 
 export function updateDriver(fleetId: string, driverId: string, input: { roleSlug?: string; status?: Member["status"] }): Promise<ActionResult<DriverRow>> {
-  return apiSend(`/api/fleet/drivers/${driverId}`, "PATCH", input, undefined, fleetId);
+  return notifyResult(
+    input.status === "ACTIVE"
+      ? "تم تنشيط السواق"
+      : input.status === "SUSPENDED"
+        ? "تم إيقاف السواق"
+        : input.status === "REVOKED"
+          ? "تم إلغاء صلاحية السواق"
+          : "اتحفظت بيانات السواق",
+    apiSend(`/api/fleet/drivers/${driverId}`, "PATCH", input, undefined, fleetId),
+  );
 }
 
 export function removeDriver(fleetId: string, driverId: string): Promise<ActionResult<null>> {
-  return apiSend<null>(`/api/fleet/drivers/${driverId}`, "DELETE", undefined, undefined, fleetId);
+  return notifyResult(
+    "اتمسح السواق",
+    apiSend<null>(`/api/fleet/drivers/${driverId}`, "DELETE", undefined, undefined, fleetId),
+  );
 }
 
 /** Role picker (read-only reuse of GET /roles per research R7). */

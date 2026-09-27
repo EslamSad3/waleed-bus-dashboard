@@ -142,7 +142,7 @@ export const updateTripSchema = z.object({
 export const createBookingSchema = z.object({
   tripId: uuid,
   passengerName: name255,
-  passengerPhone: egyptPhone.optional(),
+  passengerPhone: egyptPhone,
   status: bookingStatus.optional(),
 });
 export const updateBookingSchema = z.object({
