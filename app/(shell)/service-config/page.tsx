@@ -11,6 +11,7 @@ import {
   type ServiceConfigEntryInput,
 } from "@/lib/actions/service-config";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { FormSkeleton } from "@/components/ui/skeletons";
 
 const TYPE_AR: Record<string, string> = {
   PHONE: "هاتف",
@@ -95,22 +96,22 @@ export default function ServiceConfigPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">خدمة العملاء والإعلانات</h1>
           <p className="page-description">قائمة مرتبة تظهر في التطبيق — الترتيب هنا هو ترتيب الظهور. الحفظ يرسل القائمة كاملة.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={add}><Plus className="size-4" /> عنصر جديد</Button>
-          <Button onClick={() => void save()} loading={saving} disabled={!rows}>{saving ? "جاري الحفظ…" : "حفظ القائمة"}</Button>
+        <div className="flex flex-wrap items-center gap-2 max-md:w-full">
+          <Button variant="secondary" className="max-md:w-full" onClick={add}><Plus className="size-4" /> عنصر جديد</Button>
+          <Button className="max-md:w-full" onClick={() => void save()} loading={saving} disabled={!rows}>{saving ? "جاري الحفظ…" : "حفظ القائمة"}</Button>
         </div>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
       {saved ? <p className="mb-4 rounded-xl bg-green-50 p-4 text-sm text-green-800">تم الحفظ بنجاح.</p> : null}
-      {!rows ? <p className="text-sm text-slate-500">جاري التحميل…</p> : rows.length === 0 ? <p className="text-sm text-slate-500">القائمة فارغة — أضف أول عنصر.</p> : (
+      {!rows ? (fetchError ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{fetchError.message}</p> : <FormSkeleton fields={4} />) : rows.length === 0 ? <p className="text-sm text-slate-500">القائمة فارغة — أضف أول عنصر.</p> : (
         <div className="space-y-3">
           {rows.map((row, idx) => (
-            <div key={row.key} className="rounded-2xl border border-[#e4ecf2] bg-white p-4">
-              <div className="mb-3 flex items-center justify-between">
+            <div key={row.key} className="min-w-0 rounded-2xl border border-[#e4ecf2] bg-white p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <span className={row.isActive ? "status-pill" : "status-pill status-pill-muted"}>{row.isActive ? "ظاهر" : "مخفي"} · {TYPE_AR[row.type]}</span>
                 <div className="flex gap-1">
                   <Button type="button" size="sm" variant="secondary" onClick={() => move(row.key, -1)} disabled={idx === 0}><ArrowUp className="size-4" /></Button>
