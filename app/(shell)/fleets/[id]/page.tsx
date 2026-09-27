@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { MembersTab } from "@/components/fleets/members-tab";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { assignFleetVip, deleteFleet, fetchFleet, fetchVipTiers, updateFleet, type Fleet, type VipTier } from "@/lib/actions/fleets";
 import { fetchFleetOwnersPage, type FleetOwnerAccount } from "@/lib/actions/fleet-owners";
-import { addMember, fetchMembersPage } from "@/lib/actions/members";
+import { addMember, fetchMembersPage, type MemberPage } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
 import { qk, patchDetail, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { Pencil, UserPlus } from "lucide-react";
@@ -26,20 +26,29 @@ const TABS = [
 
 type OwnerPage = { items: FleetOwnerAccount[]; nextCursor: string | null };
 
-/** نافذة إضافة صاحب عربية للأسطول كعضو (issue 13) — قايمة أصحاب العربيات جاهزة. */
+/** نافذة إضافة صاحب عربية للأسطول كعضو (issue 13) — القايمة بتستثني اللي متضاف بالفعل. */
 function AddOwnerDialog({ open, fleetId, onClose }: { open: boolean; fleetId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [ownerId, setOwnerId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
 
   const { data: ownersPage } = useApiQuery<OwnerPage>(qk.fleetOwners, () => fetchFleetOwnersPage(null), { enabled: open });
+  // أعضاء الأسطول الحاليين — عشان نستبعدهم من القايمة
+  const { data: membersPage } = useApiQuery<MemberPage>(qk.fleetMembers(fleetId), () => fetchMembersPage(fleetId, null), { enabled: open });
+
+  const existingMemberIds = useMemo(() => new Set((membersPage?.items ?? []).map((member) => member.userId)), [membersPage]);
+  const ownerOptions = (ownersPage?.items ?? []).filter((owner) => !existingMemberIds.has(owner.id));
+
+  // لو المختار بقى عضو بالفعل (مثلاً بعد إضافة تانية) نرجّع الاختيار للوضع الافتراضي
+  const ownerStillAvailable = !ownerId || ownerOptions.some((owner) => owner.id === ownerId);
+  if (!ownerStillAvailable) {
+    setOwnerId("");
+  }
 
   function resetForm() {
     setOwnerId("");
     setError(null);
-    setDone(false);
   }
 
   async function submit() {
@@ -55,28 +64,32 @@ function AddOwnerDialog({ open, fleetId, onClose }: { open: boolean; fleetId: st
       setError(r.message);
       return;
     }
-    setDone(true);
     const refreshed = await fetchMembersPage(fleetId, null);
     if (refreshed.ok) queryClient.setQueryData(qk.fleetMembers(fleetId), refreshed.data);
+    // نجاح = نقفل النافذة فورًا — من غير رسالتين مع بعض
+    resetForm();
+    onClose();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة صاحب عربية للأسطول" description="اختار المالك من القايمة — هيتضاف كعضو بدور fleet-owner." size="sm">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة صاحب عربية للأسطول" description="اختار المالك من القايمة — هيتضاف كعضو بدور fleet-owner. اللي متضاف بالفعل مش بيظهر في القايمة." size="sm">
       <div className="space-y-4">
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">صاحب العربية</span>
-          <select aria-label="اختار صاحب العربية" value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full">
-            <option value="">اختار صاحب العربية…</option>
-            {(ownersPage?.items ?? []).map((owner) => (
+          <select aria-label="اختار صاحب العربية" value={ownerId} onChange={(event) => { setOwnerId(event.target.value); setError(null); }} className="select-field w-full">
+            <option value="">{ownerOptions.length ? "اختار صاحب العربية…" : "مفيش أصحاب عربيات متاحين"}</option>
+            {ownerOptions.map((owner) => (
               <option key={owner.id} value={owner.id}>{owner.name ?? owner.phoneNumber ?? owner.id}</option>
             ))}
           </select>
         </label>
+        {ownerOptions.length === 0 ? (
+          <p className="rounded-xl bg-[#eaf6ff] p-3 text-sm text-[#00134c]">كل أصحاب العربيات متضافين بالفعل للأسطول ده.</p>
+        ) : null}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {done && <p role="status" className="text-sm text-green-700">اتضاف صاحب العربية للأسطول بنجاح.</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الإضافة…" : "إضافة"}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving || !ownerId}>{saving ? "جاري الإضافة…" : "إضافة"}</Button>
         </div>
       </div>
     </Dialog>
