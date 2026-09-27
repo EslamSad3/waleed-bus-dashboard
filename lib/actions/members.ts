@@ -8,6 +8,11 @@ export type Member = {
   roleId: string;
   status: "ACTIVE" | "SUSPENDED" | "REVOKED";
   joinedAt: string;
+  assignedBy?: string | null;
+  /** Included by the members list endpoint for the dashboard grid. */
+  user?: { id: string; name: string | null; nickname: string | null; phoneNumber: string | null } | null;
+  role?: { slug: string; name: string | null } | null;
+  assignedByUser?: { id: string; name: string | null } | null;
 };
 
 export type MemberPage = CursorPage<Member>;

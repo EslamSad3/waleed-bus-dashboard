@@ -1,44 +1,19 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { CursorList } from "@/components/tables/cursor-list";
 import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { disableBus, fetchBusesPage, reactivateBus, type Bus } from "@/lib/actions/buses";
 import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
-import { fetchBookingsPage, BOOKING_STATUS_AR, type Booking } from "@/lib/actions/bookings";
+import { fetchBookingsPage, BOOKING_STATUS_AR, PAYMENT_STATUS_AR, type Booking } from "@/lib/actions/bookings";
 import { fetchFleetReports, type FleetReports } from "@/lib/actions/reports";
+import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 import type { ActionResult, CursorPage } from "@/lib/actions/http";
 
 type ListingState<T> = { items: T[]; nextCursor: string | null };
 type FetchPage<T> = (fleetId: string, cursor: string | null) => Promise<ActionResult<CursorPage<T>>>;
 type FleetReport = FleetReports["reports"][number];
-
-function useFleetListing<T>(fleetId: string, fetchPage: FetchPage<T>) {
-  const [state, setState] = useState<{ fleetId: string; first: ListingState<T> | null; error: string | null }>({
-    fleetId,
-    first: null,
-    error: null,
-  });
-
-  useEffect(() => {
-    let active = true;
-    fetchPage(fleetId, null).then((result) => {
-      if (!active) return;
-      if (result.ok) setState({ fleetId, first: result.data, error: null });
-      else setState({ fleetId, first: null, error: result.message });
-    });
-    return () => { active = false; };
-  }, [fleetId, fetchPage]);
-
-  const isCurrent = state.fleetId === fleetId;
-  return {
-    first: isCurrent ? state.first : null,
-    error: isCurrent ? state.error : null,
-  };
-}
 
 function ListingShell({
   children,
@@ -57,91 +32,166 @@ function ListingShell({
 function TabHeader({ title, actionHref, actionLabel }: { title: string; actionHref?: string; actionLabel?: string }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h2 className="section-title">{title}</h2>
-      {actionHref && actionLabel ? <Button asChild size="sm"><Link href={actionHref}>{actionLabel}</Link></Button> : null}
+      <h2 className="section-title mb-0">{title}</h2>
+      {actionHref && actionLabel ? <a href={actionHref} className="text-sm font-extrabold text-[#059ff8] hover:underline">{actionLabel}</a> : null}
     </div>
   );
 }
 
 export function FleetBusesTab({ fleetId }: { fleetId: string }) {
-  const { first, error } = useFleetListing<Bus>(fleetId, fetchBusesPage);
+  const queryClient = useQueryClient();
+  const { data: page, isLoading, error } = useApiQuery(qk.fleetBuses(fleetId), () => fetchBusesPage(fleetId, null));
+
+  async function toggleActive(bus: Bus) {
+    const result = bus.isActive ? await disableBus(fleetId, bus.id) : await reactivateBus(fleetId, bus.id);
+    if (!result.ok) return;
+    upsertInList(queryClient, qk.fleetBuses(fleetId), result.data);
+  }
+
+  const columns: CommunityColumnDef<Bus>[] = [
+    { field: "registrationNumber", headerName: "رقم التسجيل", filter: "agTextColumnFilter" },
+    { field: "plateNumber", headerName: "رقم اللوحة", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
+    { field: "capacity", headerName: "السعة", filter: "agNumberColumnFilter" },
+    { field: "isActive", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? "نشط" : "موقوف") },
+    { field: "createdAt", headerName: "تاريخ الإنشاء", filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
+    {
+      headerName: "إجراء",
+      filter: false,
+      sortable: false,
+      exportable: false,
+      maxWidth: 90,
+      cellRenderer: (params: { data?: Bus }) => {
+        const bus = params.data;
+        if (!bus) return null;
+        return (
+          <RowActionsMenu
+            label={`إجراءات عربية ${bus.registrationNumber}`}
+            actions={[
+              { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${fleetId}` },
+              { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => void toggleActive(bus) },
+            ]}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="عربيات الأسطول" actionHref="/buses" actionLabel="إضافة عربية" />
-      <ListingShell error={error} isLoading={!first}>
-        {first && <CursorList<Bus>
-          key={fleetId}
-          initialItems={first.items}
-          initialCursor={first.nextCursor}
-          loadMore={(cursor) => fetchBusesPage(fleetId, cursor).then((result) => {
+      <ListingShell error={error?.message ?? null} isLoading={isLoading}>
+        <AgGridTable<Bus>
+          gridId={`fleet-buses-${fleetId}`}
+          rows={page?.items ?? []}
+          columnDefs={columns}
+          nextCursor={page?.nextCursor ?? null}
+          loadMore={async (cursor) => {
+            const result = await fetchBusesPage(fleetId, cursor);
             if (!result.ok) throw new Error(result.message);
             return result.data;
-          })}
-          keyOf={(bus) => bus.id}
+          }}
           emptyMessage="لا توجد عربيات مسجلة في هذا الأسطول"
-          renderItem={(bus) => (
-            <Link href={`/buses/${bus.id}?fleetId=${fleetId}`} className="list-card">
-              <span className="font-semibold text-[#1a1a1a]"><span dir="ltr">{bus.registrationNumber}</span>{bus.plateNumber ? <span className="text-sm text-[#606060]"> · <span dir="ltr">{bus.plateNumber}</span></span> : null}</span>
-              <span className="flex items-center gap-3 text-sm text-[#606060]"><span>السعة <span dir="ltr">{bus.capacity}</span></span><span className={bus.isActive ? "status-pill" : "status-pill status-pill-muted"}>{bus.isActive ? "نشط" : "موقوف"}</span></span>
-            </Link>
-          )}
-        />}
+          getRowId={(bus) => bus.id}
+        />
       </ListingShell>
     </section>
   );
 }
 
 export function FleetTripsTab({ fleetId }: { fleetId: string }) {
-  const { first, error } = useFleetListing<Trip>(fleetId, fetchTripsPage);
+  const { data: page, isLoading, error } = useApiQuery(qk.fleetTrips(fleetId), () => fetchTripsPage(fleetId, null));
+
+  const columns: CommunityColumnDef<Trip>[] = [
+    { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
+    { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
+    { field: "departAt", headerName: "الميعاد", filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleString("ar-EG") : "—") },
+    { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
+    {
+      headerName: "إجراء",
+      filter: false,
+      sortable: false,
+      exportable: false,
+      maxWidth: 90,
+      cellRenderer: (params: { data?: Trip }) => {
+        const trip = params.data;
+        if (!trip) return null;
+        return (
+          <RowActionsMenu
+            label="إجراءات الرحلة"
+            actions={[{ label: "فتح التفاصيل", href: `/trips/${trip.id}` }]}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="رحلات الأسطول" actionHref="/trips" actionLabel="إضافة رحلة" />
-      <ListingShell error={error} isLoading={!first}>
-        {first && <CursorList<Trip>
-          key={fleetId}
-          initialItems={first.items}
-          initialCursor={first.nextCursor}
-          loadMore={(cursor) => fetchTripsPage(fleetId, cursor).then((result) => {
+      <ListingShell error={error?.message ?? null} isLoading={isLoading}>
+        <AgGridTable<Trip>
+          gridId={`fleet-trips-${fleetId}`}
+          rows={page?.items ?? []}
+          columnDefs={columns}
+          nextCursor={page?.nextCursor ?? null}
+          loadMore={async (cursor) => {
+            const result = await fetchTripsPage(fleetId, cursor);
             if (!result.ok) throw new Error(result.message);
             return result.data;
-          })}
-          keyOf={(trip) => trip.id}
+          }}
           emptyMessage="لا توجد رحلات مسجلة في هذا الأسطول"
-          renderItem={(trip) => (
-            <Link href={`/trips/${trip.id}`} className="list-card">
-              <span className="font-semibold text-[#1a1a1a]">{trip.origin} ← {trip.destination}</span>
-              <span className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b78]"><span className={trip.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>{TRIP_STATUS_AR[trip.status]}</span><time dateTime={trip.departAt}>{new Date(trip.departAt).toLocaleString("en-EG")}</time></span>
-            </Link>
-          )}
-        />}
+          getRowId={(trip) => trip.id}
+        />
       </ListingShell>
     </section>
   );
 }
 
 export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
-  const { first, error } = useFleetListing<Booking>(fleetId, fetchBookingsPage);
+  const { data: page, isLoading, error } = useApiQuery(qk.fleetBookings(fleetId), () => fetchBookingsPage(fleetId, null));
+
+  const columns: CommunityColumnDef<Booking>[] = [
+    { field: "passengerName", headerName: "الراكب", filter: "agTextColumnFilter" },
+    { field: "seats", headerName: "المقاعد", filter: "agNumberColumnFilter" },
+    { field: "status", headerName: "حالة الحجز", cellDataType: "text", valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
+    { field: "paymentStatus", headerName: "الدفع", cellDataType: "text", valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
+    { field: "totalAmount", headerName: "الإجمالي", filter: "agNumberColumnFilter", valueFormatter: (params) => (params.value == null ? "—" : String(params.value)) },
+    {
+      headerName: "إجراء",
+      filter: false,
+      sortable: false,
+      exportable: false,
+      maxWidth: 90,
+      cellRenderer: (params: { data?: Booking }) => {
+        const booking = params.data;
+        if (!booking) return null;
+        return (
+          <RowActionsMenu
+            label="إجراءات الحجز"
+            actions={[{ label: "فتح التفاصيل", href: `/bookings/${booking.id}` }]}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="حجوزات الأسطول" actionHref="/bookings" actionLabel="إضافة حجز" />
-      <ListingShell error={error} isLoading={!first}>
-        {first && <CursorList<Booking>
-          key={fleetId}
-          initialItems={first.items}
-          initialCursor={first.nextCursor}
-          loadMore={(cursor) => fetchBookingsPage(fleetId, cursor).then((result) => {
+      <ListingShell error={error?.message ?? null} isLoading={isLoading}>
+        <AgGridTable<Booking>
+          gridId={`fleet-bookings-${fleetId}`}
+          rows={page?.items ?? []}
+          columnDefs={columns}
+          nextCursor={page?.nextCursor ?? null}
+          loadMore={async (cursor) => {
+            const result = await fetchBookingsPage(fleetId, cursor);
             if (!result.ok) throw new Error(result.message);
             return result.data;
-          })}
-          keyOf={(booking) => booking.id}
+          }}
           emptyMessage="لا توجد حجوزات مسجلة في هذا الأسطول"
-          renderItem={(booking) => (
-            <Link href={`/bookings/${booking.id}`} className="list-card">
-              <span className="min-w-0"><strong className="block truncate text-[#1a1a1a]">{booking.passengerName}</strong>{booking.originName && booking.destinationName ? <small className="mt-1 block truncate text-[#5e6b78]">{booking.originName} ← {booking.destinationName}</small> : null}</span>
-              <span className="flex shrink-0 flex-col items-end gap-1.5 text-xs text-[#5e6b78]"><span>{booking.seats} {booking.seats === 1 ? "مقعد" : "مقاعد"}</span><span className={booking.status === "CONFIRMED" ? "status-pill" : "status-pill status-pill-muted"}>{BOOKING_STATUS_AR[booking.status]}</span></span>
-            </Link>
-          )}
-        />}
+          getRowId={(booking) => booking.id}
+        />
       </ListingShell>
     </section>
   );

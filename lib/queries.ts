@@ -76,6 +76,9 @@ export const qk = {
   promotions: ["promotions"] as const,
   serviceConfig: ["service-config"] as const,
   fleetMembers: (fleetId: string) => ["fleet-members", fleetId] as const,
+  fleetBuses: (fleetId: string) => ["fleet-buses", fleetId] as const,
+  fleetTrips: (fleetId: string) => ["fleet-trips", fleetId] as const,
+  fleetBookings: (fleetId: string) => ["fleet-bookings", fleetId] as const,
 };
 
 /** Insert-or-replace one item inside a cached plain-array list. */
