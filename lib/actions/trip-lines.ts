@@ -74,6 +74,8 @@ export const updateMarkaz = (id: string, input: { nameAr?: string; nameEn?: stri
     input.isActive === undefined ? "اتحفظت بيانات المركز" : input.isActive ? "تم تنشيط المركز" : "تم إيقاف المركز",
     apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input),
   );
+export const deleteMarkaz = (id: string) =>
+  notifyResult("اتمسح المركز", apiSend<null>(`/api/markaz/${id}`, "DELETE"));
 export const fetchLocalities = (markazId: string, includeInactive = false) =>
   apiGet<Locality[]>(`/api/markaz/${markazId}/localities${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchLocalitiesAll = (
@@ -98,6 +100,8 @@ export const updateLocality = (id: string, input: { nameAr?: string; nameEn?: st
         : "تم إيقاف المدينة/القرية",
     apiSend<Locality>(`/api/localities/${id}`, "PATCH", input),
   );
+export const deleteLocality = (id: string) =>
+  notifyResult("اتمسحت المدينة/القرية", apiSend<null>(`/api/localities/${id}`, "DELETE"));
 export const fetchStop = (id: string) => apiGet<Stop>(`/api/stops/${id}`);
 export type StopInput = Omit<Stop, "id" | "governorate">;
 export const createStop = (input: StopInput) =>

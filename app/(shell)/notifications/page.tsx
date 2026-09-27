@@ -6,6 +6,8 @@ import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { fetchOpsNotifications, type OpsNotification } from "@/lib/actions/notifications";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { SendNotificationDialog } from "@/components/notifications/send-notification-dialog";
@@ -49,12 +51,15 @@ export default function NotificationsOpsPage() {
 
   // User dropdown options
   const [userOptions, setUserOptions] = useState<TargetOption[]>([]);
+  const [userOptionsLoading, setUserOptionsLoading] = useState(true);
 
   // Load initial user options for the filter dropdown
   useEffect(() => {
     let active = true;
     fetchTargetOptions("").then((res) => {
       if (active && res.ok) setUserOptions(res.data);
+    }).finally(() => {
+      if (active) setUserOptionsLoading(false);
     });
     return () => {
       active = false;
@@ -184,13 +189,13 @@ export default function NotificationsOpsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">الإشعارات</h1>
           <p className="page-description">
             عرض تشغيلي لسجل إشعارات المستخدمين وإرسال إشعارات عامة أو فردية مباشرة إلى حساباتهم.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-md:w-full max-md:flex-col max-md:items-stretch">
           <Button
             onClick={() => setSendDialogOpen(true)}
             className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
@@ -210,14 +215,14 @@ export default function NotificationsOpsPage() {
           className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 animate-in fade-in"
         >
           <CheckCircle2 className="size-5 shrink-0 text-emerald-600" />
-          <span>{successNote}</span>
+          <span className="min-w-0">{successNote}</span>
         </div>
       )}
 
       {/* Filter Bar (No UUID input: Name/Phone/Email Search + User Dropdown + Category) */}
-      <div className="mb-4 flex flex-col gap-2.5 rounded-2xl border border-[#d6eeff] bg-white p-3.5 shadow-sm sm:flex-row sm:items-center">
+      <div className="mb-4 flex flex-col flex-wrap gap-2.5 rounded-2xl border border-[#d6eeff] bg-white p-3.5 shadow-sm md:flex-row md:items-center">
         {/* User Search Input */}
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1 md:max-w-72">
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -227,30 +232,37 @@ export default function NotificationsOpsPage() {
             placeholder="بحث بالاسم، رقم الموبايل، أو البريد الإلكتروني…"
             className="text-xs pe-8"
           />
-          <Search className="size-4 absolute left-2.5 top-2.5 text-[#5e6b78] pointer-events-none" />
+          <Search className="size-4 absolute end-2.5 top-2.5 text-[#5e6b78] pointer-events-none" />
         </div>
 
         {/* User Dropdown */}
-        <div className="flex items-center gap-1.5 sm:w-64">
+        <div className="flex items-center gap-1.5 md:w-64">
           <User className="size-4 text-[#059ff8] shrink-0" />
-          <select
-            className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
-            value={selectedUserId}
-            onChange={(event) => setSelectedUserId(event.target.value)}
-          >
-            <option value="">كل المستخدمين (المستلم)</option>
-            {userOptions.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name || "مستخدم"} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
-                {u.email ? `— ${u.email}` : ""}
-              </option>
-            ))}
-          </select>
+          {userOptionsLoading && userOptions.length === 0 ? (
+            <div role="status" className="min-w-0 flex-1">
+              <span className="sr-only">جاري التحميل…</span>
+              <Skeleton className="h-9 w-full rounded-xl" />
+            </div>
+          ) : (
+            <select
+              className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
+              value={selectedUserId}
+              onChange={(event) => setSelectedUserId(event.target.value)}
+            >
+              <option value="">كل المستخدمين (المستلم)</option>
+              {userOptions.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name || "مستخدم"} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
+                  {u.email ? `— ${u.email}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Category Dropdown */}
         <select
-          className="rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#059ff8] sm:w-36"
+          className="rounded-xl border border-[#d7e1ea] bg-white p-2 text-xs outline-none focus:border-[#059ff8] md:w-36"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
         >
@@ -287,7 +299,7 @@ export default function NotificationsOpsPage() {
       ) : null}
 
       {rowsLoading ? (
-        <p className="text-sm text-slate-500">جاري التحميل…</p>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <CursorList<OpsNotification>
           gridId="notifications-ops"

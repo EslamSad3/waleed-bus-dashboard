@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { createVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
 import { rankOrdinalAr } from "@/lib/ordinals";
 import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -81,14 +82,14 @@ export default function VipTiersPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">مستويات VIP</h1>
           <p className="page-description">ترتيب ظهور أصحاب العربيات في نتائج البحث — الأقل ترتيبًا يظهر أولًا.</p>
         </div>
         <Button onClick={openCreate}><Plus className="size-4" /> مستوى جديد</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+      {isLoading ? <TableSkeleton columns={3} /> : (
         <CursorList<VipTier>
           gridId="vip-tiers"
           initialItems={rows ?? []}
@@ -110,7 +111,7 @@ export default function VipTiersPage() {
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ذهبي" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الترتيب</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={rank} onChange={(event) => setRank(event.target.value)} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
             <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
           </div>

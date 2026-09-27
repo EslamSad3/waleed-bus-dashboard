@@ -9,6 +9,8 @@ import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { createFleet, fetchFleetsPage, fetchUserOptions, type Fleet } from "@/lib/actions/fleets";
 import { useFilterStore } from "@/stores/filters";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, upsertInCursorList, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
 
 type FleetRow = Fleet & { ownerName: string };
@@ -40,7 +42,7 @@ function CreateFleetDialog({ open, onClose }: { open: boolean; onClose: () => vo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: ownersPage } = useApiQuery<{ items: Owner[] }>(["users", "options"], () => fetchUserOptions(), { enabled: open });
+  const { data: ownersPage, isLoading: ownersLoading } = useApiQuery<{ items: Owner[] }>(["users", "options"], () => fetchUserOptions(), { enabled: open });
   const ownerName = (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.name ?? "غير معروف";
 
   function resetForm() {
@@ -126,7 +128,7 @@ export default function FleetsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0">
           <h1 className="page-title">الأساطيل</h1>
           <p className="page-description">كل الأساطيل المسجلة وحالة تشغيل كل أسطول.</p>
         </div>
@@ -136,7 +138,7 @@ export default function FleetsPage() {
       {error ? (
         <p role="alert" className="text-sm text-red-600">{error.message}</p>
       ) : isLoading ? (
-        <p className="text-sm text-[#606060]">جاري التحميل…</p>
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <CursorList<FleetRow>
           initialItems={first?.items ?? []}
@@ -157,13 +159,13 @@ export default function FleetsPage() {
                 placeholder="دور باسم الأسطول أو المالك"
                 value={f.q ?? ""}
                 onChange={(e) => setListFilter("fleets", { q: e.target.value })}
-                className="max-w-xs bg-white"
+                className="min-w-0 flex-1 bg-white md:max-w-72"
               />
               <select
                 aria-label="الحالة"
                 value={status}
                 onChange={(e) => setListFilter("fleets", { status: e.target.value })}
-                className="select-field"
+                className="select-field max-md:w-full"
               >
                 <option value="all">الكل</option>
                 <option value="active">نشط</option>

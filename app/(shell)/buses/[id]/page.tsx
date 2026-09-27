@@ -32,6 +32,8 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { BUS_COLORS, busColorHex } from "@/lib/colors";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
+import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2, UserPlus, Route as RouteIcon } from "lucide-react";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 
@@ -63,6 +65,7 @@ export default function BusDetailPage({
   const [uploading, setUploading] = useState(false);
   const [driverId, setDriverId] = useState("");
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
+  const [driversLoaded, setDriversLoaded] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tripsFirst, setTripsFirst] = useState<{ key: string; items: TripRef[]; nextCursor: string | null } | null>(null);
@@ -78,8 +81,8 @@ export default function BusDetailPage({
     () => fetchBus(fleetId!, id),
     { enabled: Boolean(fleetId) },
   );
-  const { data: brands } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true));
-  const { data: tripLines } = useApiQuery<TripLine[]>(qk.tripLines, fetchTripLines);
+  const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true));
+  const { data: tripLines, isPending: tripLinesPending } = useApiQuery<TripLine[]>(qk.tripLines, fetchTripLines);
 
   function syncForm(next: Bus) {
     setPlate(next.plateNumber ?? "");
@@ -107,6 +110,7 @@ export default function BusDetailPage({
     if (!fleetId) return;
     apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId).then((r) => {
       if (r.ok) setDrivers(r.data.items.filter((d) => d.status === "ACTIVE"));
+      setDriversLoaded(true);
     });
   }, [fleetId]);
 

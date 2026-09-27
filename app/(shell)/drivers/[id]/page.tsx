@@ -18,6 +18,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FleetPicker } from "@/components/fleet-picker";
+import { DetailPageSkeleton } from "@/components/ui/skeletons";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { Pencil, Trash2 } from "lucide-react";
 import { ImagePicker } from "@/components/ui/image-picker";
@@ -155,7 +156,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     );
   }
   if (failed || fetchFailed) return <p role="alert" className="text-sm text-red-600">{failed ?? fetchFailed}</p>;
-  if (!driver) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
+  if (!driver) return <DetailPageSkeleton sections={2} />;
 
   const assignmentColumns: CommunityColumnDef<DriverAssignment>[] = [
     { field: "plateNumber", headerName: "رقم اللوحة", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
@@ -165,7 +166,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات العربيات.</p></div>
+        <div className="min-w-0"><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات العربيات.</p></div>
         <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> حذف السواق</AsyncButton>
       </div>
 
@@ -176,12 +177,12 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         <div className="panel-card p-5 sm:p-6">
           <h2 className="section-title">العضوية</h2>
           <dl className="space-y-2 text-sm">
-            <div className="flex justify-between"><dt className="text-[#606060]">اسم الشهرة</dt><dd>{driver.nickname ?? "—"}</dd></div>
-            <div className="flex justify-between"><dt className="text-[#606060]">الموبايل</dt><dd dir="ltr">{driver.phoneNumber ?? "—"}</dd></div>
-            <div className="flex justify-between"><dt className="text-[#606060]">الرقم القومي</dt><dd dir="ltr">{driver.nationalId ?? "—"}</dd></div>
-            <div className="flex justify-between"><dt className="text-[#606060]">الدور</dt><dd dir="ltr">{driver.roleSlug ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">اسم الشهرة</dt><dd className="min-w-0 truncate">{driver.nickname ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">الموبايل</dt><dd className="min-w-0 truncate" dir="ltr">{driver.phoneNumber ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">الرقم القومي</dt><dd className="min-w-0 truncate" dir="ltr">{driver.nationalId ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">الدور</dt><dd className="min-w-0 truncate" dir="ltr">{driver.roleSlug ?? "—"}</dd></div>
           </dl>
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <span className={status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[status]}</span>
             <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" /> تعديل

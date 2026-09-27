@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DetailPageSkeleton, InlineBlockSkeleton, Skeleton } from "@/components/ui/skeletons";
 import { fetchPermissionCatalog, type Permission } from "@/lib/actions/permissions";
 import { fetchRole, replaceRolePermissions, updateRole, type RoleDetail } from "@/lib/actions/roles";
 import { presentPermission } from "@/lib/permission-presentation";
@@ -24,7 +25,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
 
   // TanStack cache: تفاصيل الدور والمهام بيتجابوا عبر طبقة الكاش
   const { data: roleData, error: roleError, refetch } = useApiQuery<RoleDetail>(qk.role(id), () => fetchRole(id));
-  const { data: catalog } = useApiQuery<Permission[]>(qk.permissions, fetchPermissionCatalog);
+  const { data: catalog, isPending: catalogPending } = useApiQuery<Permission[]>(qk.permissions, fetchPermissionCatalog);
 
   const reload = useCallback(() => {
     void refetch();

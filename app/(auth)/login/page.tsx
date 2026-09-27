@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BusFront, Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { loginSchema, type LoginFormValues, type LoginInput } from "@/lib/schemas/auth";
+import { loginSchema, type LoginFormValues } from "@/lib/schemas/auth";
 import {
   Form,
   FormField,
@@ -104,7 +104,7 @@ export default function LoginPage() {
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00134c] text-white shadow-lg shadow-[#00134c]/20">
                 <BusFront className="h-6 w-6" aria-hidden="true" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="font-extrabold text-[#00134c]">وليد باص</p>
                 <p className="text-xs text-[#5e6b78]">لوحة الإدارة</p>
               </div>
@@ -156,7 +156,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
                         aria-label={showPassword ? "إخفاء كلمة السر" : "إظهار كلمة السر"}
-                        className="absolute left-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#667786] transition hover:bg-[#eaf6ff] hover:text-[#00134c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]/30"
+                        className="absolute end-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#667786] transition hover:bg-[#eaf6ff] hover:text-[#00134c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]/30"
                       >
                         {showPassword ? (
                           <EyeOff aria-hidden="true" />
@@ -187,7 +187,7 @@ export default function LoginPage() {
                     <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition ${field.value ? "border-[#059ff8] bg-[#059ff8] text-white" : "border-[#9babb8] bg-white text-transparent"}`}>
                       <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                     </span>
-                    <span>
+                    <span className="min-w-0">
                       <span className="block text-sm font-bold text-[#243442]">تذكرني</span>
                       <span className="mt-0.5 block text-xs leading-5 text-[#6f7e8b]">احتفظ بتسجيل الدخول على هذا الجهاز لمدة 7 أيام.</span>
                     </span>

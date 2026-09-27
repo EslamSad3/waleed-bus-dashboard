@@ -19,6 +19,8 @@ import { apiGet, mapWithConcurrency, type CursorPage } from "@/lib/actions/http"
 import { fetchAdminBookingsPage, type Booking } from "@/lib/actions/bookings";
 import { fetchStops, fetchTripLines, type Stop, type TripLine } from "@/lib/actions/trip-lines";
 import { qk, useApiQuery, useDataQuery } from "@/lib/queries";
+import { Skeleton } from "@/components/ui/skeleton";
+import { KpiCardsSkeleton } from "@/components/ui/skeletons";
 import { ApexChart } from "@/components/charts/apex-chart";
 
 type FleetLite = { id: string; name: string; isActive: boolean };
@@ -257,21 +259,40 @@ export function OverviewInsights() {
   const hasData =
     !fleetsQuery.isLoading && !bookingsQuery.isLoading && !busesPerFleetQuery.isLoading;
 
+  // أول تحميل لصف الكروت — سكيليتون بنفس شبكة البيانات (بدون قفزة).
+  // isLoading يعني isPending + قيد الجلب، فالاستعلامات المعطّلة (المتوقفة على الأساطيل)
+  // أو فاشلة أو مأخوذة من الكاش ما بتعطّل الصف.
+  const kpisLoading = [
+    fleetsQuery,
+    driversQuery,
+    ownersQuery,
+    usersQuery,
+    stopsQuery,
+    tripLinesQuery,
+    bookingsQuery,
+    busesPerFleetQuery,
+    tripsPerFleetQuery,
+  ].some((query) => query.isLoading);
+
   return (
     <section className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="page-title text-[1.35rem] sm:text-2xl">نظرة سريعة على الأرقام</h2>
           <p className="page-description">مؤشرات التشغيل الحالية — كل كارت لينك لصفحته، والأرقام بتتحدث تلقائيًا من الكاش.</p>
         </div>
       </div>
 
       {/* ٩ كروت — شبكة ٣ أعمدة متزنة من غير خانة فاضية */}
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-        {kpis.map((kpi) => (
-          <KpiCard key={kpi.label} {...kpi} />
-        ))}
-      </div>
+      {kpisLoading ? (
+        <KpiCardsSkeleton count={kpis.length} columns={3} />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          {kpis.map((kpi) => (
+            <KpiCard key={kpi.label} {...kpi} />
+          ))}
+        </div>
+      )}
 
       {hasData ? (
         <div className="grid gap-4 xl:grid-cols-3">
@@ -304,10 +325,12 @@ export function OverviewInsights() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div role="status" className="grid gap-4 xl:grid-cols-3">
+          <span className="sr-only">جاري التحميل…</span>
           {[0, 1, 2].map((index) => (
-            <div key={index} className={`${chartFrame} grid min-h-72 place-items-center text-sm text-[#8b98a5]`}>
-              جاري تحميل الرسوم…
+            <div key={index} className={`${chartFrame} space-y-3`}>
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-[280px] w-full" />
             </div>
           ))}
         </div>

@@ -31,6 +31,10 @@ export function updateFleetOwner(id: string, input: UpdateFleetOwnerInput): Prom
   return notifyResult("اتحفظت بيانات صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "PATCH", input));
 }
 
+export function deleteFleetOwner(id: string): Promise<ActionResult<null>> {
+  return notifyResult("اتمسح صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "DELETE"));
+}
+
 /** Multipart upload: the file goes up as FormData and the API sets the picture. */
 export function uploadFleetOwnerPicture(id: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(

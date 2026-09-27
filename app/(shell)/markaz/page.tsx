@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   createMarkaz,
   fetchGovernorates,
@@ -114,7 +115,7 @@ export default function MarkazPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">المراكز</h1>
           <p className="page-description">المركز/الحي تحت المحافظة — فلتر المحافظة متاح من القايمة أو من عمود الجدول، أو الاتنين مع بعض.</p>
         </div>
@@ -128,7 +129,7 @@ export default function MarkazPage() {
         </select>
       </label>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+      {isLoading ? <TableSkeleton columns={5} /> : (
         <CursorList<Markaz>
           gridId="markaz"
           initialItems={rows ?? []}
@@ -161,7 +162,7 @@ export default function MarkazPage() {
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالعربي</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder="بنها" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالإنجليزي</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
             <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
           </div>

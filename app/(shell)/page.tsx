@@ -56,8 +56,8 @@ export default function OverviewPage() {
   return (
     <div className="dashboard-page">
       <section className="navy-band relative overflow-hidden rounded-[2rem] px-5 py-7 text-white shadow-[0_22px_60px_rgba(0,19,76,.22)] sm:px-8 sm:py-9">
-        <div className="absolute -left-16 -top-20 size-64 rounded-full border border-white/10" />
-        <div className="absolute -left-5 -top-10 size-40 rounded-full border border-white/10" />
+        <div className="absolute -start-16 -top-20 size-64 rounded-full border border-white/10" />
+        <div className="absolute -start-5 -top-10 size-40 rounded-full border border-white/10" />
         <div className="relative max-w-3xl">
           <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-[#d9efff]">
             <CheckCircle2 className="size-4" aria-hidden="true" />
@@ -84,7 +84,7 @@ export default function OverviewPage() {
 
       <section>
         <div className="page-heading mb-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="page-title text-[1.35rem] sm:text-2xl">إدارة الحسابات والأسطول</h2>
             <p className="page-description">الوظائف الأساسية المتاحة حاليًا في النظام — الإضافة بتتم من نافذة داخل كل صفحة.</p>
           </div>

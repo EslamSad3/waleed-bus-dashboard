@@ -62,6 +62,8 @@ export const updateVipTier = (id: string, input: { name?: string; rank?: number;
     input.isActive === undefined ? "اتحفظت بيانات مستوى VIP" : input.isActive ? "تم تنشيط مستوى VIP" : "تم إيقاف مستوى VIP",
     apiSend<VipTier>(`/api/vip-tiers/${id}`, "PATCH", input),
   );
+export const deleteVipTier = (id: string) =>
+  notifyResult("اتمسح مستوى VIP", apiSend<null>(`/api/vip-tiers/${id}`, "DELETE"));
 
 /** Owner picker (read-only reuse of GET /users per research R7). */
 export function fetchUserOptions(): Promise<ActionResult<{ items: { id: string; name?: string | null; email?: string | null; phone?: string | null; phoneNumber?: string | null }[] }>> {

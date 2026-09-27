@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
 import { fetchSystemDriversPage, inviteDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
 import { uploadUserPicture } from "@/lib/actions/users";
@@ -104,7 +105,7 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كلمة السر</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تأكيد كلمة السر</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
           {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row md:col-span-2">
             <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
             <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإنشاء…" : "إنشاء حساب السواق"}</Button>
           </div>
@@ -136,7 +137,7 @@ export default function DriversPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0">
           <h1 className="page-title">السواقين</h1>
           <p className="page-description">كل حسابات السواقين في النظام، مع الأسطول وصاحب العربيات والعربية المعيّنة حاليًا.</p>
         </div>
@@ -144,24 +145,28 @@ export default function DriversPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      <CursorList<SystemDriverRow>
-        gridId="drivers"
-        initialItems={drivers}
-        initialCursor={page?.nextCursor ?? null}
-        loadMore={async (cursor) => {
-          const result = await fetchSystemDriversPage(cursor);
-          if (!result.ok) throw new Error(result.message);
-          return result.data;
-        }}
-        keyOf={(driver) => driver.id}
-        columnDefs={columns}
-        emptyMessage="لا يوجد سواقون مطابقون للبحث."
-        renderItem={(driver) => (
-          <Button asChild size="sm" variant="secondary">
-            <Link href={`/drivers/${driver.id}?fleetId=${driver.fleet.id}`}>إدارة</Link>
-          </Button>
-        )}
-      />
+      {isLoading ? (
+        <TableSkeleton rows={8} columns={7} />
+      ) : (
+        <CursorList<SystemDriverRow>
+          gridId="drivers"
+          initialItems={drivers}
+          initialCursor={page?.nextCursor ?? null}
+          loadMore={async (cursor) => {
+            const result = await fetchSystemDriversPage(cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(driver) => driver.id}
+          columnDefs={columns}
+          emptyMessage="لا يوجد سواقون مطابقون للبحث."
+          renderItem={(driver) => (
+            <Button asChild size="sm" variant="secondary">
+              <Link href={`/drivers/${driver.id}?fleetId=${driver.fleet.id}`}>إدارة</Link>
+            </Button>
+          )}
+        />
+      )}
       <CreateDriverDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );

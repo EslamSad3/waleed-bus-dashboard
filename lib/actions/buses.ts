@@ -72,6 +72,8 @@ export const updateBrand = (id: string, input: { name?: string; sortOrder?: numb
     input.isActive === undefined ? "اتحفظت بيانات الماركة" : input.isActive ? "تم تنشيط الماركة" : "تم إيقاف الماركة",
     apiSend<VehicleBrand>(`/api/brands/${id}`, "PATCH", input),
   );
+export const deleteBrand = (id: string) =>
+  notifyResult("اتمسحت الماركة", apiSend<null>(`/api/brands/${id}`, "DELETE"));
 
 export function deleteBus(fleetId: string, id: string): Promise<ActionResult<null>> {
   return notifyResult("اتمسحت العربية", apiSend<null>(`/api/fleets/${fleetId}/buses/${id}`, "DELETE"));

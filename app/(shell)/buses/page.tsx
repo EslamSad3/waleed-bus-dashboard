@@ -10,6 +10,7 @@ import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
 import { mapWithConcurrency } from "@/lib/actions/http";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, useDataQuery } from "@/lib/queries";
 
 type BusRow = Bus & { fleetName: string };
@@ -69,7 +70,7 @@ export default function BusesPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">العربيات</h1>
           <p className="page-description">كل العربيات في الأساطيل المسجلة، مع حالتها وبيانات تشغيلها.</p>
         </div>
@@ -77,7 +78,7 @@ export default function BusesPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-[#606060]">جاري تحميل العربيات…</p> : (
+      {isLoading ? <TableSkeleton rows={9} columns={7} /> : (
         <CursorList<BusRow>
           initialItems={first?.items ?? []}
           initialCursor={first?.nextCursor ?? null}
@@ -92,9 +93,9 @@ export default function BusesPage() {
                 placeholder="رقم التسجيل أو اللوحة أو الأسطول"
                 value={listFilters.q ?? ""}
                 onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))}
-                className="max-w-xs bg-white"
+                className="w-full bg-white md:w-auto md:min-w-0 md:max-w-72 md:basis-64 md:flex-1"
               />
-              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field">
+              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-28">
                 <option value="all">الكل</option>
                 <option value="active">نشط</option>
                 <option value="inactive">موقوف</option>

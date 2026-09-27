@@ -19,6 +19,7 @@ import {
 import { apiGet } from "@/lib/actions/http";
 import { findTripAcrossFleets } from "@/lib/actions/trips";
 import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
+import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { qk, useDataQuery } from "@/lib/queries";
 
 type FleetOption = { id: string; name: string };
@@ -87,7 +88,7 @@ export default function BookingsPage() {
   }, [fleetId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
 
   const filterParams = buildFilterParams();
-  const { data: pageData, isFetching, error: fetchError } = useDataQuery(
+  const { data: pageData, isPending, error: fetchError } = useDataQuery(
     qk.adminBookingsParams(filterParams),
     async () => {
       const result = await fetchAdminBookingsPage(filterParams, null);
@@ -132,8 +133,8 @@ export default function BookingsPage() {
   return (
     <div className="dashboard-page space-y-6">
       <div className="page-heading">
-        <div>
-          <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#d6eeff] text-[#00134c]"><Ticket className="size-5" /></span><h1 className="page-title">مراجعة وإدارة الحجوزات</h1></div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d6eeff] text-[#00134c]"><Ticket className="size-5" /></span><h1 className="page-title min-w-0">مراجعة وإدارة الحجوزات</h1></div>
           <p className="page-description">رؤية مركزية شاملة لجميع الحجوزات عبر كل الأساطيل، فحص العمليات، وتدقيق المدفوعات والاسترداد.</p>
         </div>
         <Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="size-4" /> حجز جديد</Button>
@@ -141,9 +142,9 @@ export default function BookingsPage() {
 
       {tripId ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d6eeff] bg-[#f3f8fc] p-4 shadow-sm">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-bold text-[#00134c]">حجوزات رحلة محددة</p>
-            <p className="text-xs text-[#606060]" dir="auto">{activeTripLabel ?? "جاري تحديد الرحلة…"}</p>
+            <p className="text-xs text-[#606060]">{activeTripLabel ? <span dir="auto">{activeTripLabel}</span> : <InlineBlockSkeleton className="h-3.5 w-44" />}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>تفاصيل الرحلة</Link></Button>
@@ -171,22 +172,27 @@ export default function BookingsPage() {
       </div>
 
       {error ? <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      <CursorList<AdminBookingListItem>
-        gridId="bookings"
-        initialItems={items}
-        initialCursor={nextCursor}
-        loadMore={async (cursor) => {
-          const result = await fetchAdminBookingsPage(filterParams, cursor);
-          if (!result.ok) throw new Error(result.message);
-          return result.data;
-        }}
-        keyOf={(booking) => booking.id}
-        columnDefs={columns}
-        emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
-        renderItem={(booking) => (
-          <Button asChild size="sm" variant="secondary"><Link href={`/bookings/${booking.id}`}>عرض التفاصيل</Link></Button>
-        )}
-      />
+      {isPending && !fetchError ? (
+        // أول تحميل (أو مفتاح فلترة جديد بدون كاش) — هيكل الجدول بدل الوميض الفارغ
+        <TableSkeleton rows={10} columns={6} />
+      ) : (
+        <CursorList<AdminBookingListItem>
+          gridId="bookings"
+          initialItems={items}
+          initialCursor={nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchAdminBookingsPage(filterParams, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(booking) => booking.id}
+          columnDefs={columns}
+          emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
+          renderItem={(booking) => (
+            <Button asChild size="sm" variant="secondary"><Link href={`/bookings/${booking.id}`}>عرض التفاصيل</Link></Button>
+          )}
+        />
+      )}
       <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );

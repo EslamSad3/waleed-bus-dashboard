@@ -16,6 +16,7 @@ import {
   type AdminBookingDetail,
   type IncidentReport,
 } from "@/lib/actions/bookings";
+import { DetailPageSkeleton } from "@/components/ui/skeletons";
 import { qk, useDataQuery } from "@/lib/queries";
 import {
   VerifyPaymentDialog,
@@ -109,16 +110,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (loading) {
-    return (
-      <div className="dashboard-page space-y-4 animate-pulse">
-        <div className="h-10 w-48 bg-white/60 rounded-xl" />
-        <div className="h-32 bg-white/70 rounded-2xl" />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="h-64 bg-white/70 rounded-2xl" />
-          <div className="h-64 bg-white/70 rounded-2xl" />
-        </div>
-      </div>
-    );
+    return <DetailPageSkeleton sections={4} />;
   }
 
   if (error || fetchFailed || !booking) {
@@ -154,14 +146,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="dashboard-page space-y-6">
       {/* Top Breadcrumb & Return Link */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="secondary" asChild className="gap-2 text-xs sm:text-sm">
           <Link href="/bookings">
             <ArrowRight className="size-4" />
             <span>العودة للحجوزات</span>
           </Link>
         </Button>
-        <span className="text-xs text-[#5e6b78]" dir="ltr">
+        <span className="min-w-0 truncate text-xs text-[#5e6b78]" dir="ltr">
           UUID: {booking.id}
         </span>
       </div>
@@ -170,24 +162,24 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       {successNote && (
         <div role="status" className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 animate-in fade-in duration-200">
           <CheckCircle2 className="size-5 shrink-0 text-emerald-600" />
-          <span>{successNote}</span>
+          <span className="min-w-0">{successNote}</span>
         </div>
       )}
 
       {/* Main Inspection Header Card */}
       <div className="rounded-2xl border border-[#d6eeff] bg-white p-5 sm:p-7 shadow-sm space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="grid size-10 place-items-center rounded-xl bg-[#00134c] text-white">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00134c] text-white">
                 <Ticket className="size-5" />
               </span>
-              <h1 className="text-2xl font-black text-[#00134c]">
+              <h1 className="min-w-0 break-words text-xl font-black text-[#00134c] sm:text-2xl">
                 حجز: {booking.passenger?.name ?? "راكب غير مسمى"}
               </h1>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-[#d6eeff] px-2.5 py-0.5 text-xs font-bold text-[#00134c]">
-                <Building2 className="size-3.5" />
-                <span>{booking.fleetName}</span>
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-lg bg-[#d6eeff] px-2.5 py-0.5 text-xs font-bold text-[#00134c]">
+                <Building2 className="size-3.5 shrink-0" />
+                <span className="truncate">{booking.fleetName}</span>
               </span>
             </div>
             <p className="mt-1.5 text-xs sm:text-sm text-[#5e6b78]">

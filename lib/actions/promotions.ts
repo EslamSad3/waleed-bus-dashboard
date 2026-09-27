@@ -68,6 +68,10 @@ export function expirePromotion(id: string): Promise<ActionResult<Promotion>> {
   return notifyResult("تم إنهاء كود الخصم", apiSend(`/api/platform/promotions/${id}/expire`, "POST"));
 }
 
+export function deletePromotion(id: string): Promise<ActionResult<null>> {
+  return notifyResult("اتمسح كود الخصم", apiSend(`/api/platform/promotions/${id}`, "DELETE"));
+}
+
 export function fetchPromotionUsages(id: string): Promise<ActionResult<CursorPage<PromotionUsage>>> {
   return apiGet(`/api/platform/promotions/${id}/usages`);
 }

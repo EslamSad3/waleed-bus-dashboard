@@ -6,12 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   createFleetOwner,
+  deleteFleetOwner,
   fetchFleetOwnersPage,
+  updateFleetOwner,
   uploadFleetOwnerPicture,
   type FleetOwnerAccount,
 } from "@/lib/actions/fleet-owners";
@@ -86,7 +90,7 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة صاحب عربية" description="هننشئ الحساب والأسطول الأول وعضوية المالك في خطوة واحدة." size="lg">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالكامل</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="أحمد حسن" autoComplete="name" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الشهرة</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="أحمد" autoComplete="off" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">رقم الموبايل</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label>
@@ -105,6 +109,98 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإنشاء…" : "إنشاء المالك والأسطول"}</Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/** نافذة تعديل بيانات صاحب عربية — نفس شكل الإضافة من غير كلمة السر والأسطول. */
+function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: FleetOwnerAccount | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+
+  // املأ الحقول من المالك المختار — بالنسبة للـ id نفسه مرة واحدة بس
+  if (owner && owner.id !== loadedFor) {
+    setLoadedFor(owner.id);
+    setName(owner.name ?? "");
+    setNickname(owner.nickname ?? "");
+    setPhone(owner.phoneNumber ?? "");
+    setNationalId(owner.nationalId ?? "");
+    setIsActive(owner.isActive);
+    setImageFile(null);
+    setError(null);
+  }
+
+  function resetForm() {
+    setLoadedFor(null);
+    setImageFile(null);
+    setError(null);
+  }
+
+  async function submit() {
+    if (!owner) return;
+    setError(null);
+    if (!name.trim()) {
+      setError("اكتب الاسم بالكامل.");
+      return;
+    }
+    if (nationalId && !/^\d{14}$/.test(nationalId.trim())) {
+      setError("الرقم القومي لازم يكون 14 رقم");
+      return;
+    }
+    setSaving(true);
+    const result = await updateFleetOwner(owner.id, {
+      name: name.trim(),
+      nickname: nickname.trim() || undefined,
+      phone: phone.trim() || undefined,
+      nationalId: nationalId.trim() || "",
+      isActive,
+    });
+    if (!result.ok) {
+      setSaving(false);
+      setError(result.message);
+      return;
+    }
+    if (imageFile) {
+      // الصورة بتترفع كملف FormData — نفس مسار الإضافة.
+      const uploaded = await uploadFleetOwnerPicture(owner.id, imageFile, { notify: false });
+      if (!uploaded.ok) setError(uploaded.message);
+    }
+    setSaving(false);
+    const refreshed = await fetchFleetOwnersPage(null);
+    if (refreshed.ok) queryClient.setQueryData<Page>(qk.fleetOwners, refreshed.data);
+    resetForm();
+    onClose();
+  }
+
+  return (
+    <Dialog open={open && Boolean(owner)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="تعديل بيانات صاحب عربية" description={owner ? `بتعدّل حساب ${owner.name ?? owner.phoneNumber}.` : undefined} size="lg">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالكامل</span><Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الشهرة</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">رقم الموبايل</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الرقم القومي (اختياري)</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder="14 رقم" autoComplete="off" /></label>
+        <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="size-4 accent-[#059ff8]" /> الحساب نشط ويمكنه تسجيل الدخول</label>
+        <ImagePicker
+          label="صورة المالك (اختياري)"
+          file={imageFile}
+          onChange={setImageFile}
+          uploading={saving && Boolean(imageFile)}
+          hint="بتترفع كملف للتخزين السحابي — من غير روابط."
+        />
+        {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
+        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
         </div>
       </div>
     </Dialog>
@@ -162,11 +258,26 @@ function AddFleetToOwnerDialog({ open, owner, onClose }: { open: boolean; owner:
 
 export default function FleetOwnersPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [fleetOwnerForFleet, setFleetOwnerForFleet] = useState<FleetOwnerAccount | null>(null);
+  const [ownerForEdit, setOwnerForEdit] = useState<FleetOwnerAccount | null>(null);
   const [query, setQuery] = useState("");
 
   const { data: page, isLoading, error } = useApiQuery<Page>(qk.fleetOwners, () => fetchFleetOwnersPage(null));
+
+  async function refresh() {
+    const refreshed = await fetchFleetOwnersPage(null);
+    if (refreshed.ok) queryClient.setQueryData<Page>(qk.fleetOwners, refreshed.data);
+  }
+
+  async function removeOwner(owner: FleetOwnerAccount) {
+    const fleetsNote = owner.fleets.length > 0 ? ` وملك ${owner.fleets.length} أسطول` : "";
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح حساب «${owner.name ?? owner.phoneNumber}»${fleetsNote}؟`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteFleetOwner(owner.id);
+    if (!result.ok) return;
+    await refresh();
+  }
 
   const term = query.trim().toLocaleLowerCase("ar-EG");
   const filter = (owner: FleetOwnerAccount) =>
@@ -178,7 +289,7 @@ export default function FleetOwnersPage() {
       field: "name",
       headerName: "الاسم",
       filter: "agTextColumnFilter",
-      cellRenderer: (params: { data?: FleetOwnerAccount }) => params.data ? <span className="font-bold">{params.data.name ?? "بدون اسم"}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
+      cellRenderer: (params: { data?: FleetOwnerAccount }) => params.data ? <span className="font-bold">{params.data.name ?? "بدون اسم"}<span className={params.data.isActive ? "ms-2 status-pill" : "ms-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
     },
     { field: "phoneNumber", headerName: "الموبايل", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
     { headerName: "الأسطول الأول", filter: false, valueGetter: (params) => params.data?.fleets?.[0]?.name ?? "بدون أسطول" },
@@ -187,7 +298,7 @@ export default function FleetOwnersPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">أصحاب العربيات</h1>
           <p className="page-description">حساب المالك والأسطول الأول بيتعملوا مع بعض بأمان.</p>
         </div>
@@ -195,7 +306,7 @@ export default function FleetOwnersPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isLoading ? (
-        <p className="text-sm text-[#606060]">جاري التحميل…</p>
+        <TableSkeleton rows={8} columns={4} />
       ) : (
         <CursorList<FleetOwnerAccount>
           gridId="fleet-owners"
@@ -208,14 +319,16 @@ export default function FleetOwnersPage() {
           keyOf={(owner) => owner.id}
           filter={filter}
           columnDefs={columns}
-          filterBar={<Input aria-label="بحث في أصحاب العربيات" placeholder="الاسم، الموبايل أو الأسطول" value={query} onChange={(event) => setQuery(event.target.value)} className="max-w-sm bg-white" />}
+          filterBar={<Input aria-label="بحث في أصحاب العربيات" placeholder="الاسم، الموبايل أو الأسطول" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full md:w-auto md:max-w-72 md:min-w-0 md:basis-64 md:flex-1 bg-white" />}
           emptyMessage="لا يوجد أصحاب عربيات بعد"
           renderItem={(owner) => (
             <RowActionsMenu
               label={`إجراءات ${owner.name ?? owner.phoneNumber ?? ""}`}
               actions={[
                 { label: "فتح التفاصيل", href: `/fleet-owners/${owner.id}` },
+                { label: "تعديل", onSelect: () => setOwnerForEdit(owner) },
                 { label: "إضافة أسطول", onSelect: () => setFleetOwnerForFleet(owner) },
+                { label: "مسح", danger: true, onSelect: () => void removeOwner(owner) },
               ]}
             />
           )}
@@ -223,6 +336,7 @@ export default function FleetOwnersPage() {
       )}
       <CreateFleetOwnerDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <AddFleetToOwnerDialog open={Boolean(fleetOwnerForFleet)} owner={fleetOwnerForFleet} onClose={() => setFleetOwnerForFleet(null)} />
+      <EditFleetOwnerDialog open={Boolean(ownerForEdit)} owner={ownerForEdit} onClose={() => setOwnerForEdit(null)} />
     </div>
   );
 }

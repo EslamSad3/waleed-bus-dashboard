@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { MoreVertical, Loader2 } from "lucide-react";
 
 export type RowAction = {
@@ -51,7 +52,10 @@ export function RowActionsMenu({ actions, label = "إجراءات" }: RowActions
   useEffect(() => {
     if (!open) return;
     function onPointerDown(event: MouseEvent | TouchEvent) {
-      if (buttonRef.current?.contains(event.target as Node)) return;
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      // عناصر القايمة نفسها بره الزرار — لازم تفضل شغالة لحد ما الـ click يحصل
+      if (menuRef.current?.contains(target)) return;
       setOpen(false);
     }
     function onScrollOrResize() {
@@ -101,9 +105,9 @@ export function RowActionsMenu({ actions, label = "إجراءات" }: RowActions
               } ${action.disabled || pendingAction !== null ? "pointer-events-none opacity-40" : ""}`;
               if (action.href) {
                 return (
-                  <a key={action.label} role="menuitem" href={action.href} className={className} onClick={() => setOpen(false)}>
+                  <Link key={action.label} role="menuitem" href={action.href} className={className} onClick={() => setOpen(false)}>
                     {action.label}
-                  </a>
+                  </Link>
                 );
               }
               return (
