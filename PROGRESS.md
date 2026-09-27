@@ -117,3 +117,7 @@ Egyptian-Arabic error map, zustand session/filter stores, proxy + layout
 double-guard, and a blocking pdfkit spike proving correct Arabic glyph shaping.
 No backend changes.
 No speckit skills installed — spec → plan → tasks → implement will be mirrored manually.
+
+## Responsiveness + skeleton loading overhaul (2026-09-27)
+
+- Skeleton primitives added (`components/ui/skeleton.tsx` + `components/ui/skeletons.tsx`: Table/CardsGrid/KpiCards/DetailPage/Form/InlineBlock); per-page skeleton loading on every TanStack Query first-load across all 29 dashboard pages (login is the documented no-async-data exception); full responsive pass 360px→1440px over pages, shell (off-canvas drawer) and `components/ui` (dialogs scroll internally); `.page-heading` wraps globally; `pnpm lint` (0 errors), `pnpm typecheck`, and `pnpm build` pass.

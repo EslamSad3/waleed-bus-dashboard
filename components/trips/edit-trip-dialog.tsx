@@ -74,7 +74,7 @@ export function EditTripDialog({
   return (
     <Dialog open={open && Boolean(trip)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="تعديل رحلة" description={trip ? `رحلة ${trip.origin} → ${trip.destination} — عربية ${trip.busName}.` : undefined} size="sm">
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">البداية</span>
             <Input value={origin} onChange={(event) => setOrigin(event.target.value)} />
@@ -97,7 +97,7 @@ export function EditTripDialog({
           </select>
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
         </div>

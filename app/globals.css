@@ -99,6 +99,7 @@ input:-webkit-autofill:focus {
 
 .page-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
