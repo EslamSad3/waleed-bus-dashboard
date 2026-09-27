@@ -12,6 +12,7 @@ import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { qk, useApiQuery } from "@/lib/queries";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { DetailPageSkeleton, InlineBlockSkeleton } from "@/components/ui/skeletons";
 import { Trash2 } from "lucide-react";
 
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -113,15 +114,15 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   if (failed && loadedKey === id) return <p role="alert" className="text-sm text-red-600">{failed}</p>;
-  if (!trip || loadedKey !== id || !fleetId) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
+  if (!trip || loadedKey !== id || !fleetId) return <DetailPageSkeleton />;
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div><h1 className="page-title">{trip.origin} ← {trip.destination}</h1><p className="page-description">تفاصيل الخط والميعاد وحالة الرحلة.</p></div>
-        <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1"><h1 className="page-title">{trip.origin} ← {trip.destination}</h1><p className="page-description">تفاصيل الخط والميعاد وحالة الرحلة.</p></div>
+        <div className="flex flex-wrap items-center gap-3 max-md:w-full">
           <span className={trip.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>{TRIP_STATUS_AR[trip.status]}</span>
-          <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> مسح الرحلة</AsyncButton>
+          <AsyncButton type="button" variant="destructive" className="max-md:w-full" onClick={remove}><Trash2 className="size-4" /> مسح الرحلة</AsyncButton>
         </div>
       </div>
 
@@ -148,9 +149,9 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
             </label>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
               <span className="block text-[#606060]">عربية الرحلة</span>
-              <strong>{bus?.registrationNumber ?? "جاري تحميل بيانات العربية…"}</strong>
-              {bus?.plateNumber ? <span className="mr-2 text-[#606060]" dir="ltr">{bus.plateNumber}</span> : null}
-              <span className="mr-2 text-[#606060]">· السعة {bus?.capacity ?? "—"}</span>
+              {bus ? <strong>{bus.registrationNumber}</strong> : <InlineBlockSkeleton className="h-5 w-36" />}
+              {bus?.plateNumber ? <span className="ms-2 text-[#606060]" dir="ltr">{bus.plateNumber}</span> : null}
+              <span className="ms-2 text-[#606060]">· السعة {bus?.capacity ?? "—"}</span>
               <label className="mt-3 block text-sm">
                 <span className="mb-1 block font-medium">تعيين سواق من نفس الأسطول</span>
                 <select aria-label="تعيين سواق الرحلة" value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus}>

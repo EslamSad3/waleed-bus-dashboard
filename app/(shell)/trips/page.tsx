@@ -13,6 +13,7 @@ import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/memb
 import { fetchFleetsPage } from "@/lib/actions/fleets";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, removeFromCursorList, useDataQuery } from "@/lib/queries";
 import { mapWithConcurrency } from "@/lib/actions/http";
 import { useQueryClient } from "@/lib/queries";
@@ -126,7 +127,7 @@ export default function TripsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">الرحلات</h1>
           <p className="page-description">كل الرحلات في الأساطيل المسجلة، مع الخط والميعاد وحالة التشغيل.</p>
         </div>
@@ -134,7 +135,7 @@ export default function TripsPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-[#606060]">جاري تحميل الرحلات…</p> : (
+      {isLoading ? <TableSkeleton columns={8} /> : (
         <CursorList<TripRow>
           initialItems={first?.items ?? []}
           initialCursor={first?.nextCursor ?? null}
@@ -144,10 +145,10 @@ export default function TripsPage() {
           columnDefs={columns}
           filterBar={
             <div className="contents">
-              <Input aria-label="بحث بالمنشأ أو الوجهة أو الأسطول" placeholder="من / إلى / الأسطول" value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="max-w-52 bg-white" />
-              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field"><option value="all">كل الحالات</option><option value="SCHEDULED">مجدولة</option><option value="DEPARTED">شغالة</option><option value="COMPLETED">خلصت</option><option value="CANCELLED">ملغية</option></select>
-              <Input aria-label="من تاريخ" type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="max-w-44 bg-white" />
-              <Input aria-label="إلى تاريخ" type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="max-w-44 bg-white" />
+              <Input aria-label="بحث بالمنشأ أو الوجهة أو الأسطول" placeholder="من / إلى / الأسطول" value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="w-full bg-white md:min-w-0 md:w-auto md:max-w-52 md:flex-1" />
+              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-auto"><option value="all">كل الحالات</option><option value="SCHEDULED">مجدولة</option><option value="DEPARTED">شغالة</option><option value="COMPLETED">خلصت</option><option value="CANCELLED">ملغية</option></select>
+              <Input aria-label="من تاريخ" type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
+              <Input aria-label="إلى تاريخ" type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
             </div>
           }
           emptyMessage="لا توجد رحلات مسجلة في الأساطيل."

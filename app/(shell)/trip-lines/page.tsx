@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useQueryClient } from "@/lib/queries";
 import { deleteTripLine, fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, removeFromList, useApiQuery } from "@/lib/queries";
 
 export default function TripLinesPage() {
@@ -37,14 +38,14 @@ export default function TripLinesPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">خطوط الرحلات</h1>
           <p className="page-description">مسارات موحّدة لكل النظام، مبنية من نقاط التوقف المسجلة.</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> خط رحلة جديد</Button>
       </div>
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+      {isLoading ? <TableSkeleton columns={7} /> : (
         <CursorList<TripLine>
           gridId="trip-lines"
           initialItems={lines ?? []}

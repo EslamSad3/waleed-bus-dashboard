@@ -201,7 +201,7 @@ export function CreateTripDialog({
             <Input dir="ltr" type="datetime-local" {...form.register("departAt")} />
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
             <Button type="submit" variant="success" loading={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الرحلة"}
