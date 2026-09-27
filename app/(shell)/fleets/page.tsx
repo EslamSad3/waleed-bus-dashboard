@@ -89,7 +89,7 @@ function CreateFleetDialog({ open, onClose }: { open: boolean; onClose: () => vo
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>
             {saving ? "جاري الحفظ…" : "إضافة الأسطول"}
           </Button>
         </div>

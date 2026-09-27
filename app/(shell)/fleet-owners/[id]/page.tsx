@@ -125,7 +125,7 @@ export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id:
           {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
           <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="danger" onClick={() => setEditOpen(false)} disabled={saving}>إلغاء</Button>
-            <Button type="button" variant="success" onClick={save} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
+            <Button type="button" variant="success" onClick={save} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
           </div>
         </div>
       </Dialog>

@@ -51,11 +51,10 @@ function ButtonSpinner() {
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading = false, disabled, children, ...props }, ref) => {
     if (asChild) {
-      const Comp = Slot;
       return (
-        <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+        <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
           {children}
-        </Comp>
+        </Slot>
       );
     }
     return (

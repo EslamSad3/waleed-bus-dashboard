@@ -94,7 +94,7 @@ function AddMemberDialog({ open, fleetId, onClose }: { open: boolean; fleetId: s
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving || !userId}>{saving ? "جاري الإضافة…" : "إضافة"}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving} disabled={!userId}>{saving ? "جاري الإضافة…" : "إضافة"}</Button>
         </div>
       </div>
     </Dialog>
@@ -179,9 +179,9 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
                 .filter((status) => status !== member.status)
                 .map((status) => ({
                   label: status === "ACTIVE" ? "تفعيل" : status === "SUSPENDED" ? "إيقاف" : "إلغاء الصلاحية",
-                  onSelect: () => void changeStatus(member, status),
+                  onSelect: () => changeStatus(member, status),
                 })),
-              { label: "مسح العضوية", danger: true, onSelect: () => void remove(member) },
+              { label: "مسح العضوية", danger: true, onSelect: () => remove(member) },
             ]}
           />
         )}

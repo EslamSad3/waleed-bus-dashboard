@@ -160,7 +160,7 @@ export function VerifyPaymentDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
-          <Button type="submit" disabled={loading || mismatch} className="gap-1.5">
+          <Button type="submit" loading={loading} disabled={mismatch} className="gap-1.5">
             <CheckCircle2 className="size-4" />
             {loading ? "جاري التأكيد…" : "تأكيد واستلام الدفع"}
           </Button>
@@ -253,7 +253,7 @@ export function FailPaymentDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
-          <Button type="submit" variant="destructive" disabled={loading} className="gap-1.5">
+          <Button type="submit" variant="destructive" loading={loading} className="gap-1.5">
             <XCircle className="size-4" />
             {loading ? "جاري التسجيل…" : "تسجيل فشل الدفع"}
           </Button>
@@ -413,7 +413,7 @@ export function RefundPaymentDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
-          <Button type="submit" disabled={loading || exceeds || remaining <= 0} className="gap-1.5">
+          <Button type="submit" loading={loading} disabled={exceeds || remaining <= 0} className="gap-1.5">
             <RotateCcw className="size-4" />
             {loading ? "جاري التنفيذ…" : "تنفيذ الاسترداد"}
           </Button>
@@ -514,7 +514,7 @@ export function ForceCancelDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             تراجع
           </Button>
-          <Button type="submit" variant="destructive" disabled={loading} className="gap-1.5">
+          <Button type="submit" variant="destructive" loading={loading} className="gap-1.5">
             <XCircle className="size-4" />
             {loading ? "جاري الإلغاء…" : "تأكيد إلغاء الحجز"}
           </Button>
@@ -601,7 +601,7 @@ export function ReinstateDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
-          <Button type="submit" disabled={loading} className="gap-1.5">
+          <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
             {loading ? "جاري الاسترجاع…" : "استرجاع الحجز"}
           </Button>
@@ -737,7 +737,7 @@ export function OperationalOverrideDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
-          <Button type="submit" disabled={loading} className="gap-1.5">
+          <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
             {loading ? "جاري الحفظ…" : "حفظ التعديل التشغيلي"}
           </Button>
@@ -864,7 +864,7 @@ export function ResolveReportDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
-          <Button type="submit" disabled={loading} className="gap-1.5">
+          <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
             {loading ? "جاري الحفظ…" : "اعتماد القرار"}
           </Button>

@@ -84,7 +84,7 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
               label={`إجراءات عربية ${bus.registrationNumber}`}
               actions={[
                 { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${fleetId}` },
-                { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => void toggleActive(bus) },
+                { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => toggleActive(bus) },
               ]}
             />
           )}

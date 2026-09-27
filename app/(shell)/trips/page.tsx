@@ -12,6 +12,7 @@ import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/memb
 import { fetchFleetsPage } from "@/lib/actions/fleets";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 import { qk, useDataQuery } from "@/lib/queries";
+import { mapWithConcurrency } from "@/lib/actions/http";
 
 type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -59,16 +60,14 @@ async function fetchAggregateTripPage(cursorState: string | null): Promise<TripA
   const states: FleetCursor[] = cursorState ? JSON.parse(cursorState) as FleetCursor[] : await fetchAllFleetStates();
   const [assignedDrivers, fleetBuses] = await Promise.all([
     fetchAssignedDrivers(),
-    Promise.all(states.map(async (state) => [state.fleetId, await fetchFleetBuses(state.fleetId)] as const)),
+    mapWithConcurrency(states, 4, async (state) => [state.fleetId, await fetchFleetBuses(state.fleetId)] as const),
   ]);
   const busesByFleet = new Map(fleetBuses);
-  const results = await Promise.all(
-    states.map(async (state) => {
-      const result = await fetchTripsPage(state.fleetId, state.cursor);
-      if (!result.ok) throw new Error(result.message);
-      return { state, page: result.data };
-    }),
-  );
+  const results = await mapWithConcurrency(states, 4, async (state) => {
+    const result = await fetchTripsPage(state.fleetId, state.cursor);
+    if (!result.ok) throw new Error(result.message);
+    return { state, page: result.data };
+  });
   const nextStates = results.map(({ state, page }) => ({ ...state, cursor: page.nextCursor }));
   const items = results.flatMap(({ state, page }) => page.items.map((trip) => ({
     ...trip,

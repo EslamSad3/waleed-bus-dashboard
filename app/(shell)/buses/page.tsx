@@ -8,6 +8,7 @@ import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { mapWithConcurrency } from "@/lib/actions/http";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { qk, useDataQuery } from "@/lib/queries";
 
@@ -29,13 +30,11 @@ async function fetchAllFleetStates(): Promise<FleetCursor[]> {
 
 async function fetchAggregateBusPage(cursorState: string | null): Promise<BusAggregatePage> {
   const states: FleetCursor[] = cursorState ? JSON.parse(cursorState) as FleetCursor[] : await fetchAllFleetStates();
-  const results = await Promise.all(
-    states.map(async (state) => {
-      const result = await fetchBusesPage(state.fleetId, state.cursor);
-      if (!result.ok) throw new Error(result.message);
-      return { state, page: result.data };
-    }),
-  );
+  const results = await mapWithConcurrency(states, 4, async (state) => {
+    const result = await fetchBusesPage(state.fleetId, state.cursor);
+    if (!result.ok) throw new Error(result.message);
+    return { state, page: result.data };
+  });
   const nextStates = results.map(({ state, page }) => ({ ...state, cursor: page.nextCursor }));
   const items = results.flatMap(({ state, page }) => page.items.map((bus) => ({ ...bus, fleetName: state.fleetName })));
   return {

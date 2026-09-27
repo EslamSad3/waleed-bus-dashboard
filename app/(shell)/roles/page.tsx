@@ -68,7 +68,7 @@ export default function RolesPage() {
         <div className="space-y-4">
           <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">اسم مستوى الوصول</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="مثال: مسؤول التشغيل" autoFocus /></label>
           <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">متى يُستخدم؟</span><Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="مثال: للفريق الذي يتابع الرحلات اليومية" /></label>
-          <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={saving}>إلغاء</Button><Button type="button" onClick={save} disabled={saving}>{saving ? "جاري الحفظ…" : "التالي: اختيار المهام"}</Button></div>
+          <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={saving}>إلغاء</Button><Button type="button" onClick={save} loading={saving}>{saving ? "جاري الحفظ…" : "التالي: اختيار المهام"}</Button></div>
         </div>
       </Dialog>
     </div>

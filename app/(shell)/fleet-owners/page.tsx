@@ -104,7 +104,7 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
         {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الإنشاء…" : "إنشاء المالك والأسطول"}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإنشاء…" : "إنشاء المالك والأسطول"}</Button>
         </div>
       </div>
     </Dialog>
@@ -153,7 +153,7 @@ function AddFleetToOwnerDialog({ open, owner, onClose }: { open: boolean; owner:
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الإضافة…" : "إضافة الأسطول"}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإضافة…" : "إضافة الأسطول"}</Button>
         </div>
       </div>
     </Dialog>

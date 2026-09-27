@@ -101,7 +101,7 @@ export default function ServiceConfigPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={add}><Plus className="size-4" /> عنصر جديد</Button>
-          <Button onClick={() => void save()} disabled={saving || !rows}>{saving ? "جاري الحفظ…" : "حفظ القائمة"}</Button>
+          <Button onClick={() => void save()} loading={saving} disabled={!rows}>{saving ? "جاري الحفظ…" : "حفظ القائمة"}</Button>
         </div>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}

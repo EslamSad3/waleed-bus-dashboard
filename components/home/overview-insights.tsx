@@ -15,7 +15,7 @@ import {
   UsersRound,
   Waypoints,
 } from "lucide-react";
-import { apiGet, type CursorPage } from "@/lib/actions/http";
+import { apiGet, mapWithConcurrency, type CursorPage } from "@/lib/actions/http";
 import { fetchAdminBookingsPage, type Booking } from "@/lib/actions/bookings";
 import { fetchStops, fetchTripLines, type Stop, type TripLine } from "@/lib/actions/trip-lines";
 import { qk, useApiQuery, useDataQuery } from "@/lib/queries";
@@ -31,13 +31,10 @@ async function fetchCountPage(path: string): Promise<number> {
 
 /** عدّاد لكل أسطول من مصدر معين (عربيات/رحلات) */
 async function countPerFleet(fleets: FleetLite[], resource: "buses" | "trips") {
-  const rows = await Promise.all(
-    fleets.slice(0, 12).map(async (fleet) => {
-      const result = await apiGet<CursorPage<unknown>>(`/api/fleets/${fleet.id}/${resource}?limit=100`);
-      return { name: fleet.name, count: result.ok ? result.data.items.length : 0 };
-    }),
-  );
-  return rows;
+  return mapWithConcurrency(fleets.slice(0, 12), 4, async (fleet) => {
+    const result = await apiGet<CursorPage<unknown>>(`/api/fleets/${fleet.id}/${resource}?limit=100`);
+    return { name: fleet.name, count: result.ok ? result.data.items.length : 0 };
+  });
 }
 
 type Kpi = {

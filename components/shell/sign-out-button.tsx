@@ -24,7 +24,7 @@ export function SignOutButton() {
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={signOut} disabled={busy} aria-label="تسجيل الخروج">
+    <Button variant="ghost" size="sm" onClick={signOut} loading={busy} aria-label="تسجيل الخروج">
       <LogOut aria-hidden="true" />
       <span className="hidden sm:inline">{busy ? "جاري الخروج…" : "خروج"}</span>
     </Button>
