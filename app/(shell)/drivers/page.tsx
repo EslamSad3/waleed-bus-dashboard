@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
-import { fetchSystemDriversPage, inviteDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
+import { fetchSystemDriversPage, inviteDriver, removeDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
 import { uploadUserPicture } from "@/lib/actions/users";
 import { driverFreshSchema } from "@/lib/schemas/p1";
-import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
 
@@ -116,9 +117,19 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 export default function DriversPage() {
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const { data: page, isLoading, error } = useApiQuery<DriverPage>(qk.drivers, () => fetchSystemDriversPage(null));
   const drivers = page?.items ?? [];
+
+  async function removeDriverRow(driver: SystemDriverRow) {
+    const label = driver.name || driver.nickname || driver.phoneNumber || "السواق ده";
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح السواق «${label}» من أسطول «${driver.fleet.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await removeDriver(driver.fleet.id, driver.id);
+    if (!result.ok) return;
+    removeFromCursorList<SystemDriverRow>(queryClient, qk.drivers, driver.id);
+  }
 
   const columns: CommunityColumnDef<SystemDriverRow>[] = [
     { field: "name", headerName: "السواق", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "بدون اسم" },
@@ -161,9 +172,13 @@ export default function DriversPage() {
           columnDefs={columns}
           emptyMessage="لا يوجد سواقون مطابقون للبحث."
           renderItem={(driver) => (
-            <Button asChild size="sm" variant="secondary">
-              <Link href={`/drivers/${driver.id}?fleetId=${driver.fleet.id}`}>إدارة</Link>
-            </Button>
+            <RowActionsMenu
+              label={`إجراءات السواق ${driver.name || driver.nickname || driver.phoneNumber || ""}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
+                { label: "مسح", danger: true, onSelect: () => void removeDriverRow(driver) },
+              ]}
+            />
           )}
         />
       )}

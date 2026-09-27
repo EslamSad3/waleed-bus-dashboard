@@ -23,6 +23,7 @@ import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queri
 import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type BusRow = Bus & { fleetName: string };
 
@@ -52,7 +53,7 @@ export function CreateBusDialog({
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: brands } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true), { enabled: open });
+  const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true), { enabled: open });
   const { data: fleetsPage } = useApiQuery<CursorPage<Fleet>>(qk.fleets, () => fetchFleetsPage(null), { enabled: open && !lockedFleetId });
   const fleetName = useMemo(
     () => (fleetsPage?.items ?? []).find((fleet) => fleet.id === fleetId)?.name ?? "—",
@@ -169,15 +170,19 @@ export function CreateBusDialog({
           />
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">الماركة <span className="font-normal text-slate-400">(اختياري)</span></span>
-            <select
-              {...form.register("brandId")}
-              className="select-field w-full"
-            >
-              <option value="">بدون ماركة…</option>
-              {(brands ?? []).filter((brand) => brand.isActive).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
-            </select>
+            {brandsPending ? (
+              <Skeleton className="h-[2.75rem] w-full" />
+            ) : (
+              <select
+                {...form.register("brandId")}
+                className="select-field w-full"
+              >
+                <option value="">بدون ماركة…</option>
+                {(brands ?? []).filter((brand) => brand.isActive).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+              </select>
+            )}
           </label>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1.5 block font-bold text-[#334454]">سنة الموديل <span className="font-normal text-slate-400">(اختياري)</span></span>
               <Input
@@ -212,7 +217,7 @@ export function CreateBusDialog({
             مكيّف
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
             <Button type="submit" variant="success" loading={form.formState.isSubmitting || uploading}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة العربية"}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,7 @@ import {
 } from "@/lib/actions/fleet-owners";
 import { createFleet } from "@/lib/actions/fleets";
 import { createFleetOwnerSchema } from "@/lib/schemas/p1";
-import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 
 type Page = { items: FleetOwnerAccount[]; nextCursor: string | null };
 
@@ -105,8 +104,8 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
         />
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كلمة السر</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تأكيد كلمة السر</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
-        {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
+        {error && <p role="alert" className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:col-span-2">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإنشاء…" : "إنشاء المالك والأسطول"}</Button>
         </div>
@@ -197,8 +196,8 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
           uploading={saving && Boolean(imageFile)}
           hint="بتترفع كملف للتخزين السحابي — من غير روابط."
         />
-        {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4 md:col-span-2">
+        {error && <p role="alert" className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:col-span-2">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
         </div>
@@ -247,7 +246,7 @@ function AddFleetToOwnerDialog({ open, owner, onClose }: { open: boolean; owner:
           <Input value={fleetName} onChange={(event) => setFleetName(event.target.value)} placeholder="أسطول الجيزة" />
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإضافة…" : "إضافة الأسطول"}</Button>
         </div>
@@ -264,7 +263,7 @@ export default function FleetOwnersPage() {
   const [ownerForEdit, setOwnerForEdit] = useState<FleetOwnerAccount | null>(null);
   const [query, setQuery] = useState("");
 
-  const { data: page, isLoading, error } = useApiQuery<Page>(qk.fleetOwners, () => fetchFleetOwnersPage(null));
+  const { data: page, isPending, error } = useApiQuery<Page>(qk.fleetOwners, () => fetchFleetOwnersPage(null));
 
   async function refresh() {
     const refreshed = await fetchFleetOwnersPage(null);
@@ -305,7 +304,7 @@ export default function FleetOwnersPage() {
         <Button onClick={() => setCreateOpen(true)}>إضافة مالك</Button>
       </div>
 
-      {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isLoading ? (
+      {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isPending ? (
         <TableSkeleton rows={8} columns={4} />
       ) : (
         <CursorList<FleetOwnerAccount>

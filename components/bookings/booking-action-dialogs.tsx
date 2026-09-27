@@ -156,7 +156,7 @@ export function VerifyPaymentDialog({
           />
         </label>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
@@ -249,7 +249,7 @@ export function FailPaymentDialog({
           />
         </label>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
@@ -343,7 +343,7 @@ export function RefundPaymentDialog({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:text-sm">
+        <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:grid-cols-3 sm:text-sm">
           <div>
             <span className="text-[#5e6b78] block">إجمالي الحجز:</span>
             <span className="font-bold text-[#00134c]" dir="ltr">{booking.totalAmount} EGP</span>
@@ -409,7 +409,7 @@ export function RefundPaymentDialog({
           />
         </label>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
@@ -510,7 +510,7 @@ export function ForceCancelDialog({
           </label>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             تراجع
           </Button>
@@ -597,7 +597,7 @@ export function ReinstateDialog({
           />
         </label>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
@@ -733,7 +733,7 @@ export function OperationalOverrideDialog({
           />
         </label>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>
@@ -821,7 +821,7 @@ export function ResolveReportDialog({
 
         <div className="space-y-2">
           <span className="block text-sm font-medium text-[#1a1a1a]">القرار الإداري *</span>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
             <label className="flex items-center gap-2 cursor-pointer text-sm">
               <input
                 type="radio"
@@ -860,7 +860,7 @@ export function ResolveReportDialog({
           />
         </label>
 
-        <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-[#e4ecf2]">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             إلغاء
           </Button>

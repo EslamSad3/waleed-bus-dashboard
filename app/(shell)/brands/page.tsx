@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { createBrand, fetchBrands, updateBrand, type VehicleBrand } from "@/lib/actions/buses";
+import { createBrand, deleteBrand, fetchBrands, updateBrand, type VehicleBrand } from "@/lib/actions/buses";
 import { rankOrdinalAr } from "@/lib/ordinals";
-import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 export default function BrandsPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { data: rows, isLoading, error } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true));
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VehicleBrand | null>(null);
@@ -63,6 +66,13 @@ export default function BrandsPage() {
     upsertInList(queryClient, qk.brands, result.data);
   }
 
+  async function removeBrand(brand: VehicleBrand) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح ماركة «${brand.name}»؟ لو فيها عربيات مسجلة هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteBrand(brand.id);
+    if (!result.ok) return setDialogError(result.message);
+    removeFromList<VehicleBrand>(queryClient, qk.brands, brand.id);
+  }
+
   const dialogOpen = creating || editing !== null;
 
   const columns: CommunityColumnDef<VehicleBrand>[] = [
@@ -99,10 +109,14 @@ export default function BrandsPage() {
           columnDefs={columns}
           emptyMessage="لا توجد ماركات بعد — ابدأ بإضافة أول ماركة."
           renderItem={(brand) => (
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(brand)}><Pencil className="size-4" /> تعديل</Button>
-              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(brand)}>{brand.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
-            </div>
+            <RowActionsMenu
+              label={`إجراءات ماركة ${brand.name}`}
+              actions={[
+                { label: "تعديل", onSelect: () => openEdit(brand) },
+                { label: brand.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(brand) },
+                { label: "مسح", danger: true, onSelect: () => void removeBrand(brand) },
+              ]}
+            />
           )}
         />
       )}

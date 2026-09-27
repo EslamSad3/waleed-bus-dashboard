@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   addMember,
   fetchMembersPage,
@@ -92,7 +93,7 @@ function AddMemberDialog({ open, fleetId, onClose }: { open: boolean; fleetId: s
           <p className="rounded-xl bg-[#eaf6ff] p-3 text-sm text-[#00134c]">كل المستخدمين متضافين بالفعل للأسطول ده.</p>
         ) : null}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving} disabled={!userId}>{saving ? "جاري الإضافة…" : "إضافة"}</Button>
         </div>
@@ -155,11 +156,14 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="section-title mb-0">أعضاء الأسطول</h2>
-        <Button type="button" onClick={() => setAddOpen(true)}>إضافة عضو</Button>
+        <h2 className="section-title mb-0 min-w-0">أعضاء الأسطول</h2>
+        <Button type="button" onClick={() => setAddOpen(true)} className="max-md:w-full">إضافة عضو</Button>
       </div>
 
-      <CursorList<Member>
+      {isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : (
+        <CursorList<Member>
         gridId={`fleet-members-${fleetId}`}
         initialItems={members}
         initialCursor={page?.nextCursor ?? null}
@@ -185,7 +189,8 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
             ]}
           />
         )}
-      />
+        />
+      )}
 
       <AddMemberDialog open={addOpen} fleetId={fleetId} onClose={() => setAddOpen(false)} />
     </div>

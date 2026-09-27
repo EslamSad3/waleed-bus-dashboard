@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchUserOptions, type Fleet } from "@/lib/actions/fleets";
 import { apiGet } from "@/lib/actions/http";
 
@@ -63,16 +64,22 @@ export function FleetOwnerFleetPicker({
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="block text-sm">
         <span className="mb-2 block font-bold text-[#334454]">صاحب العربيات</span>
-        <select
-          aria-label="صاحب العربيات"
-          value={ownerId}
-          onChange={(event) => chooseOwner(event.target.value)}
-          disabled={!loaded}
-          className="select-field w-full"
-        >
-          <option value="">اختار صاحب العربيات</option>
-          {ownerOptions.map((owner) => <option key={owner.id} value={owner.id}>{owner.label}</option>)}
-        </select>
+        {loaded ? (
+          <select
+            aria-label="صاحب العربيات"
+            value={ownerId}
+            onChange={(event) => chooseOwner(event.target.value)}
+            className="select-field w-full"
+          >
+            <option value="">اختار صاحب العربيات</option>
+            {ownerOptions.map((owner) => <option key={owner.id} value={owner.id}>{owner.label}</option>)}
+          </select>
+        ) : (
+          <span role="status" className="block">
+            <span className="sr-only">جاري التحميل…</span>
+            <Skeleton aria-hidden="true" className="h-11 w-full rounded-xl" />
+          </span>
+        )}
       </label>
 
       {ownerId && ownerFleets.length > 1 ? (

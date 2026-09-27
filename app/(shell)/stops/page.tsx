@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   createStop,
   deleteStop,
@@ -183,7 +185,7 @@ function CreateStopDialog({
         />
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">العنوان <span className="font-normal text-slate-400">(اختياري)</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="ميدان رمسيس، القاهرة" /></label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
           <AsyncButton type="button" variant="success" onClick={submit}>حفظ نقطة التوقف</AsyncButton>
         </div>
@@ -267,12 +269,11 @@ export default function StopsPage() {
     closeDialog();
   }
 
-  async function remove(stop: Stop) {
+  async function removeRow(stop: Stop) {
     if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح نقطة التوقف «${stop.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
     const result = await deleteStop(stop.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList(queryClient, qk.stops, stop.id);
-    closeDialog();
   }
 
   const columns: CommunityColumnDef<Stop>[] = [
@@ -291,14 +292,14 @@ export default function StopsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">نقاط التوقف</h1>
           <p className="page-description">كل نقاط التوقف في النظام. الإضافة والتعديل بيتموا في نافذة من غير صفحات منفصلة.</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> نقطة توقف جديدة</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+      {isLoading ? <TableSkeleton columns={7} /> : (
         <CursorList<Stop>
           gridId="stops"
           initialItems={stops ?? []}
@@ -308,10 +309,13 @@ export default function StopsPage() {
           columnDefs={columns}
           emptyMessage="لا توجد نقاط توقف بعد — ابدأ بتسجيل أول مكان."
           renderItem={(stop) => (
-            <span className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(stop)}><Pencil className="size-4" /> تعديل</Button>
-              <AsyncButton type="button" size="sm" variant="destructive" onClick={() => remove(stop)}><Trash2 className="size-4" /> حذف</AsyncButton>
-            </span>
+            <RowActionsMenu
+              label={`إجراءات نقطة توقف ${stop.name}`}
+              actions={[
+                { label: "تعديل", onSelect: () => openEdit(stop) },
+                { label: "مسح", danger: true, onSelect: () => void removeRow(stop) },
+              ]}
+            />
           )}
         />
       )}

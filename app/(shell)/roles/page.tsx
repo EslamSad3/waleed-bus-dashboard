@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,20 +8,34 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
-import { createRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
-import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { createRole, deleteRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
+import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 type FirstPage = { items: Role[]; nextCursor: string | null };
 
 export default function RolesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { data: first, isLoading, error: fetchError } = useApiQuery<FirstPage>(qk.roles, () => fetchRolesPage(null));
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+
+  async function removeRole(role: Role) {
+    if (role.isSystem) {
+      setError("مستويات الوصول الأساسية مينفعش تتمسح — قفلها بدل كده من صفحتها.");
+      return;
+    }
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مستوى وصول «${role.name}»؟ أي حسابات مرتبطة بيه هتفقد صلاحياته.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteRole(role.id);
+    if (!result.ok) return setError(result.message);
+    removeFromCursorList<Role>(queryClient, qk.roles, role.id);
+  }
 
   async function save() {
     if (!name.trim()) {
@@ -62,7 +75,15 @@ export default function RolesPage() {
         })}
         keyOf={(role) => role.id}
         emptyMessage="لا توجد أدوار متاحة"
-        renderItem={(role) => <Link href={`/roles/${role.id}`} />}
+        renderItem={(role) => (
+          <RowActionsMenu
+            label={`إجراءات مستوى ${role.name}`}
+            actions={[
+              { label: "فتح التفاصيل", href: `/roles/${role.id}` },
+              { label: "مسح", danger: true, disabled: role.isSystem, onSelect: () => void removeRole(role) },
+            ]}
+          />
+        )}
       />}
 
       <Dialog open={open} onOpenChange={setOpen} title="مستوى وصول جديد" description="اختر اسمًا واضحًا للفريق، ثم حدّد المهام المسموح بها في الخطوة التالية." size="sm">

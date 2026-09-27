@@ -1,26 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   createMarkaz,
+  deleteMarkaz,
   fetchGovernorates,
   fetchMarkazAll,
   updateMarkaz,
   type Governorate,
   type Markaz,
 } from "@/lib/actions/trip-lines";
-import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 export default function MarkazPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   // الجدول بيعرض كل المراكز مع محافظتها — الفلتر بيتم بالمحافظة من القايمة أو من عمود الجدول أو الاتنين.
   const { data: rows, isLoading, error } = useApiQuery<Markaz[]>(qk.markazAll, () => fetchMarkazAll(true));
   const { data: governorates } = useApiQuery<Governorate[]>(qk.governorates, fetchGovernorates);
@@ -94,6 +98,13 @@ export default function MarkazPage() {
     upsertInList(queryClient, qk.markazAll, result.data);
   }
 
+  async function removeMarkaz(markaz: Markaz) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مركز «${markaz.nameAr}»؟ لو فيه مدن وقرى تحته هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteMarkaz(markaz.id);
+    if (!result.ok) return setDialogError(result.message);
+    removeFromList<Markaz>(queryClient, qk.markazAll, markaz.id);
+  }
+
   const dialogOpen = creating || editing !== null;
 
   const columns: CommunityColumnDef<Markaz>[] = [
@@ -140,10 +151,14 @@ export default function MarkazPage() {
           columnDefs={columns}
           emptyMessage="لا توجد مراكز مطابقة — ابدأ بإضافة أول مركز."
           renderItem={(markaz) => (
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(markaz)}><Pencil className="size-4" /> تعديل</Button>
-              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(markaz)}>{markaz.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
-            </div>
+            <RowActionsMenu
+              label={`إجراءات مركز ${markaz.nameAr}`}
+              actions={[
+                { label: "تعديل", onSelect: () => openEdit(markaz) },
+                { label: markaz.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(markaz) },
+                { label: "مسح", danger: true, onSelect: () => void removeMarkaz(markaz) },
+              ]}
+            />
           )}
         />
       )}

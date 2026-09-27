@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   createLocality,
+  deleteLocality,
   fetchGovernorates,
   fetchLocalitiesAll,
   fetchMarkaz,
@@ -18,12 +22,13 @@ import {
   type Locality,
   type Markaz,
 } from "@/lib/actions/trip-lines";
-import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 const TYPE_LABEL: Record<string, string> = { CITY: "مدينة", VILLAGE: "قرية" };
 
 export default function LocalitiesPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [governorateFilter, setGovernorateFilter] = useState("");
   const [markazFilter, setMarkazFilter] = useState("");
 
@@ -122,6 +127,13 @@ export default function LocalitiesPage() {
     upsertInList(queryClient, qk.localitiesAll({}), result.data);
   }
 
+  async function removeLocality(locality: Locality) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح «${locality.nameAr}»؟ لو عليها مواقف مسجلة هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteLocality(locality.id);
+    if (!result.ok) return setDialogError(result.message);
+    removeFromList<Locality>(queryClient, qk.localitiesAll({}), locality.id);
+  }
+
   const dialogOpen = creating || editing !== null;
 
   const columns: CommunityColumnDef<Locality>[] = [
@@ -147,7 +159,7 @@ export default function LocalitiesPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">المدن والقرى</h1>
           <p className="page-description">المدينة/القرية تحت المركز — فلتر بالمحافظة أو بالمركز أو بالاتنين مع بعض.</p>
         </div>
@@ -177,7 +189,7 @@ export default function LocalitiesPage() {
         </label>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-slate-500">جاري التحميل…</p> : (
+      {isLoading ? <TableSkeleton columns={5} /> : (
         <CursorList<Locality>
           gridId="localities"
           initialItems={rows ?? []}
@@ -188,10 +200,14 @@ export default function LocalitiesPage() {
           columnDefs={columns}
           emptyMessage="لا توجد مناطق مطابقة — ابدأ بإضافة أول مدينة أو قرية."
           renderItem={(locality) => (
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(locality)}><Pencil className="size-4" /> تعديل</Button>
-              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(locality)}>{locality.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
-            </div>
+            <RowActionsMenu
+              label={`إجراءات ${locality.nameAr}`}
+              actions={[
+                { label: "تعديل", onSelect: () => openEdit(locality) },
+                { label: locality.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(locality) },
+                { label: "مسح", danger: true, onSelect: () => void removeLocality(locality) },
+              ]}
+            />
           )}
         />
       )}
@@ -231,7 +247,7 @@ export default function LocalitiesPage() {
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالعربي</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder="بنها" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالإنجليزي</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
             <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
           </div>

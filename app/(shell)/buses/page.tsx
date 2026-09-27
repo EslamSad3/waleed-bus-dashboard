@@ -1,17 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
 import { mapWithConcurrency } from "@/lib/actions/http";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { qk, useDataQuery } from "@/lib/queries";
+import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
 
 type BusRow = Bus & { fleetName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -45,12 +47,22 @@ async function fetchAggregateBusPage(cursorState: string | null): Promise<BusAgg
 }
 
 export default function BusesPage() {
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { data: first, isLoading, error } = useDataQuery<BusAggregatePage>(
     qk.busesAggregate,
     () => fetchAggregateBusPage(null),
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const [busForEdit, setBusForEdit] = useState<BusRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string }>({});
+
+  async function removeBus(bus: BusRow) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح العربية «${bus.plateNumber || bus.registrationNumber}»؟ لازم تكون من غير رحلات أو تعيينات سواق.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteBus(bus.fleetId, bus.id);
+    if (!result.ok) return;
+    removeFromCursorList<BusRow>(queryClient, qk.busesAggregate, bus.id);
+  }
 
   const query = (listFilters.q ?? "").trim();
   const status = listFilters.status ?? "all";
@@ -103,10 +115,20 @@ export default function BusesPage() {
             </div>
           }
           emptyMessage="لا توجد عربيات مسجلة في الأساطيل."
-          renderItem={(bus) => <Link href={`/buses/${bus.id}?fleetId=${bus.fleetId}`} />}
+          renderItem={(bus) => (
+            <RowActionsMenu
+              label={`إجراءات عربية ${bus.plateNumber || bus.registrationNumber}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${bus.fleetId}` },
+                { label: "تعديل", onSelect: () => setBusForEdit(bus) },
+                { label: "مسح", danger: true, onSelect: () => void removeBus(bus) },
+              ]}
+            />
+          )}
         />
       )}
       <CreateBusDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => setBusForEdit(null)} />
     </div>
   );
 }

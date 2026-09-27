@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { TableSkeleton } from "@/components/ui/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPermissionCatalog, type Permission } from "@/lib/actions/permissions";
 import { qk, useApiQuery } from "@/lib/queries";
 import { presentPermission } from "@/lib/permission-presentation";
@@ -44,13 +46,13 @@ export default function PermissionsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">دليل المهام</h1>
           <p className="page-description">شرح للمهام المتاحة داخل المنصة. لتحديد من يستطيع تنفيذها، افتح مستوى الوصول المناسب.</p>
         </div>
       </div>
       {error ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <p className="text-sm text-[#606060]">جاري التحميل…</p> : <div className="space-y-5">{Object.entries(grouped).map(([group, permissions]) => <section key={group} className="panel-card p-5 sm:p-6"><h2 className="section-title mb-4">{group}</h2><CursorList<Permission>
+      {isLoading ? <div className="space-y-5">{[0, 1, 2].map((section) => <section key={section} className="panel-card p-5 sm:p-6"><Skeleton className="mb-4 h-5 w-28" /><TableSkeleton rows={4} columns={3} /></section>)}</div> : <div className="space-y-5">{Object.entries(grouped).map(([group, permissions]) => <section key={group} className="panel-card p-5 sm:p-6"><h2 className="section-title mb-4">{group}</h2><CursorList<Permission>
         gridId={`permissions-${group}`}
         initialItems={permissions}
         initialCursor={null}

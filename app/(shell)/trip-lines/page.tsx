@@ -1,18 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
-import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useQueryClient } from "@/lib/queries";
+import { deleteTripLine, fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
-import { qk, useApiQuery } from "@/lib/queries";
+import { qk, removeFromList, useApiQuery } from "@/lib/queries";
 
 export default function TripLinesPage() {
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const { data: lines, isLoading, error } = useApiQuery<TripLine[]>(qk.tripLines, fetchTripLines);
+
+  async function removeLine(line: TripLine) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح خط «${line.name}»؟ لو مستخدم في رحلات أو عربيات هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteTripLine(line.id);
+    if (!result.ok) return;
+    removeFromList<TripLine>(queryClient, qk.tripLines, line.id);
+  }
 
   const columns: CommunityColumnDef<TripLine>[] = [
     { field: "name", headerName: "اسم الخط", filter: "agTextColumnFilter" },
@@ -43,7 +54,13 @@ export default function TripLinesPage() {
           columnDefs={columns}
           emptyMessage="لا توجد خطوط رحلة بعد — أضف نقاط التوقف أولًا."
           renderItem={(line) => (
-            <Button asChild size="sm" variant="secondary"><Link href={`/trip-lines/${line.id}`}>إدارة</Link></Button>
+            <RowActionsMenu
+              label={`إجراءات خط ${line.name}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/trip-lines/${line.id}` },
+                { label: "مسح", danger: true, onSelect: () => void removeLine(line) },
+              ]}
+            />
           )}
         />
       )}

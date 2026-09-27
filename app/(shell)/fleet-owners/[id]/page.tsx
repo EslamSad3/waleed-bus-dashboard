@@ -11,12 +11,13 @@ import { fetchFleetOwner, updateFleetOwner, uploadFleetOwnerPicture, type FleetO
 import { updateFleetOwnerSchema } from "@/lib/schemas/p1";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
 import { Pencil } from "lucide-react";
+import { DetailPageSkeleton } from "@/components/ui/skeletons";
 
 export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: owner, isLoading, error: fetchError } = useApiQuery<FleetOwnerAccount>(qk.fleetOwner(id), () => fetchFleetOwner(id));
+  const { data: owner, isPending, error: fetchError } = useApiQuery<FleetOwnerAccount>(qk.fleetOwner(id), () => fetchFleetOwner(id));
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -70,12 +71,12 @@ export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (fetchError) return <p role="alert" className="text-sm text-red-600">{fetchError.message}</p>;
-  if (!owner || isLoading) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
+  if (!owner || isPending) return <DetailPageSkeleton />;
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div><h1 className="page-title">{owner.name}</h1><p className="page-description">{owner.nickname}</p></div>
-        <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1"><h1 className="page-title truncate">{owner.name}</h1><p className="page-description">{owner.nickname}</p></div>
+        <div className="flex flex-wrap items-center gap-2 max-md:w-full">
           <span className={owner.isActive ? "rounded-full bg-green-100 px-3 py-1 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-1 text-sm"}>{owner.isActive ? "نشط" : "موقوف"}</span>
           <Button type="button" variant="secondary" onClick={openEdit}><Pencil className="size-4" aria-hidden="true" /> تعديل</Button>
         </div>
@@ -90,13 +91,13 @@ export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id:
             <img src={owner.picture} alt={`صورة ${owner.name}`} className="mb-3 size-24 rounded-2xl object-cover" />
           ) : null}
           <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-3"><dt className="text-[#606060]">الموبايل</dt><dd dir="ltr">{owner.phoneNumber}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-[#606060]">الرقم القومي</dt><dd dir="ltr">{owner.nationalId ?? "—"}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[#606060]">الموبايل</dt><dd dir="ltr" className="min-w-0 truncate">{owner.phoneNumber}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[#606060]">الرقم القومي</dt><dd dir="ltr" className="min-w-0 truncate">{owner.nationalId ?? "—"}</dd></div>
           </dl>
         </section>
         <section className="panel-card p-5 sm:p-6">
           <h2 className="section-title">الأساطيل</h2>
-          <div className="space-y-2">{owner.fleets.map((fleet) => <Link key={fleet.id} href={`/fleets/${fleet.id}`} className="flex justify-between rounded-xl bg-slate-50 px-3 py-2 hover:bg-[#d6eeff]"><span>{fleet.name}</span><span className="text-sm text-[#606060]">{fleet.isActive ? "نشط" : "موقوف"}</span></Link>)}</div>
+          <div className="space-y-2">{owner.fleets.map((fleet) => <Link key={fleet.id} href={`/fleets/${fleet.id}`} className="flex justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 hover:bg-[#d6eeff]"><span className="min-w-0 truncate">{fleet.name}</span><span className="shrink-0 text-sm text-[#606060]">{fleet.isActive ? "نشط" : "موقوف"}</span></Link>)}</div>
           <Button asChild variant="secondary" className="mt-4 w-full sm:w-auto"><Link href="/fleets">إضافة أسطول</Link></Button>
         </section>
       </div>
@@ -123,7 +124,7 @@ export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id:
             <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="size-4 accent-[#059ff8]" /> الحساب نشط
           </label>
           {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-          <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={() => setEditOpen(false)} disabled={saving}>إلغاء</Button>
             <Button type="button" variant="success" onClick={save} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
           </div>

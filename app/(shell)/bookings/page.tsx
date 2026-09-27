@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   BOOKING_STATUS_AR,
+  deleteBooking,
   fetchAdminBookingsPage,
   PAYMENT_METHOD_AR,
   PAYMENT_STATUS_AR,
@@ -19,14 +20,18 @@ import {
 import { apiGet } from "@/lib/actions/http";
 import { findTripAcrossFleets } from "@/lib/actions/trips";
 import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { qk, useDataQuery } from "@/lib/queries";
+import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
 
 type FleetOption = { id: string; name: string };
 
 export default function BookingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [fleets, setFleets] = useState<FleetOption[]>([]);
   const [, startTransition] = useTransition();
@@ -100,6 +105,13 @@ export default function BookingsPage() {
   const nextCursor = pageData?.nextCursor ?? null;
   const error = fetchError ? fetchError.message : null;
 
+  async function removeBooking(booking: AdminBookingListItem) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح حجز «${booking.passengerName || booking.passengerPhone}»؟ الإجراء ده مينفعش يتراجع.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteBooking(booking.fleetId, booking.id);
+    if (!result.ok) return;
+    removeFromCursorList<AdminBookingListItem>(queryClient, qk.adminBookingsParams(filterParams), booking.id);
+  }
+
   function resetFilters() {
     startTransition(() => {
       setSearchTerm("");
@@ -146,7 +158,7 @@ export default function BookingsPage() {
             <p className="text-sm font-bold text-[#00134c]">حجوزات رحلة محددة</p>
             <p className="text-xs text-[#606060]">{activeTripLabel ? <span dir="auto">{activeTripLabel}</span> : <InlineBlockSkeleton className="h-3.5 w-44" />}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>تفاصيل الرحلة</Link></Button>
             <Button size="sm" variant="outline" onClick={() => router.replace("/bookings")}>عرض كل الحجوزات</Button>
           </div>
@@ -189,7 +201,13 @@ export default function BookingsPage() {
           columnDefs={columns}
           emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
           renderItem={(booking) => (
-            <Button asChild size="sm" variant="secondary"><Link href={`/bookings/${booking.id}`}>عرض التفاصيل</Link></Button>
+            <RowActionsMenu
+              label={`إجراءات حجز ${booking.passengerName || booking.passengerPhone || ""}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/bookings/${booking.id}` },
+                { label: "مسح", danger: true, onSelect: () => void removeBooking(booking) },
+              ]}
+            />
           )}
         />
       )}

@@ -20,7 +20,7 @@ export default function ReportsPage() {
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div>
+        <div className="min-w-0">
           <h1 className="page-title">التقارير</h1>
           <p className="page-description">بلاغات الركاب وملخص تقييمات كل أسطول.</p>
         </div>

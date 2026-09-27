@@ -4,15 +4,20 @@ import { useEffect, useState, type ReactNode } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
 import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
-import { disableBus, fetchBusesPage, reactivateBus, type Bus } from "@/lib/actions/buses";
-import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
-import { fetchBookingsPage, BOOKING_STATUS_AR, PAYMENT_STATUS_AR, type Booking } from "@/lib/actions/bookings";
+import { deleteBus, disableBus, fetchBusesPage, reactivateBus, type Bus } from "@/lib/actions/buses";
+import { deleteTrip, fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { deleteBooking, fetchBookingsPage, BOOKING_STATUS_AR, PAYMENT_STATUS_AR, type Booking } from "@/lib/actions/bookings";
 import { fetchFleetReports, type FleetReports } from "@/lib/actions/reports";
-import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 import type { ActionResult, CursorPage } from "@/lib/actions/http";
 
 type ListingState<T> = { items: T[]; nextCursor: string | null };
@@ -23,36 +28,69 @@ function ListingShell({
   children,
   error,
   isLoading,
+  skeleton,
 }: {
   children: ReactNode;
   error: string | null;
   isLoading: boolean;
+  /** Skeleton mirroring the loaded layout — replaces the old text spinner. */
+  skeleton: ReactNode;
 }) {
   if (error) return <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>;
-  if (isLoading) return <p className="rounded-xl bg-white p-5 text-sm text-[#606060]">جاري التحميل…</p>;
+  if (isLoading) return <>{skeleton}</>;
   return <>{children}</>;
 }
 
 function TabHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h2 className="section-title mb-0">{title}</h2>
+      <h2 className="section-title mb-0 min-w-0">{title}</h2>
       {actionLabel && onAction ? (
-        <Button type="button" size="sm" onClick={onAction}>{actionLabel}</Button>
+        <Button type="button" size="sm" className="max-md:w-full" onClick={onAction}>{actionLabel}</Button>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Skeleton for the reports tab: the three rating-summary stat boxes plus the
+ * reports table, in the loaded layout. The TableSkeleton carries the single
+ * role="status" announcement; the decorative stat bars are aria-hidden.
+ */
+function ReportsTabSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[0, 1, 2].map((box) => (
+          <div key={box} className="rounded-xl bg-[#eaf6ff] p-4">
+            <Skeleton className="h-5 w-28 max-w-full" />
+            <Skeleton className="mt-1 h-7 w-12" />
+          </div>
+        ))}
+      </div>
+      <TableSkeleton rows={6} columns={2} />
     </div>
   );
 }
 
 export function FleetBusesTab({ fleetId }: { fleetId: string }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
+  const [busForEdit, setBusForEdit] = useState<Bus | null>(null);
   const { data: page, isLoading, error } = useApiQuery(qk.fleetBuses(fleetId), () => fetchBusesPage(fleetId, null));
 
   async function toggleActive(bus: Bus) {
     const result = bus.isActive ? await disableBus(fleetId, bus.id) : await reactivateBus(fleetId, bus.id);
     if (!result.ok) return;
     upsertInList(queryClient, qk.fleetBuses(fleetId), result.data);
+  }
+
+  async function removeBus(bus: Bus) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح العربية «${bus.plateNumber || bus.registrationNumber}»؟ لازم تكون من غير رحلات أو تعيينات سواق.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteBus(fleetId, bus.id);
+    if (!result.ok) return;
+    removeFromCursorList<Bus>(queryClient, qk.fleetBuses(fleetId), bus.id);
   }
 
   const columns: CommunityColumnDef<Bus>[] = [
@@ -66,7 +104,7 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="عربيات الأسطول" actionLabel="إضافة عربية" onAction={() => setCreateOpen(true)} />
-      <ListingShell error={error?.message ?? null} isLoading={isLoading}>
+      <ListingShell error={error?.message ?? null} isLoading={isLoading} skeleton={<TableSkeleton rows={8} columns={6} />}>
         <CursorList<Bus>
           gridId={`fleet-buses-${fleetId}`}
           initialItems={page?.items ?? []}
@@ -84,7 +122,9 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
               label={`إجراءات عربية ${bus.registrationNumber}`}
               actions={[
                 { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${fleetId}` },
-                { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => toggleActive(bus) },
+                { label: "تعديل", onSelect: () => setBusForEdit(bus) },
+                { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => void toggleActive(bus) },
+                { label: "مسح", danger: true, onSelect: () => void removeBus(bus) },
               ]}
             />
           )}
@@ -96,14 +136,24 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
         onCreated={(bus) => upsertInList(queryClient, qk.fleetBuses(fleetId), bus)}
         onClose={() => setCreateOpen(false)}
       />
+      <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => setBusForEdit(null)} />
     </section>
   );
 }
 
 export function FleetTripsTab({ fleetId }: { fleetId: string }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
+  const [tripForEdit, setTripForEdit] = useState<Trip | null>(null);
   const { data: page, isLoading, error } = useApiQuery(qk.fleetTrips(fleetId), () => fetchTripsPage(fleetId, null));
+
+  async function removeTrip(trip: Trip) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح الرحلة «${trip.origin} → ${trip.destination}»؟ لو عليها حجوزات هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteTrip(fleetId, trip.id);
+    if (!result.ok) return;
+    removeFromCursorList<Trip>(queryClient, qk.fleetTrips(fleetId), trip.id);
+  }
 
   const columns: CommunityColumnDef<Trip>[] = [
     { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
@@ -115,7 +165,7 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="رحلات الأسطول" actionLabel="إضافة رحلة" onAction={() => setCreateOpen(true)} />
-      <ListingShell error={error?.message ?? null} isLoading={isLoading}>
+      <ListingShell error={error?.message ?? null} isLoading={isLoading} skeleton={<TableSkeleton rows={8} columns={5} />}>
         <CursorList<Trip>
           gridId={`fleet-trips-${fleetId}`}
           initialItems={page?.items ?? []}
@@ -131,7 +181,11 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
           renderItem={(trip) => (
             <RowActionsMenu
               label="إجراءات الرحلة"
-              actions={[{ label: "فتح التفاصيل", href: `/trips/${trip.id}` }]}
+              actions={[
+                { label: "فتح التفاصيل", href: `/trips/${trip.id}` },
+                { label: "تعديل", onSelect: () => setTripForEdit(trip) },
+                { label: "مسح", danger: true, onSelect: () => void removeTrip(trip) },
+              ]}
             />
           )}
         />
@@ -141,14 +195,23 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
         onCreated={(trip) => upsertInList(queryClient, qk.fleetTrips(fleetId), trip)}
         onClose={() => setCreateOpen(false)}
       />
+      <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} onClose={() => setTripForEdit(null)} />
     </section>
   );
 }
 
 export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const { data: page, isLoading, error } = useApiQuery(qk.fleetBookings(fleetId), () => fetchBookingsPage(fleetId, null));
+
+  async function removeBooking(booking: Booking) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح حجز «${booking.passengerName}»؟ الإجراء ده مينفعش يتراجع.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteBooking(fleetId, booking.id);
+    if (!result.ok) return;
+    removeFromCursorList<Booking>(queryClient, qk.fleetBookings(fleetId), booking.id);
+  }
 
   const columns: CommunityColumnDef<Booking>[] = [
     { field: "passengerName", headerName: "الراكب", filter: "agTextColumnFilter" },
@@ -161,7 +224,7 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="حجوزات الأسطول" actionLabel="إضافة حجز" onAction={() => setCreateOpen(true)} />
-      <ListingShell error={error?.message ?? null} isLoading={isLoading}>
+      <ListingShell error={error?.message ?? null} isLoading={isLoading} skeleton={<TableSkeleton rows={8} columns={6} />}>
         <CursorList<Booking>
           gridId={`fleet-bookings-${fleetId}`}
           initialItems={page?.items ?? []}
@@ -177,7 +240,10 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
           renderItem={(booking) => (
             <RowActionsMenu
               label="إجراءات الحجز"
-              actions={[{ label: "فتح التفاصيل", href: `/bookings/${booking.id}` }]}
+              actions={[
+                { label: "فتح التفاصيل", href: `/bookings/${booking.id}` },
+                { label: "مسح", danger: true, onSelect: () => void removeBooking(booking) },
+              ]}
             />
           )}
         />
@@ -219,7 +285,7 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
   return (
     <section className="panel-card p-5 sm:p-6">
       <TabHeader title="تقارير ومراجعات الأسطول" />
-      <ListingShell error={error} isLoading={!data}>
+      <ListingShell error={error} isLoading={!data} skeleton={<ReportsTabSkeleton />}>
         {data && <div className="space-y-5">
           <dl className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم العربية</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.busAvg?.toFixed(1) ?? "—"}</dd></div>

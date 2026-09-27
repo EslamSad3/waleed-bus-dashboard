@@ -251,7 +251,7 @@ export default function BusDetailPage({
     );
   }
   if (busError) return <p role="alert" className="text-sm text-red-600">{busError.message}</p>;
-  if (!bus || busLoading) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
+  if (!bus || busLoading) return <DetailPageSkeleton />;
 
   const currentDriver = drivers.find((driver) => driver.assignments?.some((assignment) => assignment.busId === id && assignment.status === "ACTIVE"));
   // A driver has one active bus at a time. The API ends that assignment and
@@ -265,9 +265,9 @@ export default function BusDetailPage({
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div><h1 className="page-title"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">بيانات العربية والحالة والسواق المعيّن وسجل الرحلات.</p></div>
-        <div className="flex items-center gap-3">
-          <span className={bus.isActive ? "rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
+        <div className="min-w-0 flex-1"><h1 className="page-title break-words"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">بيانات العربية والحالة والسواق المعيّن وسجل الرحلات.</p></div>
+        <div className="flex flex-wrap items-center gap-3 max-md:w-full">
+          <span className={bus.isActive ? "shrink-0 rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "shrink-0 rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
             {bus.isActive ? "نشط" : "موقوف"}
           </span>
           <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> مسح العربية</AsyncButton>
@@ -288,7 +288,7 @@ export default function BusDetailPage({
           </button>
         ))}
       </nav>
-        <Button type="button" onClick={() => setCreateTripOpen(true)}>
+        <Button type="button" className="max-md:w-full" onClick={() => setCreateTripOpen(true)}>
           <RouteIcon className="size-4" aria-hidden="true" /> رحلة جديدة
         </Button>
       </div>
@@ -299,20 +299,20 @@ export default function BusDetailPage({
       {tab === "overview" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="panel-card p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
                 <h2 className="section-title">البيانات</h2>
                 {bus.imageUrl ? <img src={bus.imageUrl} alt={`صورة العربية ${bus.registrationNumber}`} className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
                 <dl className="space-y-2 text-sm">
-                  <div className="flex gap-3"><dt className="text-[#687886]">رقم اللوحة</dt><dd dir="ltr" className="font-semibold">{bus.plateNumber ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="text-[#687886]">اللون</dt><dd className="flex items-center gap-2 font-semibold">{bus.color ? <span className="inline-block size-4 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}{bus.color ?? "—"}</dd></div>
-                  <div className="flex gap-3"><dt className="text-[#687886]">الماركة</dt><dd className="font-semibold">{bus.brand?.name ?? "—"}</dd></div>
-                  <div className="flex gap-3"><dt className="text-[#687886]">مكيّف</dt><dd className="font-semibold">{bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? "نعم" : "لا"}</dd></div>
-                  <div className="flex gap-3"><dt className="text-[#687886]">سنة الموديل</dt><dd className="font-semibold">{bus.modelYear ?? "—"}</dd></div>
-                  <div className="flex gap-3"><dt className="text-[#687886]">السعة</dt><dd className="font-semibold">{bus.capacity} مقعد</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">رقم اللوحة</dt><dd dir="ltr" className="min-w-0 flex-1 truncate font-semibold">{bus.plateNumber ?? "—"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">اللون</dt><dd className="flex min-w-0 flex-1 items-center gap-2 font-semibold">{bus.color ? <span className="inline-block size-4 shrink-0 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}<span className="truncate">{bus.color ?? "—"}</span></dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">الماركة</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.brand?.name ?? "—"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">مكيّف</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? "نعم" : "لا"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">سنة الموديل</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.modelYear ?? "—"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">السعة</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.capacity} مقعد</dd></div>
                 </dl>
               </div>
-              <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+              <Button type="button" variant="secondary" className="max-md:w-full" onClick={() => setEditOpen(true)}>
                 <Pencil className="size-4" aria-hidden="true" /> تعديل
               </Button>
             </div>
@@ -323,14 +323,14 @@ export default function BusDetailPage({
               <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
                 <span className="block text-[#606060]">السواق الحالي</span>
                 <strong>{currentDriver?.name ?? "لا يوجد سواق معين"}</strong>
-                {currentDriver?.phoneNumber ? <span className="mr-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span> : null}
+                {currentDriver?.phoneNumber ? <span className="ms-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span> : null}
               </div>
               <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
                 <span className="block text-[#606060]">خط الرحلة الحالي</span>
                 <strong>{bus.line ? bus.line.name : "لا يوجد خط معيّن"}</strong>
-                {bus.line ? <span dir="ltr" className="mr-2 text-[#606060]">{bus.line.code}</span> : null}
+                {bus.line ? <span dir="ltr" className="ms-2 text-[#606060]">{bus.line.code}</span> : null}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>إيقاف</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>إعادة تشغيل</AsyncButton>
               </div>
@@ -347,7 +347,7 @@ export default function BusDetailPage({
 
       {tab === "trips" && (
         !tripsFirst || tripsFirst.key !== `${fleetId}/${id}` ? (
-          <p className="text-sm text-[#606060]">جاري التحميل…</p>
+          <TableSkeleton rows={9} columns={5} />
         ) : (
           <CursorList<TripRef>
             key={`${fleetId}/${id}`}
@@ -363,8 +363,8 @@ export default function BusDetailPage({
             emptyMessage="لا توجد رحلات على العربية دي"
             renderItem={(t) => (
               <div className="list-card">
-                <span className="font-semibold">{t.origin} ← {t.destination}</span>
-                <span className="text-sm text-[#606060]">{t.status} · <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time></span>
+                <span className="min-w-0 truncate font-semibold">{t.origin} ← {t.destination}</span>
+                <span className="min-w-0 truncate text-sm text-[#606060]">{t.status} · <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time></span>
               </div>
             )}
           />
@@ -403,15 +403,19 @@ export default function BusDetailPage({
           />
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">الماركة</span>
-            <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
-              <option value="">بدون ماركة…</option>
-              {(brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (موقوفة)"}</option>)}
-              {bus?.brand && !(brands ?? []).some((b) => b.id === bus.brand!.id) ? (
-                <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} (موقوفة)</option>
-              ) : null}
-            </select>
+            {brandsPending ? (
+              <Skeleton className="h-[2.75rem] w-full" />
+            ) : (
+              <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
+                <option value="">بدون ماركة…</option>
+                {(brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (موقوفة)"}</option>)}
+                {bus?.brand && !(brands ?? []).some((b) => b.id === bus.brand!.id) ? (
+                  <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} (موقوفة)</option>
+                ) : null}
+              </select>
+            )}
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-2 block font-bold text-[#334454]">سنة الموديل</span>
               <Input dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(e) => setModelYear(e.target.value)} placeholder="2022" />
@@ -437,22 +441,26 @@ export default function BusDetailPage({
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">السواق</span>
-            <select aria-label="اختار السواق" value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
-              <option value="">اختار السواق</option>
-              {eligibleDrivers.map((d) => {
-                const assignment = d.assignments?.find((item) => item.status === "ACTIVE");
-                const assignedElsewhere = assignment && assignment.busId !== id;
-                return (
-                  <option key={d.id} value={d.userId ?? d.id}>
-                    {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? ` · معيّن حاليًا على ${assignment.registrationNumber}` : ""}
-                  </option>
-                );
-              })}
-            </select>
+            {driversLoaded ? (
+              <select aria-label="اختار السواق" value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
+                <option value="">اختار السواق</option>
+                {eligibleDrivers.map((d) => {
+                  const assignment = d.assignments?.find((item) => item.status === "ACTIVE");
+                  const assignedElsewhere = assignment && assignment.busId !== id;
+                  return (
+                    <option key={d.id} value={d.userId ?? d.id}>
+                      {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? ` · معيّن حاليًا على ${assignment.registrationNumber}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : (
+              <Skeleton className="h-[2.75rem] w-full" />
+            )}
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">لا يوجد سواقون نشطون في هذا الأسطول بعد. أضف سواقًا من صفحة السواقين أولًا.</p>}
-          <div className="flex justify-end gap-2 border-t border-[#e4ecf2] pt-4">
+          {driversLoaded && eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">لا يوجد سواقون نشطون في هذا الأسطول بعد. أضف سواقًا من صفحة السواقين أولًا.</p>}
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="danger" onClick={() => setAssignOpen(false)}>إلغاء</Button>
             <AsyncButton type="button" variant="success" onClick={assign} disabled={!driverId}>تأكيد التعيين</AsyncButton>
           </div>
@@ -469,7 +477,21 @@ export default function BusDetailPage({
         onClose={() => setCreateTripOpen(false)}
       />
       <Dialog open={lineOpen} onOpenChange={setLineOpen} title="تعيين خط رحلة" description="الخطوط من الكتالوج المركزي ومتاحة لكل الأساطيل." size="sm">
-        <div className="space-y-4"><select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full"><option value="">اختار خط الرحلة</option>{(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}</select>{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="danger" onClick={() => setLineOpen(false)}>إلغاء</Button><AsyncButton type="button" variant="success" onClick={assignLine}>تأكيد التعيين</AsyncButton></div></div>
+        <div className="space-y-4">
+          {tripLinesPending ? (
+            <Skeleton className="h-[2.75rem] w-full" />
+          ) : (
+            <select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full">
+              <option value="">اختار خط الرحلة</option>
+              {(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}
+            </select>
+          )}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="danger" onClick={() => setLineOpen(false)}>إلغاء</Button>
+            <AsyncButton type="button" variant="success" onClick={assignLine}>تأكيد التعيين</AsyncButton>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

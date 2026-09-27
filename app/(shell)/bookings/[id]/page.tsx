@@ -110,7 +110,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (loading) {
-    return <DetailPageSkeleton sections={4} />;
+    return <DetailPageSkeleton sections={6} />;
   }
 
   if (error || fetchFailed || !booking) {
@@ -312,18 +312,18 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <User className="size-5 text-[#059ff8]" />
-            <h2 className="text-lg font-bold text-[#00134c]">بيانات الراكب المسافر</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">بيانات الراكب المسافر</h2>
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">اسم الراكب:</span>
-              <span className="font-bold text-[#1a1a1a]">{booking.passenger?.name ?? "—"}</span>
+              <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passenger?.name ?? "—"}</span>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">رقم الموبايل:</span>
-              <div className="flex items-center gap-1.5 font-semibold text-[#1a1a1a]">
+              <div className="flex min-w-0 items-center gap-1.5 font-semibold text-[#1a1a1a]">
                 <span dir="ltr">{booking.passenger?.phoneNumber ?? "—"}</span>
                 {booking.passenger?.phoneVerifiedAt ? (
                   <span className="inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.2 text-[10px] font-bold text-green-800" title="الموبايل موثق">
@@ -339,27 +339,27 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">الرقم القومي:</span>
-              <span className="font-mono text-[#1a1a1a]" dir="ltr">
+              <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">
                 {booking.passenger?.nationalId ?? "غير مسجل"}
               </span>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">معرف المستخدم (User ID):</span>
-              <span className="font-mono text-xs text-[#5e6b78]" dir="ltr">
+              <span className="min-w-0 break-all font-mono text-xs text-[#5e6b78]" dir="ltr">
                 {booking.passenger?.id ? `${booking.passenger.id.slice(0, 16)}…` : "—"}
               </span>
             </div>
 
             <div className="rounded-xl bg-[#f8fbfd] p-3">
               <p className="mb-2 text-xs font-bold text-[#71808d]">بيانات الحجز المحفوظة تاريخيًا + <span className={booking.bookingFor === "OTHER" ? "status-pill" : "status-pill status-pill-muted"}>{booking.bookingFor === "OTHER" ? "لراكب آخر" : "لنفسه"}</span></p>
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-[#5e6b78]">الاسم المحفوظ:</span>
-                <span className="font-bold text-[#1a1a1a]">{booking.passengerName ?? "—"}</span>
+                <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passengerName ?? "—"}</span>
               </div>
-              <div className="mt-2 flex justify-between items-center">
+              <div className="mt-2 flex items-center justify-between gap-3">
                 <span className="text-[#5e6b78]">الموبايل المحفوظ:</span>
-                <span dir="ltr" className="font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
+                <span dir="ltr" className="min-w-0 font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
               </div>
               {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">ملاحظة: {booking.note}</p> : null}
               {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">كود الخصم: <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> (خصم {booking.discountAmount} جنيه)</span> : null}</p> : null}
@@ -371,28 +371,28 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <Bus className="size-5 text-[#059ff8]" />
-            <h2 className="text-lg font-bold text-[#00134c]">تفاصيل الرحلة والمركبة والسائق</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">تفاصيل الرحلة والمركبة والسائق</h2>
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">خط السير:</span>
-              <span className="font-extrabold text-[#1a1a1a]">
+              <span className="min-w-0 font-extrabold text-[#1a1a1a]">
                 {booking.trip.originName} ← {booking.trip.destinationName}
               </span>
             </div>
 
             {(booking.boardingStationName || booking.landingStationName || booking.boardingStationId || booking.landingStationId) && (
               <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-2.5 text-xs space-y-1.5">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-[#5e6b78]">محطة الركوب:</span>
-                  <span className="font-bold text-[#1a1a1a]">
+                  <span className="min-w-0 font-bold text-[#1a1a1a]">
                     {booking.boardingStationName ?? (booking.boardingStationId ? `معرف: ${booking.boardingStationId.slice(0, 8)}…` : "نقطة الانطلاق")}
                   </span>
                 </div>
-                <div className="flex justify-between items-center border-t border-[#e4ecf2] pt-1.5">
+                <div className="flex items-center justify-between gap-3 border-t border-[#e4ecf2] pt-1.5">
                   <span className="text-[#5e6b78]">محطة النزول:</span>
-                  <span className="font-bold text-[#1a1a1a]">
+                  <span className="min-w-0 font-bold text-[#1a1a1a]">
                     {booking.landingStationName ?? (booking.landingStationId ? `معرف: ${booking.landingStationId.slice(0, 8)}…` : "نقطة الوصول")}
                   </span>
                 </div>
@@ -401,7 +401,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">موعد الإقلاع:</span>
-              <span className="font-semibold text-[#1a1a1a] flex items-center gap-1">
+              <span className="min-w-0 font-semibold text-[#1a1a1a] flex items-center gap-1">
                 <Clock className="size-3.5 text-[#059ff8]" />
                 <time dateTime={booking.trip.departureTime}>
                   {new Date(booking.trip.departureTime).toLocaleString("ar-EG")}
@@ -458,7 +458,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <CreditCard className="size-5 text-[#059ff8]" />
-            <h2 className="text-lg font-bold text-[#00134c]">المعاملات المالية والتسوية</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">المعاملات المالية والتسوية</h2>
           </div>
 
           <div className="space-y-3 text-sm">
@@ -492,7 +492,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
             <div className="flex justify-between items-center pt-2 border-t border-[#f0f4f8]">
               <span className="text-[#5e6b78]">المرجع الخارجي للتحويل:</span>
-              <span className="font-mono font-bold text-[#00134c]" dir="ltr">
+              <span className="min-w-0 font-mono font-bold text-[#00134c]" dir="ltr">
                 {booking.paymentReference ?? "غير متوفر"}
               </span>
             </div>
@@ -529,7 +529,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <Clock className="size-5 text-[#059ff8]" />
-            <h2 className="text-lg font-bold text-[#00134c]">الحالة التشغيلية والصعود</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">الحالة التشغيلية والصعود</h2>
           </div>
 
           <div className="space-y-3 text-sm">
@@ -562,7 +562,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             {booking.dropStationId && (
               <div className="flex justify-between items-center text-xs text-[#5e6b78]">
                 <span>محطة النزول:</span>
-                <span className="font-mono text-[#1a1a1a]" dir="ltr">{booking.dropStationId}</span>
+                <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">{booking.dropStationId}</span>
               </div>
             )}
 
@@ -579,10 +579,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <Star className="size-5 text-[#059ff8]" />
-            <h2 className="text-lg font-bold text-[#00134c]">تقييمات الرحلة المتبادلة</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">تقييمات الرحلة المتبادلة</h2>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
             <div className="rounded-xl border border-[#e4ecf2] bg-[#f8fbfd] p-3">
               <span className="text-xs text-[#5e6b78] block mb-1">تقييم العربية</span>
               <div className="flex items-center justify-center gap-1 font-extrabold text-lg text-amber-600">
@@ -614,7 +614,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between border-b border-[#e4ecf2] pb-3">
             <div className="flex items-center gap-2">
               <ShieldAlert className="size-5 text-red-600" />
-              <h2 className="text-lg font-bold text-[#00134c]">بلاغات السائق ضد الراكب ({booking.reports.length})</h2>
+              <h2 className="min-w-0 text-lg font-bold text-[#00134c]">بلاغات السائق ضد الراكب ({booking.reports.length})</h2>
             </div>
           </div>
 
@@ -678,7 +678,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       <div className="panel-card p-5 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
           <History className="size-5 text-[#059ff8]" />
-          <h2 className="text-lg font-bold text-[#00134c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
+          <h2 className="min-w-0 text-lg font-bold text-[#00134c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
         </div>
 
         <CursorList<AuditLog>

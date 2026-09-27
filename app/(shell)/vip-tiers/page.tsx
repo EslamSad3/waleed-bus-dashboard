@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { createVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
+import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
 import { rankOrdinalAr } from "@/lib/ordinals";
-import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 export default function VipTiersPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   // TanStack cache: edits land here instantly on dialog close — no reload.
   const { data: rows, isLoading, error } = useApiQuery<VipTier[]>(qk.vipTiers, () => fetchVipTiers(true));
   const [creating, setCreating] = useState(false);
@@ -66,6 +69,13 @@ export default function VipTiersPage() {
     upsertInList(queryClient, qk.vipTiers, result.data);
   }
 
+  async function removeTier(tier: VipTier) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مستوى «${tier.name}»؟ لو فيه أساطيل مرتبطة بيه هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteVipTier(tier.id);
+    if (!result.ok) return setDialogError(result.message);
+    removeFromList<VipTier>(queryClient, qk.vipTiers, tier.id);
+  }
+
   const dialogOpen = creating || editing !== null;
 
   const columns: CommunityColumnDef<VipTier>[] = [
@@ -99,10 +109,14 @@ export default function VipTiersPage() {
           columnDefs={columns}
           emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة أول مستوى."
           renderItem={(tier) => (
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(tier)}><Pencil className="size-4" /> تعديل</Button>
-              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(tier)}>{tier.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
-            </div>
+            <RowActionsMenu
+              label={`إجراءات مستوى ${tier.name}`}
+              actions={[
+                { label: "تعديل", onSelect: () => openEdit(tier) },
+                { label: tier.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(tier) },
+                { label: "مسح", danger: true, onSelect: () => void removeTier(tier) },
+              ]}
+            />
           )}
         />
       )}

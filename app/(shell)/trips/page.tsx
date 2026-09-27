@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { deleteTrip, fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { fetchBusesPage } from "@/lib/actions/buses";
 import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/members";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
-import { qk, useDataQuery } from "@/lib/queries";
+import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
+import { qk, removeFromCursorList, useDataQuery } from "@/lib/queries";
 import { mapWithConcurrency } from "@/lib/actions/http";
+import { useQueryClient } from "@/lib/queries";
 
 type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -83,12 +86,22 @@ async function fetchAggregateTripPage(cursorState: string | null): Promise<TripA
 }
 
 export default function TripsPage() {
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
+  const [tripForEdit, setTripForEdit] = useState<TripRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; from?: string; to?: string }>({});
   const { data: first, isLoading, error } = useDataQuery<TripAggregatePage>(
     qk.trips(null),
     () => fetchAggregateTripPage(null),
   );
+
+  async function removeTrip(trip: TripRow) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح الرحلة «${trip.origin} → ${trip.destination}»؟ لو الرحلة عليها حجوزات هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteTrip(trip.fleetId, trip.id);
+    if (!result.ok) return;
+    removeFromCursorList<TripRow>(queryClient, qk.trips(null), trip.id);
+  }
 
   const query = (listFilters.q ?? "").trim();
   const status = listFilters.status ?? "all";
@@ -138,10 +151,20 @@ export default function TripsPage() {
             </div>
           }
           emptyMessage="لا توجد رحلات مسجلة في الأساطيل."
-          renderItem={(trip) => <Link href={`/trips/${trip.id}`} />}
+          renderItem={(trip) => (
+            <RowActionsMenu
+              label={`إجراءات رحلة ${trip.origin} → ${trip.destination}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/trips/${trip.id}` },
+                { label: "تعديل", onSelect: () => setTripForEdit(trip) },
+                { label: "مسح", danger: true, onSelect: () => void removeTrip(trip) },
+              ]}
+            />
+          )}
         />
       )}
       <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} onClose={() => setTripForEdit(null)} />
     </div>
   );
 }

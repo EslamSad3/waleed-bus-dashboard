@@ -44,3 +44,7 @@ export function replaceRolePermissions(id: string, permissionKeys: string[]): Pr
     apiSend<Role>(`/api/roles/${id}/permissions`, "PUT", { permissionKeys }),
   );
 }
+
+export function deleteRole(id: string): Promise<ActionResult<null>> {
+  return notifyResult("اتمسح مستوى الوصول", apiSend<null>(`/api/roles/${id}`, "DELETE"));
+}
