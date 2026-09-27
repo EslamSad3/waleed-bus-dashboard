@@ -5,6 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createBrand, fetchBrands, updateBrand, type VehicleBrand } from "@/lib/actions/buses";
@@ -16,7 +17,6 @@ export default function BrandsPage() {
   const { data: rows, isLoading, error } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true));
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VehicleBrand | null>(null);
-  const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [dialogError, setDialogError] = useState<string | null>(null);
@@ -48,11 +48,9 @@ export default function BrandsPage() {
       setDialogError("أدخل اسم الماركة.");
       return;
     }
-    setSaving(true);
     const result = editing
       ? await updateBrand(editing.id, { name: name.trim(), sortOrder: Number(sortOrder) || 0 })
       : await createBrand({ name: name.trim(), sortOrder: Number(sortOrder) || 0 });
-    setSaving(false);
     if (!result.ok) return setDialogError(result.message);
     upsertInList(queryClient, qk.brands, result.data);
     closeDialog();
@@ -102,7 +100,7 @@ export default function BrandsPage() {
           renderItem={(brand) => (
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(brand)}><Pencil className="size-4" /> تعديل</Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(brand)}>{brand.isActive ? "إيقاف" : "تفعيل"}</Button>
+              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(brand)}>{brand.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
             </div>
           )}
         />
@@ -114,7 +112,7 @@ export default function BrandsPage() {
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <Button type="button" variant="success" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
           </div>
         </div>
       </Dialog>

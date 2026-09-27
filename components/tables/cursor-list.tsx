@@ -12,6 +12,8 @@ export type CursorPage<T> = { items: T[]; nextCursor: string | null };
 type Props<T> = {
   /** Grid id used for data-grid-id and the CSV export filename. */
   gridId?: string;
+  /** Show the pinned actions column (default true). Read-only tables turn it off. */
+  withActions?: boolean;
   initialItems: T[];
   initialCursor: string | null;
   /** Server action: fetch one cursor page. Closed-over args must be serializable. */
@@ -32,6 +34,7 @@ type Props<T> = {
  */
 export function CursorList<T>({
   gridId = "cursor-list",
+  withActions = true,
   initialItems,
   initialCursor,
   loadMore,
@@ -98,22 +101,26 @@ export function CursorList<T>({
 
   const columns: CommunityColumnDef<T>[] = [
     ...valueColumns,
-    {
-      headerName: "إجراءات",
-      pinned: "right",
-      sortable: false,
-      filter: false,
-      exportable: false,
-      minWidth: 220,
-      cellRenderer: (params: ICellRendererParams<T>) => {
-        if (!params.data) return null;
-        const rendered = renderItem(params.data, visible.indexOf(params.data));
-        if (isValidElement<{ href?: string }>(rendered) && typeof rendered.props.href === "string") {
-          return <Link href={rendered.props.href} className="ag-grid-row-action">فتح</Link>;
-        }
-        return rendered;
-      },
-    },
+    ...(withActions
+      ? [
+          {
+            headerName: "إجراءات",
+            pinned: "right" as const,
+            sortable: false,
+            filter: false,
+            exportable: false,
+            minWidth: 220,
+            cellRenderer: (params: ICellRendererParams<T>) => {
+              if (!params.data) return null;
+              const rendered = renderItem?.(params.data, visible.indexOf(params.data));
+              if (isValidElement<{ href?: string }>(rendered) && typeof rendered.props.href === "string") {
+                return <Link href={rendered.props.href} className="ag-grid-row-action">فتح</Link>;
+              }
+              return rendered ?? null;
+            },
+          } satisfies CommunityColumnDef<T>,
+        ]
+      : []),
   ];
 
   return (

@@ -185,7 +185,7 @@ function CreateStopDialog({
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ نقطة التوقف"}</Button>
+          <AsyncButton type="button" variant="success" onClick={submit}>حفظ نقطة التوقف</AsyncButton>
         </div>
       </div>
     </Dialog>
@@ -198,7 +198,6 @@ export default function StopsPage() {
   const { data: stops, isLoading, error } = useApiQuery<Stop[]>(qk.stops, fetchStops);
   const { data: governorates } = useApiQuery<Governorate[]>(qk.governorates, fetchGovernorates);
   const [editing, setEditing] = useState<Stop | null>(null);
-  const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [mapLink, setMapLink] = useState("");
@@ -255,7 +254,6 @@ export default function StopsPage() {
       setDialogError("أدخل اسم النقطة والمحافظة ورابط موقع Google Maps صحيح.");
       return;
     }
-    setSaving(true);
     const result = await updateStop(editing.id, {
       name: name.trim(),
       address: address.trim() || null,
@@ -264,18 +262,16 @@ export default function StopsPage() {
       latitude: Number(latitude),
       longitude: Number(longitude),
     });
-    setSaving(false);
     if (!result.ok) return setDialogError(result.message);
     upsertInList(queryClient, qk.stops, result.data);
     closeDialog();
   }
 
-  async function remove() {
-    if (!editing) return;
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح نقطة التوقف «${editing.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
-    const result = await deleteStop(editing.id);
+  async function remove(stop: Stop) {
+    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح نقطة التوقف «${stop.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
+    const result = await deleteStop(stop.id);
     if (!result.ok) return setDialogError(result.message);
-    removeFromList(queryClient, qk.stops, editing.id);
+    removeFromList(queryClient, qk.stops, stop.id);
     closeDialog();
   }
 
@@ -312,7 +308,10 @@ export default function StopsPage() {
           columnDefs={columns}
           emptyMessage="لا توجد نقاط توقف بعد — ابدأ بتسجيل أول مكان."
           renderItem={(stop) => (
-            <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(stop)}><Pencil className="size-4" /> تعديل</Button>
+            <span className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(stop)}><Pencil className="size-4" /> تعديل</Button>
+              <AsyncButton type="button" size="sm" variant="destructive" onClick={() => remove(stop)}><Trash2 className="size-4" /> حذف</AsyncButton>
+            </span>
           )}
         />
       )}
@@ -337,12 +336,9 @@ export default function StopsPage() {
           />
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">العنوان <span className="font-normal text-slate-400">(اختياري)</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="ميدان رمسيس، القاهرة" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
-          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-between">
-            <Button type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> حذف النقطة</Button>
-            <div className="flex gap-2">
-              <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-              <Button type="button" variant="success" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
-            </div>
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>حفظ التعديلات</AsyncButton>
           </div>
         </div>
       </Dialog>
