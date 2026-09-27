@@ -24,7 +24,8 @@ async function fetchFleetBuses(fleetId: string) {
   do {
     const result = await fetchBusesPage(fleetId, cursor);
     if (!result.ok) throw new Error(result.message);
-    result.data.items.forEach((bus) => buses.set(bus.id, bus.registrationNumber));
+    // عمود العربية بيعرض رقم اللوحة — رقم التسجيل احتياطي لو مفيش لوحة
+    result.data.items.forEach((bus) => buses.set(bus.id, bus.plateNumber ?? bus.registrationNumber));
     cursor = result.data.nextCursor;
   } while (cursor);
   return buses;

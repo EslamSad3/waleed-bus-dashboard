@@ -17,7 +17,7 @@ import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 
 type Values = z.input<typeof createTripSchema>;
-type BusOpt = { id: string; registrationNumber: string; lineId?: string | null; line?: { id: string; name: string; code: string } | null };
+type BusOpt = { id: string; registrationNumber: string; plateNumber?: string | null; lineId?: string | null; line?: { id: string; name: string; code: string } | null };
 
 /** نافذة إضافة رحلة — بتفتح في نفس الصفحة من غير تنقل، وتقدر تتثبت على أسطول/عربية معينة. */
 export function CreateTripDialog({
@@ -137,7 +137,7 @@ export function CreateTripDialog({
       return;
     }
     // تحديث فوري لجدول الرحلات من غير إعادة تحميل
-    upsertInCursorList(queryClient, qk.trips(null), { ...r.data, fleetName: fleetLabel, busName: selectedBus.registrationNumber, driverName: "غير معيّن" });
+    upsertInCursorList(queryClient, qk.trips(null), { ...r.data, fleetName: fleetLabel, busName: selectedBus.plateNumber ?? selectedBus.registrationNumber, driverName: "غير معيّن" });
     onCreated?.(r.data);
     resetForm();
     onClose();
