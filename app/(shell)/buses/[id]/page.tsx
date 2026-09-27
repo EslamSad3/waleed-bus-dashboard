@@ -11,20 +11,21 @@ import {
   assignDriver,
   deleteBus,
   disableBus,
+  discardBusImage,
   fetchBrands,
   fetchBus,
   fetchBusTripsPage,
   reactivateBus,
+  stageBusImage,
   unassignDriver,
   assignTripLine,
   unassignTripLine,
   updateBus,
-  uploadBusImage,
   type Bus,
   type TripRef,
   type VehicleBrand,
 } from "@/lib/actions/buses";
-import { apiGet } from "@/lib/actions/http";
+import { apiGet, validateImageFile, type StagedUpload } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
@@ -123,17 +124,20 @@ export default function BusDetailPage({
     });
   }, [tab, fleetId, id, tripsReloadKey]);
 
-  async function onImageFile(file: File | null) {
-    if (!file || !fleetId) return;
-    setUploading(true);
-    const uploaded = await uploadBusImage(fleetId, file);
-    setUploading(false);
-    if (!uploaded.ok) {
-      setError(uploaded.message);
+  function onImageFile(file: File | null) {
+    if (!file) {
+      setImageFile(null);
       return;
     }
+    // الاختيار بس — الرفع الفعلي بيحصل مع الحفظ مباشر للتخزين السحابي،
+    // فإلغاء التعديل ميسيبش صور يتيمة.
+    const invalid = validateImageFile(file);
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
+    setError(null);
     setImageFile(file);
-    setImageUrl(uploaded.data.url);
   }
 
   function note(ok: boolean, msg: string, updated?: Bus) {
@@ -146,17 +150,36 @@ export default function BusDetailPage({
 
   async function save() {
     if (!fleetId) return;
+    // الصورة المختارة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل
+    // مفيش تعديل يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
+    let staged: StagedUpload | null = null;
+    let nextImageUrl = imageUrl || undefined;
+    if (imageFile) {
+      setUploading(true);
+      const s = await stageBusImage(fleetId, imageFile);
+      setUploading(false);
+      if (!s.ok) {
+        note(false, s.message);
+        return;
+      }
+      staged = s.data;
+      nextImageUrl = staged.publicUrl;
+    }
     const r = await updateBus(fleetId, id, {
       plateNumber: plate || undefined,
       color: color || undefined,
-      imageUrl: imageUrl || undefined,
+      imageUrl: nextImageUrl,
       brandId: brandId || null,
       isAirConditioned,
       modelYear: modelYear === "" ? undefined : Number(modelYear),
       capacity: capacity === "" ? undefined : Number(capacity),
     });
+    if (!r.ok && staged) await discardBusImage(fleetId, staged);
     note(r.ok, r.ok ? "اتحفظ بنجاح" : r.message, r.ok ? r.data : undefined);
-    if (r.ok) setEditOpen(false);
+    if (r.ok) {
+      setImageFile(null);
+      setEditOpen(false);
+    }
   }
 
   async function remove() {

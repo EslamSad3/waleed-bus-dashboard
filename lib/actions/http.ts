@@ -76,6 +76,96 @@ export async function apiSend<T>(
 
 export type CursorPage<T> = { items: T[]; nextCursor: string | null };
 
+/** Staged direct upload: file bytes went straight to Supabase, record not linked yet. */
+export type StagedUpload = { bucket: string; path: string; publicUrl: string };
+
+type SignKind = "bus-image" | "user-picture" | "fleet-owner-picture";
+
+const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/** Client-side file validation (Arabic message or null when valid). */
+export function validateImageFile(file: File): string | null {
+  if (!IMAGE_MIMES.includes(file.type)) return "الصورة لازم تكون JPEG أو PNG أو WebP";
+  if (file.size > MAX_IMAGE_BYTES) return "حجم الصورة لازم يكون 5 ميجا أو أقل";
+  if (file.size === 0) return "ملف الصورة فاضي";
+  return null;
+}
+
+type SignResponse = {
+  bucket: string;
+  path: string;
+  uploadUrl: string;
+  token: string;
+  publicUrl: string;
+};
+
+/**
+ * Vercel-safe image staging: mint a signed URL via the API (tiny JSON),
+ * PUT the bytes straight to Supabase (never crossing a serverless function),
+ * and return the staged reference. The caller links `publicUrl` on its
+ * record, and MUST call `apiDiscardStaged` when the user cancels or the
+ * record write fails so storage does not fill with orphans.
+ */
+export async function apiStageImage(
+  kind: SignKind,
+  file: File,
+  scope: { fleetId: string } | { userId?: string },
+  signal?: AbortSignal,
+): Promise<ActionResult<StagedUpload>> {
+  const invalid = validateImageFile(file);
+  if (invalid) {
+    const code = file.size > MAX_IMAGE_BYTES ? "IMAGE_TOO_LARGE" : "INVALID_IMAGE_TYPE";
+    return { ok: false, message: invalid, code };
+  }
+  const signPath =
+    "fleetId" in scope ? `/api/fleets/${scope.fleetId}/uploads/sign` : "/api/uploads/sign";
+  // scopeId namespaces the staged path; create-flows omit it (server scopes
+  // to the actor) since the target record does not exist yet.
+  const signBody =
+    "fleetId" in scope
+      ? { kind, contentType: file.type, sizeBytes: file.size }
+      : {
+          kind,
+          contentType: file.type,
+          sizeBytes: file.size,
+          ...("userId" in scope && scope.userId ? { scopeId: scope.userId } : {}),
+        };
+  const signed = await apiSend<SignResponse>(signPath, "POST", signBody);
+  if (!signed.ok) return signed;
+  try {
+    const put = await fetch(signed.data.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+      signal: signal ?? AbortSignal.timeout(30000),
+    });
+    if (!put.ok) {
+      return { ok: false, message: "رفع الصورة فشل، حاول تاني", code: "STORAGE_UPLOAD_FAILED" };
+    }
+  } catch (error) {
+    if (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) {
+      return { ok: false, message: "رفع الصورة أخد وقت أطول من اللازم — حاول تاني", code: "UPSTREAM_TIMEOUT" };
+    }
+    return { ok: false, message: "مشكلة في الاتصال بالسيرفر", code: "NETWORK_ERROR" };
+  }
+  const { bucket, path, publicUrl } = signed.data;
+  return { ok: true, data: { bucket, path, publicUrl } };
+}
+
+/** Best-effort staged cleanup (cancel / failed record write). Never throws. */
+export async function apiDiscardStaged(
+  staged: StagedUpload,
+  scope?: { fleetId: string },
+): Promise<void> {
+  try {
+    const path = scope ? `/api/fleets/${scope.fleetId}/uploads/staged-delete` : "/api/uploads/staged";
+    await apiSend(path, scope ? "POST" : "DELETE", { bucket: staged.bucket, path: staged.path });
+  } catch {
+    // Staged tmp/... objects without a linked record are harmless.
+  }
+}
+
 export async function apiSendFile<T>(
   path: string,
   file: File,

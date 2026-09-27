@@ -1,4 +1,4 @@
-import { apiGet, apiSend, apiSendFile, type ActionResult, type CursorPage } from "@/lib/actions/http";
+import { apiDiscardStaged, apiGet, apiSend, apiSendFile, apiStageImage, type ActionResult, type CursorPage, type StagedUpload } from "@/lib/actions/http";
 import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateBusInput, AssignDriverInput } from "@/lib/schemas/p1";
 
@@ -54,6 +54,24 @@ export function updateBus(fleetId: string, id: string, input: { plateNumber?: st
   );
 }
 
+/**
+ * Stage a bus image via direct browser→Supabase upload (Vercel-safe).
+ * Link `staged.publicUrl` as `imageUrl` on create/update, and discard the
+ * staged object when the user cancels or the record write fails.
+ */
+export function stageBusImage(fleetId: string, file: File, signal?: AbortSignal): Promise<ActionResult<StagedUpload>> {
+  return apiStageImage("bus-image", file, { fleetId }, signal);
+}
+
+/** Best-effort cleanup of a staged bus image (cancel / failed record write). */
+export function discardBusImage(fleetId: string, staged: StagedUpload): Promise<void> {
+  return apiDiscardStaged(staged, { fleetId });
+}
+
+/**
+ * @deprecated Use stageBusImage + imageUrl instead. The legacy multipart path
+ * proxies file bytes through Vercel and 503s under load.
+ */
 export function uploadBusImage(fleetId: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(
     "اترفعت صورة العربية",

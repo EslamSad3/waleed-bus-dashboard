@@ -194,6 +194,7 @@ export const updateDriverSchema = z.object({
   phone: egyptPhone.optional(),
   nationalId: z.union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")]).optional(),
   password: z.string("كلمة السر لازم تبقى 8 حروف على الأقل").min(8, "كلمة السر لازم تبقى 8 حروف على الأقل").max(128).optional(),
+  picture: z.string().max(1024).optional(),
 });
 
 // ---- Stop points and trip lines (platform) ----

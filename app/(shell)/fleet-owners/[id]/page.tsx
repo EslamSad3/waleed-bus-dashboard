@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
-import { fetchFleetOwner, updateFleetOwner, uploadFleetOwnerPicture, type FleetOwnerAccount } from "@/lib/actions/fleet-owners";
+import { discardFleetOwnerPicture, fetchFleetOwner, stageFleetOwnerPicture, updateFleetOwner, type FleetOwnerAccount } from "@/lib/actions/fleet-owners";
+import type { StagedUpload } from "@/lib/actions/http";
 import { updateFleetOwnerSchema } from "@/lib/schemas/p1";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
 import { Pencil } from "lucide-react";
@@ -51,17 +52,27 @@ export default function FleetOwnerDetailPage({ params }: { params: Promise<{ id:
     setSaving(true);
     setError(null);
     setNote(null);
-    const result = await updateFleetOwner(id, parsed.data);
+    // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
+    // يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
+    let staged: StagedUpload | null = null;
+    if (imageFile) {
+      const s = await stageFleetOwnerPicture(imageFile, id);
+      if (!s.ok) {
+        setSaving(false);
+        setError(s.message);
+        return;
+      }
+      staged = s.data;
+    }
+    const result = await updateFleetOwner(id, {
+      ...parsed.data,
+      ...(staged ? { picture: staged.publicUrl } : {}),
+    });
     if (!result.ok) {
+      if (staged) await discardFleetOwnerPicture(staged);
       setSaving(false);
       setError(result.message);
       return;
-    }
-    // الصورة الجديدة بتترفع كملف FormData — من غير روابط مكتوبة بالإيد.
-    if (imageFile) {
-      // The update toast already fired — the picture step stays silent.
-      const uploaded = await uploadFleetOwnerPicture(id, imageFile, { notify: false });
-      if (!uploaded.ok) setError(uploaded.message);
     }
     const refreshed = await fetchFleetOwner(id);
     if (refreshed.ok) patchDetail(queryClient, qk.fleetOwner(id), refreshed.data);

@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { fetchDriver, updateDriver, MEMBER_STATUS_AR, type DriverRow, type Member } from "@/lib/actions/members";
-import { uploadUserPicture } from "@/lib/actions/users";
+import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
+import type { StagedUpload } from "@/lib/actions/http";
 
 const REVOKE_WARNING = "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟";
 
@@ -72,6 +73,18 @@ export function EditDriverDialog({
     }
     if (status !== "ACTIVE" && !(await confirm({ title: "تأكيد الإجراء", description: REVOKE_WARNING, confirmLabel: "تأكيد", destructive: true }))) return;
     setSaving(true);
+    // الصورة بتترفع الأول مباشر للتخزين السحابي، وبعدين الحفظ بيتم في طلب
+    // واحد — لو الرفع فشل مفيش تعديل يتطبق، ولو الحفظ فشل بنمسح المرحلية.
+    let staged: StagedUpload | null = null;
+    if (imageFile) {
+      const s = await stageUserPicture(imageFile, driver.userId ?? driver.id);
+      if (!s.ok) {
+        setSaving(false);
+        setError(s.message);
+        return;
+      }
+      staged = s.data;
+    }
     const r = await updateDriver(fleetId, driver.id, {
       status,
       name: name.trim(),
@@ -79,16 +92,13 @@ export function EditDriverDialog({
       phone: phone.trim() || undefined,
       nationalId: nationalId.trim() || undefined,
       ...(password ? { password } : {}),
+      ...(staged ? { picture: staged.publicUrl } : {}),
     });
     if (!r.ok) {
+      if (staged) await discardUserPicture(staged);
       setSaving(false);
       setError(r.message);
       return;
-    }
-    // الصورة الجديدة بتترفع كملف FormData لحساب السواق
-    if (imageFile) {
-      const uploaded = await uploadUserPicture(driver.userId ?? driver.id, imageFile);
-      if (!uploaded.ok) setError(uploaded.message);
     }
     const refreshed = await fetchDriver(fleetId, driver.id);
     setSaving(false);

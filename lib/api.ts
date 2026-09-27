@@ -16,6 +16,8 @@ type BusFetchOptions = {
   fleetId?: string | null;
   /** Retry once via refresh on 401 (default true; false for the refresh call itself). */
   retryAuth?: boolean;
+  /** Abort budget for the backend call (default 15s; Vercel Hobby kills at ~10-60s). */
+  timeoutMs?: number;
 };
 
 /**
@@ -23,7 +25,7 @@ type BusFetchOptions = {
  * `{statusCode, data}` envelope exactly once, preserves cursor pages untouched.
  */
 export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Promise<BusResult<T>> {
-  const { method = "GET", body, rawBody, fleetId, retryAuth = true } = opts;
+  const { method = "GET", body, rawBody, fleetId, retryAuth = true, timeoutMs = 15000 } = opts;
   const store = await cookies();
   const access = store.get(ACCESS_COOKIE)?.value;
 
@@ -45,8 +47,17 @@ export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Pro
             ? undefined
             : JSON.stringify(body),
       cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
     });
-  } catch {
+  } catch (error) {
+    // Timeouts (AbortError) get their own code so the UI can say "took too
+    // long, retry" instead of the generic failure message.
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return { ok: false, status: 0, code: "UPSTREAM_TIMEOUT" };
+    }
+    if (error instanceof Error && error.name === "AbortError") {
+      return { ok: false, status: 0, code: "UPSTREAM_TIMEOUT" };
+    }
     return { ok: false, status: 0, code: "NETWORK_ERROR" };
   }
 
@@ -68,10 +79,20 @@ export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Pro
 
   if (!res.ok) {
     const failure = (payload ?? {}) as Partial<BackendFailure>;
+    // Platform-level failures (Vercel timeout/edge 503s) return HTML with no
+    // `{code}` body — surface them as UPSTREAM_UNAVAILABLE instead of the
+    // opaque UNKNOWN so the UI can explain what happened.
+    const code =
+      failure.code ??
+      (res.status === 429
+        ? "RATE_LIMITED_429"
+        : res.status >= 500 && payload === null
+          ? "UPSTREAM_UNAVAILABLE"
+          : "UNKNOWN");
     return {
       ok: false,
       status: res.status,
-      code: failure.code ?? (res.status === 429 ? "RATE_LIMITED_429" : "UNKNOWN"),
+      code,
       details: failure.details,
     };
   }

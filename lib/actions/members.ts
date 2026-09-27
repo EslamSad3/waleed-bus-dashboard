@@ -111,6 +111,7 @@ export function updateDriver(
     phone?: string;
     nationalId?: string;
     password?: string;
+    picture?: string;
   },
 ): Promise<ActionResult<DriverRow>> {
   return notifyResult(
