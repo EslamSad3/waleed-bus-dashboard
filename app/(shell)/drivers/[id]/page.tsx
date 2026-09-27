@@ -158,7 +158,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   if (!driver) return <p className="text-sm text-[#606060]">جاري التحميل…</p>;
 
   const assignmentColumns: CommunityColumnDef<DriverAssignment>[] = [
-    { field: "registrationNumber", headerName: "رقم التسجيل", filter: "agTextColumnFilter" },
+    { field: "plateNumber", headerName: "رقم اللوحة", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
     { field: "status", headerName: "الحالة", filter: "agTextColumnFilter" },
   ];
 

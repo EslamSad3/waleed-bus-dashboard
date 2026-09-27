@@ -36,7 +36,7 @@ export type DriverRow = {
   status: string;
   roleSlug?: string | null;
   joinedAt?: string;
-  assignments?: { id: string; busId: string; registrationNumber: string; status: string; createdAt: string; endedAt: string | null }[];
+  assignments?: { id: string; busId: string; registrationNumber: string; plateNumber?: string | null; status: string; createdAt: string; endedAt: string | null }[];
 };
 
 /** Platform roster row: one driver membership plus its fleet ownership and active bus context. */
