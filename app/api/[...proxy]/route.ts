@@ -112,6 +112,9 @@ export function GET(req: NextRequest, ctx: Ctx) {
 export function POST(req: NextRequest, ctx: Ctx) {
   return forward(req, ctx, "POST");
 }
+export function PUT(req: NextRequest, ctx: Ctx) {
+  return forward(req, ctx, "PUT");
+}
 export function PATCH(req: NextRequest, ctx: Ctx) {
   return forward(req, ctx, "PATCH");
 }
