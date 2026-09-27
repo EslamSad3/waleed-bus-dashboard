@@ -5,6 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";

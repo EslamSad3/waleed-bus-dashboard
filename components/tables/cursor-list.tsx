@@ -19,7 +19,7 @@ type Props<T> = {
   /** Server action: fetch one cursor page. Closed-over args must be serializable. */
   loadMore: (cursor: string) => Promise<CursorPage<T>>;
   keyOf: (item: T, index: number) => string;
-  renderItem: (item: T, index: number) => ReactNode;
+  renderItem?: (item: T, index: number) => ReactNode;
   /** Client-side predicate over accumulated items (research R4). */
   filter?: (item: T) => boolean;
   filterBar?: ReactNode;
