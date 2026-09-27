@@ -189,6 +189,11 @@ export const addDriverSchema = z.union([driverFromUser, driverFreshSchema]);
 export const updateDriverSchema = z.object({
   roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
   status: memberStatus.optional(),
+  name: z.string("الاسم مطلوب").min(1, "الاسم مطلوب").max(255).optional(),
+  nickname: z.string("اسم الشهرة مطلوب").min(1, "اسم الشهرة مطلوب").max(100).optional(),
+  phone: egyptPhone.optional(),
+  nationalId: z.union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")]).optional(),
+  password: z.string("كلمة السر لازم تبقى 8 حروف على الأقل").min(8, "كلمة السر لازم تبقى 8 حروف على الأقل").max(128).optional(),
 });
 
 // ---- Stop points and trip lines (platform) ----

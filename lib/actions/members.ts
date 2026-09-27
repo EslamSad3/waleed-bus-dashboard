@@ -100,7 +100,19 @@ export function fetchDriver(fleetId: string, driverId: string): Promise<ActionRe
   return apiGet(`/api/fleet/drivers/${driverId}`, fleetId);
 }
 
-export function updateDriver(fleetId: string, driverId: string, input: { roleSlug?: string; status?: Member["status"] }): Promise<ActionResult<DriverRow>> {
+export function updateDriver(
+  fleetId: string,
+  driverId: string,
+  input: {
+    roleSlug?: string;
+    status?: Member["status"];
+    name?: string;
+    nickname?: string;
+    phone?: string;
+    nationalId?: string;
+    password?: string;
+  },
+): Promise<ActionResult<DriverRow>> {
   return notifyResult(
     input.status === "ACTIVE"
       ? "تم تنشيط السواق"
