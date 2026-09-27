@@ -15,6 +15,7 @@ import { fetchSystemDriversPage, inviteDriver, removeDriver, MEMBER_STATUS_AR, t
 import { uploadUserPicture } from "@/lib/actions/users";
 import { driverFreshSchema } from "@/lib/schemas/p1";
 import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
 
@@ -120,6 +121,7 @@ export default function DriversPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
+  const [driverForEdit, setDriverForEdit] = useState<SystemDriverRow | null>(null);
   const { data: page, isLoading, error } = useApiQuery<DriverPage>(qk.drivers, () => fetchSystemDriversPage(null));
   const drivers = page?.items ?? [];
 
@@ -129,6 +131,11 @@ export default function DriversPage() {
     const result = await removeDriver(driver.fleet.id, driver.id);
     if (!result.ok) return;
     removeFromCursorList<SystemDriverRow>(queryClient, qk.drivers, driver.id);
+  }
+
+  // بعد الحفظ من نافذة التعديل — الـ row المحدث يوصل الكاش فورًا من غير رفريش
+  function onDriverSaved(fresh: DriverRow) {
+    upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, { ...driverForEdit, ...fresh } as SystemDriverRow);
   }
 
   const columns: CommunityColumnDef<SystemDriverRow>[] = [
@@ -176,6 +183,7 @@ export default function DriversPage() {
               label={`إجراءات السواق ${driver.name || driver.nickname || driver.phoneNumber || ""}`}
               actions={[
                 { label: "فتح التفاصيل", href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
+                { label: "تعديل", onSelect: () => setDriverForEdit(driver) },
                 { label: "مسح", danger: true, onSelect: () => void removeDriverRow(driver) },
               ]}
             />
@@ -183,6 +191,12 @@ export default function DriversPage() {
         />
       )}
       <CreateDriverDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditDriverDialog
+        open={Boolean(driverForEdit)}
+        driver={driverForEdit}
+        onClose={() => setDriverForEdit(null)}
+        onSaved={onDriverSaved}
+      />
     </div>
   );
 }
