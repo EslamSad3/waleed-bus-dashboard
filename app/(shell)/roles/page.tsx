@@ -61,7 +61,7 @@ export default function RolesPage() {
         })}
         keyOf={(role) => role.id}
         emptyMessage="لا توجد أدوار متاحة"
-        renderItem={(role) => <Link href={`/roles/${role.id}`} className="list-card"><span><span className="block font-semibold text-[#1a1a1a]">{role.name}</span>{role.description ? <span className="mt-1 block text-sm text-[#71808d]">{role.description}</span> : <span className="mt-1 block text-sm text-[#71808d]">اضغط لتحديد المهام التي يستطيع هذا الدور تنفيذها.</span>}</span><span className="flex items-center gap-2"><span className={role.isActive ? "status-pill" : "status-pill status-pill-muted"}>{role.isActive ? "مفعّل" : "موقوف"}</span>{role.isSystem ? <span className="rounded-full bg-[#fff7e3] px-2 py-1 text-xs font-bold text-[#8a6515]">محمي</span> : null}</span></Link>}
+        renderItem={(role) => <Link href={`/roles/${role.id}`} />}
       />}
 
       <Dialog open={open} onOpenChange={setOpen} title="مستوى وصول جديد" description="اختر اسمًا واضحًا للفريق، ثم حدّد المهام المسموح بها في الخطوة التالية." size="sm">

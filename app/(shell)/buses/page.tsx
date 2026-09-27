@@ -103,7 +103,7 @@ export default function BusesPage() {
             </div>
           }
           emptyMessage="لا توجد عربيات مسجلة في الأساطيل."
-          renderItem={(bus) => <Link href={`/buses/${bus.id}?fleetId=${bus.fleetId}`} className="list-card"><span className="font-semibold"><span dir="ltr">{bus.registrationNumber}</span><span className="mt-1 block text-xs text-[#606060]">{bus.fleetName}</span></span><span className="text-sm text-[#606060]">فتح</span></Link>}
+          renderItem={(bus) => <Link href={`/buses/${bus.id}?fleetId=${bus.fleetId}`} />}
         />
       )}
       <CreateBusDialog open={createOpen} onClose={() => setCreateOpen(false)} />

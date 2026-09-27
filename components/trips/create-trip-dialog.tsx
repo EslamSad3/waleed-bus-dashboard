@@ -184,7 +184,7 @@ export function CreateTripDialog({
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-            <Button type="submit" variant="success" disabled={form.formState.isSubmitting}>
+            <Button type="submit" variant="success" loading={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الرحلة"}
             </Button>
           </div>

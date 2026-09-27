@@ -696,8 +696,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           loadMore={async () => ({ items: [], nextCursor: null })}
           keyOf={(log) => log.id}
           columnDefs={auditColumns}
+          withActions={false}
           emptyMessage="لا توجد عمليات تدقيق مسجلة حتى الآن."
-          renderItem={() => <span className="text-xs text-[#8b98a5]">سجل</span>}
         />
       </div>
 

@@ -105,7 +105,7 @@ export function CreateTripLineDialog({ open, onClose }: { open: boolean; onClose
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="submit" variant="success" disabled={saving || outbound.length < 2 || returnStops.length < 2}>{saving ? "جاري الحفظ…" : "إنشاء خط الرحلة"}</Button>
+          <Button type="submit" variant="success" loading={saving} disabled={outbound.length < 2 || returnStops.length < 2}>{saving ? "جاري الحفظ…" : "إنشاء خط الرحلة"}</Button>
         </div>
       </form>
     </Dialog>

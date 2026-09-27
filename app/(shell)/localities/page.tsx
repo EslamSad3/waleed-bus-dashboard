@@ -5,6 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,7 +42,6 @@ export default function LocalitiesPage() {
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Locality | null>(null);
-  const [saving, setSaving] = useState(false);
   const [dialogGovernorateId, setDialogGovernorateId] = useState("");
   const [dialogMarkazId, setDialogMarkazId] = useState("");
   const [type, setType] = useState<"CITY" | "VILLAGE">("CITY");
@@ -95,9 +95,7 @@ export default function LocalitiesPage() {
         setDialogError("أكمل الاسم بالعربي والإنجليزي.");
         return;
       }
-      setSaving(true);
       const result = await updateLocality(editing!.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
-      setSaving(false);
       if (!result.ok) return setDialogError(result.message);
       upsertInList(queryClient, qk.localitiesAll({}), result.data);
       closeDialog();
@@ -107,14 +105,12 @@ export default function LocalitiesPage() {
       setDialogError("أكمل المحافظة والمركز والاسم بالعربي والإنجليزي.");
       return;
     }
-    setSaving(true);
     const result = await createLocality({
       markazId: dialogMarkazId,
       type,
       nameAr: nameAr.trim(),
       nameEn: nameEn.trim(),
     });
-    setSaving(false);
     if (!result.ok) return setDialogError(result.message);
     upsertInList(queryClient, qk.localitiesAll({}), result.data);
     closeDialog();
@@ -194,7 +190,7 @@ export default function LocalitiesPage() {
           renderItem={(locality) => (
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(locality)}><Pencil className="size-4" /> تعديل</Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(locality)}>{locality.isActive ? "إيقاف" : "تفعيل"}</Button>
+              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(locality)}>{locality.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
             </div>
           )}
         />
@@ -237,7 +233,7 @@ export default function LocalitiesPage() {
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <Button type="button" variant="success" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
           </div>
         </div>
       </Dialog>

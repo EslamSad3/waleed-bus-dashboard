@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import { fetchOpsNotifications, type OpsNotification } from "@/lib/actions/notifications";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
@@ -74,7 +75,8 @@ export default function NotificationsOpsPage() {
   const rows: OpsNotification[] | null = notifPage?.items ?? null;
 
   function load() {
-    void queryClient.invalidateQueries({ queryKey: qk.notifications });
+    // إرجاع الـ promise عشان AsyncButton يعرض حالة التحميل ويمنع الضغط المزدوج
+    return queryClient.invalidateQueries({ queryKey: qk.notifications });
   }
 
   function handleReset() {
@@ -196,9 +198,9 @@ export default function NotificationsOpsPage() {
             <Send className="size-4" />
             <span>إرسال إشعار جديد</span>
           </Button>
-          <Button variant="secondary" onClick={() => void load()}>
+          <AsyncButton variant="secondary" onClick={load}>
             تحديث
-          </Button>
+          </AsyncButton>
         </div>
       </div>
 
@@ -260,9 +262,9 @@ export default function NotificationsOpsPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => void load()}>
+          <AsyncButton size="sm" onClick={load}>
             بحث
-          </Button>
+          </AsyncButton>
           {isFiltered && (
             <Button
               size="sm"
@@ -295,16 +297,12 @@ export default function NotificationsOpsPage() {
           keyOf={(notification) => notification.id}
           filter={filterPredicate}
           columnDefs={columns}
+          withActions={false}
           emptyMessage={
             isFiltered
               ? "لا توجد إشعارات مطابقة لمعايير البحث المحددة."
               : "لا توجد إشعارات مسجلة حتى الآن."
           }
-          renderItem={(notification) => (
-            <span className={notification.isRead ? "status-pill status-pill-muted" : "status-pill"}>
-              {notification.isRead ? "اتقريت" : "جديدة"}
-            </span>
-          )}
         />
       )}
 

@@ -7,6 +7,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import {
   createFleetOwner,
   fetchFleetOwnersPage,
@@ -171,6 +173,17 @@ export default function FleetOwnersPage() {
     !term || [owner.name, owner.nickname, owner.phoneNumber, ...owner.fleets.map((fleet) => fleet.name)]
       .some((value) => value?.toLocaleLowerCase("ar-EG").includes(term));
 
+  const columns: CommunityColumnDef<FleetOwnerAccount>[] = [
+    {
+      field: "name",
+      headerName: "الاسم",
+      filter: "agTextColumnFilter",
+      cellRenderer: (params: { data?: FleetOwnerAccount }) => params.data ? <span className="font-bold">{params.data.name ?? "بدون اسم"}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
+    },
+    { field: "phoneNumber", headerName: "الموبايل", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
+    { headerName: "الأسطول الأول", filter: false, valueGetter: (params) => params.data?.fleets?.[0]?.name ?? "بدون أسطول" },
+  ];
+
   return (
     <div className="dashboard-page">
       <div className="page-heading">
@@ -184,7 +197,8 @@ export default function FleetOwnersPage() {
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isLoading ? (
         <p className="text-sm text-[#606060]">جاري التحميل…</p>
       ) : (
-        <CursorList
+        <CursorList<FleetOwnerAccount>
+          gridId="fleet-owners"
           initialItems={page?.items ?? []}
           initialCursor={page?.nextCursor ?? null}
           loadMore={(cursor) => fetchFleetOwnersPage(cursor).then((result) => {
@@ -193,22 +207,17 @@ export default function FleetOwnersPage() {
           })}
           keyOf={(owner) => owner.id}
           filter={filter}
+          columnDefs={columns}
           filterBar={<Input aria-label="بحث في أصحاب العربيات" placeholder="الاسم، الموبايل أو الأسطول" value={query} onChange={(event) => setQuery(event.target.value)} className="max-w-sm bg-white" />}
           emptyMessage="لا يوجد أصحاب عربيات بعد"
           renderItem={(owner) => (
-            <div className="list-card">
-              <Link href={`/fleet-owners/${owner.id}`} className="min-w-0 flex-1">
-                <span className="block font-semibold">{owner.name}</span>
-                <span className="text-sm text-[#606060]" dir="ltr">{owner.phoneNumber}</span>
-              </Link>
-              <span className="text-right text-sm text-[#5e6b78] sm:text-left">
-                <span className="block font-medium text-[#1a1a1a]">{owner.fleets[0]?.name ?? "بدون أسطول"}</span>
-                <span className={owner.isActive ? "status-pill mt-1" : "status-pill status-pill-muted mt-1"}>
-                  {owner.isActive ? "نشط" : "موقوف"}
-                </span>
-              </span>
-              <Button type="button" size="sm" variant="secondary" onClick={() => setFleetOwnerForFleet(owner)}>إضافة أسطول</Button>
-            </div>
+            <RowActionsMenu
+              label={`إجراءات ${owner.name ?? owner.phoneNumber ?? ""}`}
+              actions={[
+                { label: "فتح التفاصيل", href: `/fleet-owners/${owner.id}` },
+                { label: "إضافة أسطول", onSelect: () => setFleetOwnerForFleet(owner) },
+              ]}
+            />
           )}
         />
       )}

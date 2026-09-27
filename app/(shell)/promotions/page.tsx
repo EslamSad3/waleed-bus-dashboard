@@ -5,6 +5,7 @@ import { Pencil, Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
+import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +29,6 @@ export default function PromotionsPage() {
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [usagesFor, setUsagesFor] = useState<Promotion | null>(null);
   const [usages, setUsages] = useState<PromotionUsage[] | null>(null);
-  const [saving, setSaving] = useState(false);
   const [code, setCode] = useState("");
   const [value, setValue] = useState("");
   const [audience, setAudience] = useState<"all" | "specific">("all");
@@ -81,7 +81,6 @@ export default function PromotionsPage() {
       setError("اختر مستخدمًا واحدًا على الأقل للكود المخصص.");
       return;
     }
-    setSaving(true);
     const result = editing
       ? await updatePromotion(editing.id, {
           value: numValue,
@@ -100,7 +99,6 @@ export default function PromotionsPage() {
           maxTotalUses: maxTotal ? Number(maxTotal) : undefined,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
         });
-    setSaving(false);
     if (!result.ok) return setError(result.message);
     upsertInList(queryClient, qk.promotions, result.data);
     setEditing(null);
@@ -189,8 +187,8 @@ export default function PromotionsPage() {
           renderItem={(promo) => (
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(promo)}><Pencil className="size-4" /> تعديل</Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void openUsages(promo)}>الاستخدام</Button>
-              {promo.isActive ? <Button type="button" size="sm" variant="secondary" onClick={() => void expire(promo)}>إيقاف</Button> : null}
+              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => openUsages(promo)}>الاستخدام</AsyncButton>
+              {promo.isActive ? <AsyncButton type="button" size="sm" variant="secondary" onClick={() => expire(promo)}>إيقاف</AsyncButton> : null}
             </div>
           )}
         />
@@ -238,7 +236,7 @@ export default function PromotionsPage() {
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">السقف الكلي (فارغ = بلا حد)</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تاريخ الانتهاء (فارغ = بلا انتهاء)</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>إلغاء</Button><Button type="button" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button></div>
+          <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>إلغاء</Button><AsyncButton type="button" onClick={save}>حفظ</AsyncButton></div>
         </div>
       </Dialog>
       <Dialog open={usagesFor !== null} onOpenChange={(open) => { if (!open) setUsagesFor(null); }} title={usagesFor ? `استخدام ${usagesFor.code}` : "الاستخدام"} description="كل صف = حجز استهلك الكود." size="sm">

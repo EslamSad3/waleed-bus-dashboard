@@ -138,7 +138,7 @@ export default function TripsPage() {
             </div>
           }
           emptyMessage="لا توجد رحلات مسجلة في الأساطيل."
-          renderItem={(trip) => <Link href={`/trips/${trip.id}`} className="list-card"><span className="font-semibold">{trip.origin} ← {trip.destination}<span className="mt-1 block text-xs text-[#606060]">{trip.fleetName} · {trip.busName} · {trip.driverName}</span></span><span className="text-sm text-[#606060]">فتح</span></Link>}
+          renderItem={(trip) => <Link href={`/trips/${trip.id}`} />}
         />
       )}
       <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />

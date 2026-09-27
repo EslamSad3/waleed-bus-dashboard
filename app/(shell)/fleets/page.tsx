@@ -172,31 +172,7 @@ export default function FleetsPage() {
             </div>
           }
           emptyMessage="لا توجد أساطيل بعد — ابدأ بإضافة جديد"
-          renderItem={(fleet) => (
-            <Link
-              href={`/fleets/${fleet.id}`}
-              className="list-card"
-            >
-              <span>
-                <span className="block font-semibold text-[#1a1a1a]">{fleet.name}</span>
-                <span className="mt-1 block text-xs text-[#606060]">المالك: {fleet.ownerName}</span>
-              </span>
-              <span className="flex flex-wrap items-center gap-3 text-sm text-[#5e6b78]">
-                <span
-                  className={
-                    fleet.isActive
-                      ? "status-pill"
-                      : "status-pill status-pill-muted"
-                  }
-                >
-                  {fleet.isActive ? "نشط" : "موقوف"}
-                </span>
-                <time dateTime={fleet.createdAt}>
-                  {new Date(fleet.createdAt).toLocaleDateString("en-EG")}
-                </time>
-              </span>
-            </Link>
-          )}
+          renderItem={(fleet) => <Link href={`/fleets/${fleet.id}`} />}
         />
       )}
       <CreateFleetDialog open={createOpen} onClose={() => setCreateOpen(false)} />

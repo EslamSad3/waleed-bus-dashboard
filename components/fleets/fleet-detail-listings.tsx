@@ -233,8 +233,8 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
             loadMore={async () => ({ items: [], nextCursor: null })}
             keyOf={(report) => report.id}
             columnDefs={reportColumns}
+            withActions={false}
             emptyMessage="لا توجد بلاغات ركاب لهذا الأسطول"
-            renderItem={() => <span className="text-xs text-[#8b98a5]">بلاغ</span>}
           />
         </div>}
       </ListingShell>

@@ -517,7 +517,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           </Button>
           <Button
             type="submit"
-            disabled={submitting}
+            loading={submitting}
             className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
           >
             <Send className="size-4" />

@@ -202,7 +202,7 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button type="submit" className="mt-2 w-full" size="lg" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="mt-2 w-full" size="lg" loading={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "جاري الدخول…" : "دخول"}
             </Button>
               </form>

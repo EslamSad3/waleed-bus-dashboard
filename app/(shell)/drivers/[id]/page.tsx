@@ -147,8 +147,8 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
             loadMore={async () => ({ items: [], nextCursor: null })}
             keyOf={(assignment) => assignment.id}
             columnDefs={assignmentColumns}
+            withActions={false}
             emptyMessage="لا توجد تعيينات مسجلة"
-            renderItem={() => <span className="text-xs text-[#8b98a5]">تعيين</span>}
           />
         </div>
       </div>

@@ -18,7 +18,6 @@ export default function VipTiersPage() {
   const { data: rows, isLoading, error } = useApiQuery<VipTier[]>(qk.vipTiers, () => fetchVipTiers(true));
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VipTier | null>(null);
-  const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [rank, setRank] = useState("1");
   const [dialogError, setDialogError] = useState<string | null>(null);
@@ -50,11 +49,9 @@ export default function VipTiersPage() {
       setDialogError("أدخل اسم المستوى والترتيب.");
       return;
     }
-    setSaving(true);
     const result = editing
       ? await updateVipTier(editing.id, { name: name.trim(), rank: Number(rank) })
       : await createVipTier({ name: name.trim(), rank: Number(rank) });
-    setSaving(false);
     if (!result.ok) return setDialogError(result.message);
     // Instant cache write → الجدول بيتحدث في نفس اللحظة.
     upsertInList(queryClient, qk.vipTiers, result.data);
@@ -103,7 +100,7 @@ export default function VipTiersPage() {
           renderItem={(tier) => (
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => openEdit(tier)}><Pencil className="size-4" /> تعديل</Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void toggleActive(tier)}>{tier.isActive ? "إيقاف" : "تفعيل"}</Button>
+              <AsyncButton type="button" size="sm" variant="secondary" onClick={() => toggleActive(tier)}>{tier.isActive ? "إيقاف" : "تفعيل"}</AsyncButton>
             </div>
           )}
         />
@@ -115,7 +112,7 @@ export default function VipTiersPage() {
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
             <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <Button type="button" variant="success" onClick={() => void save()} disabled={saving}>{saving ? "جاري الحفظ…" : "حفظ"}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
           </div>
         </div>
       </Dialog>
