@@ -105,12 +105,17 @@ export function CursorList<T>({
     ...(withActions
       ? [
           {
+            colId: "actions",
             headerName: t("cursorList.actionsColumn"),
-            pinned: "right" as const,
+            // The grid runs with `enableRtl`, and AG Grid mirrors pinned sides
+            // for RTL rows (they get `flex-direction: row-reverse` and the
+            // scrolling section takes order:1), so this renders on the visual
+            // left edge of the table.
+            pinned: "left" as const,
             sortable: false,
             filter: false,
             exportable: false,
-            minWidth: 220,
+            minWidth: 420,
             cellRenderer: (params: ICellRendererParams<T>) => {
               if (!params.data) return null;
               const rendered = renderItem?.(params.data, visible.indexOf(params.data));

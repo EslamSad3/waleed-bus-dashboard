@@ -35,7 +35,7 @@ async function fetchCountPage(path: string): Promise<number> {
 /** عدّاد لكل أسطول من مصدر معين (عربيات/رحلات) */
 async function countPerFleet(fleets: FleetLite[], resource: "buses" | "trips") {
   return mapWithConcurrency(fleets.slice(0, 12), 4, async (fleet) => {
-    const result = await apiGet<CursorPage<unknown>>(`/api/fleets/${fleet.id}/${resource}?limit=100`);
+    const result = await apiGet<CursorPage<unknown>>(`/api/fleet-owners/fleets/${fleet.id}/${resource}?limit=100`);
     return { name: fleet.name, count: result.ok ? result.data.items.length : 0 };
   });
 }
@@ -72,7 +72,7 @@ function KpiCard({ label, value, href, icon: Icon, tint }: Kpi) {
 /** كروت مؤشرات (كل كارت لينك لصفحته) + رسوم ApexCharts ثلاثية الإحساس. */
 export function OverviewInsights() {
   const fleetsQuery = useDataQuery<FleetLite[]>(["fleets", "kpi"], async () => {
-    const result = await apiGet<CursorPage<FleetLite>>("/api/fleets?limit=100");
+    const result = await apiGet<CursorPage<FleetLite>>("/api/fleet-owners/fleets?limit=100");
     if (!result.ok) throw new Error(result.message);
     return result.data.items;
   });
@@ -109,7 +109,7 @@ export function OverviewInsights() {
     {
       label: t("home.insights.activeFleets"),
       value: fleetsQuery.isLoading ? loadingText : `${activeFleets} / ${fleets.length}`,
-      href: "/fleets",
+      href: "/fleet-owners",
       icon: Building2,
       tint: "bg-[#f0edff] text-[#5d4ca8]",
     },

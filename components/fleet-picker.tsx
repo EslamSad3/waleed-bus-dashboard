@@ -24,7 +24,7 @@ export function FleetPicker({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    apiGet<{ items: FleetOption[] }>("/api/fleets?limit=100").then((r) => {
+    apiGet<{ items: FleetOption[] }>("/api/fleet-owners/fleets?limit=100").then((r) => {
       if (r.ok) setFleets(r.data.items);
       setLoaded(true);
     });

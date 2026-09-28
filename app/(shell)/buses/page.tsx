@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
@@ -117,12 +118,12 @@ export default function BusesPage() {
           }
           emptyMessage={t("buses.empty")}
           renderItem={(bus) => (
-            <RowActionsMenu
+            <RowActions
               label={t("buses.list.rowActions", { value: bus.plateNumber || bus.registrationNumber })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/buses/${bus.id}?fleetId=${bus.fleetId}` },
-                { label: t("common.actions.edit"), onSelect: () => setBusForEdit(bus) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBus(bus) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?fleetId=${bus.fleetId}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBus(bus) },
               ]}
             />
           )}

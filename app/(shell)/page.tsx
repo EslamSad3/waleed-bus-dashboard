@@ -18,8 +18,8 @@ const MODULES = [
     href: "/fleet-owners",
     title: t("common.nav.fleetOwners"),
     description: t("home.modules.fleetOwners.description"),
-    action: t("common.actions.addOwner"),
-    icon: UserRoundCog,
+    action: t("fleetOwners.newOwner"),
+    icon: Building2,
     tint: "bg-[#eaf6ff] text-[#059ff8]",
   },
   {
@@ -37,14 +37,6 @@ const MODULES = [
     action: t("common.actions.addBus"),
     icon: BusFront,
     tint: "bg-[#e9f7f0] text-[#147353]",
-  },
-  {
-    href: "/fleets",
-    title: t("common.nav.fleets"),
-    description: t("home.modules.fleets.description"),
-    action: t("common.actions.addFleet"),
-    icon: Building2,
-    tint: "bg-[#f0edff] text-[#5d4ca8]",
   },
 ] as const;
 

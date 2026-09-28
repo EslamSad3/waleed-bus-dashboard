@@ -49,13 +49,13 @@ export type SystemDriverRow = DriverRow & {
 
 export function fetchMembersPage(fleetId: string, cursor: string | null): Promise<ActionResult<MemberPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<MemberPage>(`/api/fleets/${fleetId}/members${q}`);
+  return apiGet<MemberPage>(`/api/fleet-owners/fleets/${fleetId}/members${q}`);
 }
 
 export function addMember(fleetId: string, input: AddMemberInput): Promise<ActionResult<Member>> {
   return notifyResult(
     t("members.toast.added"),
-    apiSend<Member>(`/api/fleets/${fleetId}/members`, "POST", input, "MEMBER_EXISTS"),
+    apiSend<Member>(`/api/fleet-owners/fleets/${fleetId}/members`, "POST", input, "MEMBER_EXISTS"),
   );
 }
 
@@ -68,14 +68,14 @@ export function updateMember(fleetId: string, memberId: string, input: { roleSlu
         : input.status === "REVOKED"
           ? t("members.toast.revoked")
           : t("members.toast.saved"),
-    apiSend<Member>(`/api/fleets/${fleetId}/members/${memberId}`, "PATCH", input),
+    apiSend<Member>(`/api/fleet-owners/fleets/${fleetId}/members/${memberId}`, "PATCH", input),
   );
 }
 
 export function removeMember(fleetId: string, memberId: string): Promise<ActionResult<null>> {
   return notifyResult(
     t("members.toast.removed"),
-    apiSend<null>(`/api/fleets/${fleetId}/members/${memberId}`, "DELETE"),
+    apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/members/${memberId}`, "DELETE"),
   );
 }
 

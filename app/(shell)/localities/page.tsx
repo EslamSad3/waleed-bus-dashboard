@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import {
@@ -201,12 +201,12 @@ export default function LocalitiesPage() {
           columnDefs={columns}
           emptyMessage={t("localities.empty")}
           renderItem={(locality) => (
-            <RowActionsMenu
+            <RowActions
               label={t("localities.list.rowActions", { localityNameAr: locality.nameAr })}
               actions={[
-                { label: t("common.actions.edit"), onSelect: () => openEdit(locality) },
-                { label: locality.isActive ? t("common.actions.disable") : t("common.actions.enable"), onSelect: () => void toggleActive(locality) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeLocality(locality) },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => openEdit(locality) },
+                { label: locality.isActive ? t("common.actions.disable") : t("common.actions.enable"), icon: locality.isActive ? Ban : CheckCircle2, tone: locality.isActive ? "warning" : "success", onSelect: () => void toggleActive(locality) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeLocality(locality) },
               ]}
             />
           )}

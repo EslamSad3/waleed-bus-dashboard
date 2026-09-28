@@ -20,8 +20,7 @@ import { t } from "@/lib/i18n/t";
 
 const NAV = [
   { href: "/", label: t("common.nav.overview"), icon: LayoutDashboard },
-  { href: "/fleet-owners", label: t("common.nav.fleetOwners"), icon: UserRoundCog },
-  { href: "/fleets", label: t("common.nav.fleets"), icon: Building2 },
+  { href: "/fleet-owners", label: t("common.nav.fleetOwners"), icon: Building2 },
   { href: "/drivers", label: t("common.nav.drivers"), icon: Users },
   { href: "/buses", label: t("common.nav.buses"), icon: Bus },
   { href: "/brands", label: t("common.nav.brands"), icon: Bus },

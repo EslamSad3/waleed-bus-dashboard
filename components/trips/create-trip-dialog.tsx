@@ -52,7 +52,7 @@ export function CreateTripDialog({
 
   useEffect(() => {
     if (!open || !fleetId) return;
-    apiGet<{ items: BusOpt[] }>(`/api/fleets/${fleetId}/buses?limit=100`).then((r) => {
+    apiGet<{ items: BusOpt[] }>(`/api/fleet-owners/fleets/${fleetId}/buses?limit=100`).then((r) => {
       if (r.ok) setBuses(r.data.items);
     });
   }, [open, fleetId]);
@@ -146,7 +146,7 @@ export function CreateTripDialog({
 
   const { data: fleetsPage } = useApiQuery<CursorPage<{ id: string; name: string }>>(
     ["fleets", "options"],
-    () => apiGet<CursorPage<{ id: string; name: string }>>("/api/fleets?limit=100"),
+    () => apiGet<CursorPage<{ id: string; name: string }>>("/api/fleet-owners/fleets?limit=100"),
     { enabled: open },
   );
   const fleetLabel = (fleetsPage?.items ?? []).find((fleet) => fleet.id === fleetId)?.name ?? "—";

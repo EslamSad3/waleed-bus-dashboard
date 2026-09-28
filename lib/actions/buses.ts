@@ -34,24 +34,24 @@ export type TripRef = { id: string; origin: string; destination: string; departA
 
 export function fetchBusesPage(fleetId: string, cursor: string | null): Promise<ActionResult<BusPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<BusPage>(`/api/fleets/${fleetId}/buses${q}`);
+  return apiGet<BusPage>(`/api/fleet-owners/fleets/${fleetId}/buses${q}`);
 }
 
 export function fetchBus(fleetId: string, id: string): Promise<ActionResult<Bus>> {
-  return apiGet<Bus>(`/api/fleets/${fleetId}/buses/${id}`);
+  return apiGet<Bus>(`/api/fleet-owners/fleets/${fleetId}/buses/${id}`);
 }
 
 export function createBus(fleetId: string, input: CreateBusInput): Promise<ActionResult<Bus>> {
   return notifyResult(
     t("buses.toast.created"),
-    apiSend<Bus>(`/api/fleets/${fleetId}/buses`, "POST", input, "REGISTRATION_TAKEN"),
+    apiSend<Bus>(`/api/fleet-owners/fleets/${fleetId}/buses`, "POST", input, "REGISTRATION_TAKEN"),
   );
 }
 
 export function updateBus(fleetId: string, id: string, input: { plateNumber?: string; color?: string; imageUrl?: string; brandId?: string | null; isAirConditioned?: boolean; modelYear?: number; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
   return notifyResult(
     t("buses.toast.saved"),
-    apiSend<Bus>(`/api/fleets/${fleetId}/buses/${id}`, "PATCH", input, "REGISTRATION_TAKEN"),
+    apiSend<Bus>(`/api/fleet-owners/fleets/${fleetId}/buses/${id}`, "PATCH", input, "REGISTRATION_TAKEN"),
   );
 }
 
@@ -76,7 +76,7 @@ export function discardBusImage(fleetId: string, staged: StagedUpload): Promise<
 export function uploadBusImage(fleetId: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(
     t("buses.toast.imageUploaded"),
-    apiSendFile<{ url: string }>(`/api/fleets/${fleetId}/uploads/bus-image`, file),
+    apiSendFile<{ url: string }>(`/api/fleet-owners/fleets/${fleetId}/uploads/bus-image`, file),
     opts,
   );
 }
@@ -95,7 +95,7 @@ export const deleteBrand = (id: string) =>
   notifyResult(t("brands.toast.deleted"), apiSend<null>(`/api/brands/${id}`, "DELETE"));
 
 export function deleteBus(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult(t("buses.toast.deleted"), apiSend<null>(`/api/fleets/${fleetId}/buses/${id}`, "DELETE"));
+  return notifyResult(t("buses.toast.deleted"), apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/buses/${id}`, "DELETE"));
 }
 
 /** Tenant lifecycle actions (research R1) — fleetId sent as x-fleet-id. */

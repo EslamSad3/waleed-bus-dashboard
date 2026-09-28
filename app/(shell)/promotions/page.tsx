@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Ban, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   createPromotion,
@@ -23,7 +23,7 @@ import {
   type PromotionUsage,
 } from "@/lib/actions/promotions";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
-import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
 export default function PromotionsPage() {
@@ -108,7 +108,7 @@ export default function PromotionsPage() {
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
         });
     if (!result.ok) return setError(result.message);
-    upsertInList(queryClient, qk.promotions, result.data);
+    upsertInCursorList(queryClient, qk.promotions, result.data);
     setEditing(null);
     setCreating(false);
     setError(null);
@@ -117,14 +117,14 @@ export default function PromotionsPage() {
   async function expire(promo: Promotion) {
     const result = await expirePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    upsertInList(queryClient, qk.promotions, result.data);
+    upsertInCursorList(queryClient, qk.promotions, result.data);
   }
 
   async function removePromo(promo: Promotion) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("promotions.deleteConfirm.description", { promoCode: promo.code }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deletePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    removeFromList<Promotion>(queryClient, qk.promotions, promo.id);
+    removeFromCursorList<Promotion>(queryClient, qk.promotions, promo.id);
   }
 
   async function openUsages(promo: Promotion) {
@@ -178,28 +178,9 @@ export default function PromotionsPage() {
     {
       field: "maxTotalUses",
       headerName: t("promotions.columns.maxTotalUses"),
-      cellRenderer: (params: { data?: Promotion }) => <span>{params.data?.maxTotalUses ?? "∞"}</span>,
+      cellRenderer: (params: { data?: Promotion }) => <span>{params.data?.maxTotalUses ?? t("common.value.unlimited")}</span>,
     },
-    // Shared actions column shape — three-dots menu like every other table.
-    {
-      headerName: t("promotions.columns.actions"),
-      pinned: "right" as const,
-      sortable: false,
-      filter: false,
-      exportable: false,
-      cellRenderer: (params: { data?: Promotion }) => params.data ? (
-        <RowActionsMenu
-          label={t("promotions.list.rowActions", { value: params.data.code })}
-          actions={[
-            { label: t("common.actions.edit"), onSelect: () => openEdit(params.data!) },
-            { label: t("promotions.actions.usages"), onSelect: () => void openUsages(params.data!) },
-            ...(params.data.isActive ? [{ label: t("common.actions.disable"), onSelect: () => void expire(params.data!) }] : []),
-            { label: t("common.actions.delete"), danger: true, onSelect: () => void removePromo(params.data!) },
-          ]}
-        />
-      ) : null,
-    },
-];
+  ];
 
   return (
     <div className="dashboard-page">
@@ -215,13 +196,23 @@ export default function PromotionsPage() {
       {isLoading ? <TableSkeleton rows={8} columns={6} /> : (
         <CursorList<Promotion>
           gridId="promotions"
-          withActions={false}
           initialItems={rows ?? []}
           initialCursor={null}
           loadMore={async () => ({ items: [], nextCursor: null })}
           keyOf={(promo) => promo.id}
           columnDefs={columns}
           emptyMessage={t("promotions.empty")}
+          renderItem={(promo) => (
+            <RowActions
+              label={t("promotions.list.rowActions", { value: promo.code })}
+              actions={[
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => openEdit(promo) },
+                { label: t("promotions.actions.usages"), icon: Ticket, onSelect: () => void openUsages(promo) },
+                ...(promo.isActive ? [{ label: t("common.actions.disable"), icon: Ban, tone: "warning" as const, onSelect: () => void expire(promo) }] : []),
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger" as const, onSelect: () => void removePromo(promo) },
+              ]}
+            />
+          )}
         />
       )}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? t("promotions.dialog.editTitle", { editingCode: editing.code }) : t("promotions.dialog.createTitle")} description={editing ? t("promotions.dialog.immutableHint") : t("promotions.dialog.codeHint")} size="sm">
@@ -271,7 +262,7 @@ export default function PromotionsPage() {
             </div>
           ) : null}
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxPerUser")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxPerUser} onChange={(event) => setMaxPerUser(event.target.value)} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxTotal")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxTotal")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /><span className="mt-1 block text-xs text-slate-500">{t("promotions.dialog.maxTotalHint")}</span></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.expiresAt")}</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>{t("common.actions.cancel")}</Button><AsyncButton type="button" onClick={save}>{t("common.actions.save")}</AsyncButton></div>

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Eye, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useQueryClient } from "@/lib/queries";
 import { deleteTripLine, fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
@@ -56,11 +56,11 @@ export default function TripLinesPage() {
           columnDefs={columns}
           emptyMessage={t("tripLines.empty")}
           renderItem={(line) => (
-            <RowActionsMenu
+            <RowActions
               label={t("tripLines.list.rowActions", { lineName: line.name })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/trip-lines/${line.id}` },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeLine(line) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/trip-lines/${line.id}` },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeLine(line) },
               ]}
             />
           )}
