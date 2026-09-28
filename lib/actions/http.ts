@@ -120,7 +120,7 @@ export async function apiStageImage(
     return { ok: false, message: invalid, code };
   }
   const signPath =
-    "fleetId" in scope ? `/api/fleets/${scope.fleetId}/uploads/sign` : "/api/uploads/sign";
+    "fleetId" in scope ? `/api/fleet-owners/fleets/${scope.fleetId}/uploads/sign` : "/api/uploads/sign";
   // scopeId namespaces the staged path; create-flows omit it (server scopes
   // to the actor) since the target record does not exist yet.
   const signBody =
@@ -160,7 +160,7 @@ export async function apiDiscardStaged(
   scope?: { fleetId: string },
 ): Promise<void> {
   try {
-    const path = scope ? `/api/fleets/${scope.fleetId}/uploads/staged-delete` : "/api/uploads/staged";
+    const path = scope ? `/api/fleet-owners/fleets/${scope.fleetId}/uploads/staged-delete` : "/api/uploads/staged";
     await apiSend(path, scope ? "POST" : "DELETE", { bucket: staged.bucket, path: staged.path });
   } catch {
     // Staged tmp/... objects without a linked record are harmless.

@@ -44,9 +44,6 @@
       "fleetOwner": "صاحب العربيات",
       "nationalId": "الرقم القومي",
       "fleets": "الشركات",
-      "firstFleet": "الشركة الأولى",
-      "owner": "المالك",
-      "updatedAt": "آخر تحديث",
       "type": "النوع",
       "markaz": "المركز",
       "governorate": "المحافظة",
@@ -70,7 +67,6 @@
       "all": "الكل",
       "withoutName": "بدون اسم",
       "noFleet": "بدون شركة",
-      "unknown": "غير معروف",
       "optional": "(اختياري)",
       "unassigned": "غير معيّن",
       "ownerWithoutName": "صاحب شركة بدون اسم"
@@ -95,10 +91,8 @@
       "add": "إضافة",
       "search": "بحث",
       "resetFiltersShort": "إعادة ضبط",
-      "addOwner": "إضافة مالك",
       "addDriver": "إضافة سواق",
       "addBus": "إضافة عربية",
-      "addFleet": "إضافة شركة",
       "viewAll": "عرض الكل",
       "confirmAction": "تأكيد الإجراء",
       "confirm": "تأكيد",
@@ -146,7 +140,6 @@
       "signingOut": "جاري الخروج…"
     },
     "tab": {
-      "overview": "نظرة عامة",
       "buses": "العربيات",
       "members": "الأعضاء",
       "trips": "الرحلات",
@@ -162,7 +155,6 @@
       "fleetOwners": "أصحاب العربيات",
       "drivers": "السواقين",
       "buses": "العربيات",
-      "fleets": "الشركات",
       "trips": "الرحلات",
       "bookings": "الحجوزات",
       "tripLines": "خطوط الرحلات",
@@ -185,6 +177,9 @@
     },
     "confirm": {
       "revokeSessions": "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟"
+    },
+    "separator": {
+      "list": "، "
     }
   },
   "auth": {
@@ -796,7 +791,13 @@
         "title": "تعديل صاحب العربية",
         "description": "حدّث بيانات الحساب وحالته. إيقاف الحساب يقفل جلساته الحالية.",
         "activeAccountShort": "الحساب نشط"
-      }
+      },
+      "tabs": {
+        "account": "بيانات الحساب",
+        "fleets": "الشركات"
+      },
+      "tabsAria": "تبويبات صاحب الشركة",
+      "noFleets": "مالوش أي شركة لسه — ابدأ بإضافة شركة"
     },
     "editDialog": {
       "imageLabel": "صورة المالك (اختياري)",
@@ -855,109 +856,75 @@
       "two": "شركتين",
       "few": "{count} شركات",
       "many": "{count} شركة"
-    }
-  },
-  "fleets": {
-    "detail": {
-      "errors": {
-        "pickOwner": "اختار صاحب العربية الأول."
-      },
-      "addOwnerDialog": {
-        "title": "إضافة صاحب عربية للشركة",
-        "description": "اختار المالك من القايمة — هيتضاف كعضو بدور fleet-owner. اللي متضاف بالفعل مش بيظهر في القايمة.",
-        "pickOwner": "اختار صاحب العربية",
-        "pickOwnerOption": "اختار صاحب العربية…",
-        "noOwners": "مفيش أصحاب عربيات متاحين",
-        "allAdded": "كل أصحاب العربيات متضافين بالفعل للشركة ده."
-      },
-      "fields": {
-        "fleetOwnerInline": "صاحب العربية"
+    },
+    "fleets": {
+      "detail": {
+        "errors": {
+          "pickOwner": "اختار صاحب العربية الأول."
+        },
+        "addOwnerDialog": {
+          "title": "إضافة صاحب عربية للشركة",
+          "description": "اختار المالك من القايمة — هيتضاف كعضو بدور fleet-owner. اللي متضاف بالفعل مش بيظهر في القايمة.",
+          "pickOwner": "اختار صاحب العربية",
+          "pickOwnerOption": "اختار صاحب العربية…",
+          "noOwners": "مفيش أصحاب عربيات متاحين",
+          "allAdded": "كل أصحاب العربيات متضافين بالفعل للشركة ده."
+        },
+        "fields": {
+          "fleetOwnerInline": "صاحب العربية"
+        },
+        "toast": {
+          "vipSaved": "اتحفظ مستوى VIP بنجاح"
+        },
+        "deleteConfirm": {
+          "description": "الإجراء ده مينفعش يتراجع — تمسح الشركة؟"
+        },
+        "deleteFleet": "مسح الشركة",
+        "tabsAria": "تبويبات الشركة",
+        "addOwner": "إضافة صاحب عربية",
+        "vipTier": "مستوى VIP",
+        "noVipTier": "بدون مستوى",
+        "vipTierAria": "مستوى VIP",
+        "noVipTierOption": "بدون مستوى…",
+        "vipTierInactiveSuffix": "(موقوف)",
+        "editDialog": {
+          "title": "تعديل الشركة",
+          "description": "حدّث الاسم أو حالة تشغيل الشركة."
+        },
+        "activeFleetLabel": "الشركة نشطة",
+        "tabs": {
+          "busesTitle": "عربيات الشركة",
+          "busesEmpty": "لا توجد عربيات مسجلة في هذه الشركة",
+          "busRowActions": "إجراءات عربية {busRegistrationNumber}",
+          "tripDeleteConfirm": "تمسح الرحلة «{tripOrigin} → {tripDestination}»؟ لو عليها حجوزات هتترفض العملية.",
+          "tripsSchedule": "الميعاد",
+          "tripsTitle": "رحلات الشركة",
+          "addTrip": "إضافة رحلة",
+          "tripsEmpty": "لا توجد رحلات مسجلة في هذه الشركة",
+          "tripRowActions": "إجراءات الرحلة",
+          "bookingDeleteConfirm": "تمسح حجز «{bookingPassengerName}»؟ الإجراء ده مينفعش يتراجع.",
+          "paymentColumn": "الدفع",
+          "bookingsTitle": "حجوزات الشركة",
+          "addBooking": "إضافة حجز",
+          "bookingsEmpty": "لا توجد حجوزات مسجلة في هذه الشركة",
+          "bookingRowActions": "إجراءات الحجز",
+          "reportNote": "ملاحظة البلاغ",
+          "reportsTitle": "تقارير ومراجعات الشركة",
+          "avgBusRating": "متوسط تقييم العربية",
+          "avgDriverRating": "متوسط تقييم السائق",
+          "ratedBookings": "الحجوزات المُقيّمة",
+          "reportsEmpty": "لا توجد بلاغات ركاب لهذه الشركة"
+        }
       },
       "toast": {
-        "vipSaved": "اتحفظ مستوى VIP بنجاح"
-      },
-      "deleteConfirm": {
-        "description": "الإجراء ده مينفعش يتراجع — تمسح الشركة؟"
-      },
-      "description": "إدارة العربيات والرحلات والحجوزات والتشغيل المرتبط بالشركة.",
-      "deleteFleet": "مسح الشركة",
-      "tabsAria": "تبويبات الشركة",
-      "addOwner": "إضافة صاحب عربية",
-      "vipTier": "مستوى VIP",
-      "noVipTier": "بدون مستوى",
-      "vipTierAria": "مستوى VIP",
-      "noVipTierOption": "بدون مستوى…",
-      "vipTierInactiveSuffix": "(موقوف)",
-      "editDialog": {
-        "title": "تعديل الشركة",
-        "description": "حدّث الاسم أو حالة تشغيل الشركة."
-      },
-      "activeFleetLabel": "الشركة نشطة",
-      "tabs": {
-        "busesTitle": "عربيات الشركة",
-        "busesEmpty": "لا توجد عربيات مسجلة في هذه الشركة",
-        "busRowActions": "إجراءات عربية {busRegistrationNumber}",
-        "tripDeleteConfirm": "تمسح الرحلة «{tripOrigin} → {tripDestination}»؟ لو عليها حجوزات هتترفض العملية.",
-        "tripsSchedule": "الميعاد",
-        "tripsTitle": "رحلات الشركة",
-        "addTrip": "إضافة رحلة",
-        "tripsEmpty": "لا توجد رحلات مسجلة في هذه الشركة",
-        "tripRowActions": "إجراءات الرحلة",
-        "bookingDeleteConfirm": "تمسح حجز «{bookingPassengerName}»؟ الإجراء ده مينفعش يتراجع.",
-        "paymentColumn": "الدفع",
-        "bookingsTitle": "حجوزات الشركة",
-        "addBooking": "إضافة حجز",
-        "bookingsEmpty": "لا توجد حجوزات مسجلة في هذه الشركة",
-        "bookingRowActions": "إجراءات الحجز",
-        "reportNote": "ملاحظة البلاغ",
-        "reportsTitle": "تقارير ومراجعات الشركة",
-        "avgBusRating": "متوسط تقييم العربية",
-        "avgDriverRating": "متوسط تقييم السائق",
-        "ratedBookings": "الحجوزات المُقيّمة",
-        "reportsEmpty": "لا توجد بلاغات ركاب لهذه الشركة"
+        "created": "اتضاف الشركة بنجاح",
+        "saved": "اتحفظت بيانات الشركة",
+        "activated": "تم تنشيط الشركة",
+        "deactivated": "تم إيقاف الشركة",
+        "deleted": "اتمسح الشركة",
+        "vipUpdated": "تم تحديث مستوى VIP للشركة",
+        "vipCleared": "تم إلغاء مستوى VIP للشركة"
       }
-    },
-    "errors": {
-      "nameAndOwner": "أكمل اسم الشركة واختار المالك.",
-      "nameRequired": "اكتب اسم الشركة."
-    },
-    "createDialog": {
-      "title": "شركة جديدة",
-      "description": "أضف شركة جديدة واربطها بالمالك المسؤول.",
-      "pickOwner": "اختار المالك",
-      "pickOwnerOption": "اختار المالك",
-      "submit": "إضافة الشركة"
-    },
-    "placeholders": {
-      "cairo": "شركة القاهرة"
-    },
-    "editDialog": {
-      "title": "تعديل شركة",
-      "description": "بتعدّل بيانات «{fleetName}».",
-      "activeLabel": "الشركة نشطة وبتشغّل عربيات"
-    },
-    "list": {
-      "deleteConfirm": {
-        "description": "الإجراء ده مينفعش يتراجع — تمسح شركة «{fleetName}»؟ امسح عربياته ورحلاته الأول لو لسه فيها بيانات."
-      },
-      "rowActions": "إجراءات شركة {fleetName}"
-    },
-    "title": "الشركات",
-    "description": "كل الشركات المسجلة وحالة تشغيل كل شركة.",
-    "newFleet": "شركة جديدة",
-    "filters": {
-      "searchAria": "دور باسم الشركة أو المالك",
-      "searchPlaceholder": "دور باسم الشركة أو المالك"
-    },
-    "empty": "لا توجد شركات بعد — ابدأ بإضافة شركة",
-    "toast": {
-      "created": "اتضاف الشركة بنجاح",
-      "saved": "اتحفظت بيانات الشركة",
-      "activated": "تم تنشيط الشركة",
-      "deactivated": "تم إيقاف الشركة",
-      "deleted": "اتمسح الشركة",
-      "vipUpdated": "تم تحديث مستوى VIP للشركة",
-      "vipCleared": "تم إلغاء مستوى VIP للشركة"
     }
   },
   "localities": {
@@ -1119,9 +1086,6 @@
       },
       "buses": {
         "description": "أضف العربيات وغيّر حالتها وعيّن السواق المناسب."
-      },
-      "fleets": {
-        "description": "راجع كل الشركات وبياناتها وأعضائها وتشغيلها."
       }
     },
     "operations": {
@@ -1690,11 +1654,6 @@
     "pickFleetAria": "الشركة",
     "pickFleetOption": "اختار الشركة",
     "hint": "سيُنشأ حساب السائق داخل شركة المالك ده فقط. تعيين العربية يتم لاحقًا من صفحة العربية."
-  },
-  "fleetScope": {
-    "activeFleet": "الشركة النشط",
-    "activeFleetAria": "الشركة النشط",
-    "pickFleetOption": "-- اختار الشركة --"
   },
   "members": {
     "errors": {

@@ -254,7 +254,7 @@ function AddFleetToOwnerDialog({ open, owner, onClose }: { open: boolean; owner:
       return;
     }
     setSaving(true);
-    const result = await createFleet({ name: fleetName.trim(), ownerId: owner.id, ownerRoleSlug: "fleet-owner" });
+    const result = await createFleet({ name: fleetName.trim(), ownerId: owner.id, ownerRoleSlug: "fleet_owner" });
     setSaving(false);
     if (!result.ok) {
       setError(result.message);
@@ -319,7 +319,25 @@ export default function FleetOwnersPage() {
       cellRenderer: (params: { data?: FleetOwnerAccount }) => params.data ? <span className="font-bold">{params.data.name ?? t("common.value.withoutName")}<span className={params.data.isActive ? "ms-2 status-pill" : "ms-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
     },
     { field: "phoneNumber", headerName: t("common.fields.phone"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
-    { headerName: t("common.fields.firstFleet"), filter: false, valueGetter: (params) => params.data?.fleets?.[0]?.name ?? t("common.value.noFleet") },
+    {
+      // The owner's companies are the reason this screen exists (spec 014): the fleet
+      // list used to be a separate page that only showed `ownerId`, so the operator had
+      // to cross-reference two screens to know who owned what.
+      headerName: t("common.fields.fleets"),
+      filter: false,
+      valueGetter: (params) => (params.data?.fleets ?? []).map((fleet) => fleet.name).join(t("common.separator.list")),
+      cellRenderer: (params: { data?: FleetOwnerAccount }) => {
+        const fleets = params.data?.fleets ?? [];
+        if (fleets.length === 0) return <span className="text-[#8a97a3]">{t("common.value.noFleet")}</span>;
+        const names = fleets.map((fleet) => fleet.name).join(t("common.separator.list"));
+        return (
+          <span className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-[#059ff8]">{fleetCountLabel(fleets.length)}</span>
+            <span className="truncate text-sm" title={names}>{names}</span>
+          </span>
+        );
+      },
+    },
   ];
 
   return (

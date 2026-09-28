@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
+import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/vip-tiers";
 import { rankOrdinalAr } from "@/lib/ordinals";
 import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";

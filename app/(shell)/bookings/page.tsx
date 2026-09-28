@@ -51,7 +51,7 @@ export default function BookingsPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
-    apiGet<{ items: FleetOption[] }>("/api/fleets?limit=100").then((result) => {
+    apiGet<{ items: FleetOption[] }>("/api/fleet-owners/fleets?limit=100").then((result) => {
       if (result.ok) setFleets(result.data.items);
     });
   }, []);

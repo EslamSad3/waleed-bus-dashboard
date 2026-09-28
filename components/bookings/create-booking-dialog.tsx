@@ -43,7 +43,7 @@ export function CreateBookingDialog({
 
   const { data: tripsPage, isLoading: tripsLoading } = useApiQuery<CursorPage<TripOpt>>(
     ["booking-dialog-trips", fleetId],
-    () => apiGet<CursorPage<TripOpt>>(`/api/fleets/${fleetId}/trips?limit=100`),
+    () => apiGet<CursorPage<TripOpt>>(`/api/fleet-owners/fleets/${fleetId}/trips?limit=100`),
     { enabled: open && Boolean(fleetId) },
   );
   const trips = tripsPage?.items ?? [];

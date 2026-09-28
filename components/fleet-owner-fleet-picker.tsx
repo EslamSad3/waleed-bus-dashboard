@@ -27,7 +27,7 @@ export function FleetOwnerFleetPicker({
 
   useEffect(() => {
     Promise.all([
-      apiGet<{ items: Fleet[] }>("/api/fleets?limit=100"),
+      apiGet<{ items: Fleet[] }>("/api/fleet-owners/fleets?limit=100"),
       fetchUserOptions(),
     ]).then(([fleetsResult, usersResult]) => {
       if (!fleetsResult.ok) {
