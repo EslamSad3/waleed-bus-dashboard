@@ -55,9 +55,11 @@ This file defines the high-signal constraints, architecture patterns, and operat
 ## 3. High-Signal Rules
 
 ### 3.1 Architecture Pattern
-**Platform-first routing**: All fleet CRUD under `/fleets/{fleetId}/buses|trips|bookings`. Tenant lifecycle actions (`disable/reactivate`, `assign driver`) require tenant path + `x-fleet-id` header only.
+**Platform-first routing**: All fleet CRUD under `/fleet-owners/fleets/{fleetId}/buses|trips|bookings|members` (spec 014 moved the whole fleet surface under the fleet-owner namespace; the `fleetId` param must keep that name — the API's `TenantContextGuard` resolves the tenant from it). Tenant lifecycle actions (`disable/reactivate`, `assign driver`) require tenant path + `x-fleet-id` header only.
 
-**Proxy contract**: Browser calls same-origin `/api/*` with session cookie → proxy attaches JWT, forwards to `BUS_API_URL`, unwraps `{statusCode, data}`, maps backend codes to Arabic messages (PRD §9).
+**One screen for owners and companies**: there is no `/fleets` route any more. `/fleet-owners` lists owners with their companies inline; `/fleet-owners/[id]` has *Account* and *Companies* tabs, and a company expands inline (summary + Buses/Members/Trips/Bookings/Reports). Opening a company is what sets the fleet scope the `/fleet/*` calls need — the old route did this in a mount effect. `next.config.ts` 308-redirects `/fleets` and `/fleets/:id` (the latter to `/fleet-owners?fleet=:id`).
+
+**Proxy contract**: Browser calls same-origin `/api/*` with session cookie → proxy attaches JWT, forwards to `BUS_API_URL`, unwraps `{statusCode, data}`, maps backend codes to Arabic messages (PRD §9). The zod registry in `lib/schemas/p1.ts` is keyed on the **backend** path, so it must be updated whenever an API route moves.
 
 ### 3.2 Authentication Flow
 1. Login: `POST /auth/login` (phone + password, Egyptian mobile regex `^01[0-9]{9}$`)
@@ -123,7 +125,7 @@ This file defines the high-signal constraints, architecture patterns, and operat
 
 ### Phase Order (MUST follow):
 1. **P0 scaffold**: Next.js + shadcn + Cairo/Poppins + RTL + login + proxy + session store + pdfkit Arabic spike
-2. **P1 platform CRUD**: fleets, buses (+trips tab), trips, bookings, members
+2. **P1 platform CRUD**: fleet owners + their companies, buses (+trips tab), trips, bookings, members
 3. **P2 governance**: users, roles/permissions matrix, audit viewer
 4. **P3 reports + PDFs**: 3 PDF templates with real data and correct shaping
 5. **P4 hardening**: error map, empty states, dark mode, README

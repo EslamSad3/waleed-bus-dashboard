@@ -361,7 +361,7 @@ export function createBooking(
 ): Promise<ActionResult<AdminBookingListItem>> {
   return notifyResult(
     t("bookings.toast.created"),
-    apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings`, "POST", input),
+    apiSend<AdminBookingListItem>(`/api/fleet-owners/fleets/${fleetId}/bookings`, "POST", input),
   );
 }
 
@@ -372,10 +372,10 @@ export function updateBooking(
 ): Promise<ActionResult<AdminBookingListItem>> {
   return notifyResult(
     t("bookings.toast.saved"),
-    apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings/${id}`, "PATCH", input),
+    apiSend<AdminBookingListItem>(`/api/fleet-owners/fleets/${fleetId}/bookings/${id}`, "PATCH", input),
   );
 }
 
 export function deleteBooking(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult(t("bookings.toast.deleted"), apiSend<null>(`/api/fleets/${fleetId}/bookings/${id}`, "DELETE"));
+  return notifyResult(t("bookings.toast.deleted"), apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/bookings/${id}`, "DELETE"));
 }

@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Eye, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { createRole, deleteRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
 import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -77,11 +77,11 @@ export default function RolesPage() {
         keyOf={(role) => role.id}
         emptyMessage={t("roles.empty")}
         renderItem={(role) => (
-          <RowActionsMenu
+          <RowActions
             label={t("roles.list.rowActions", { roleName: role.name })}
             actions={[
-              { label: t("common.actions.openDetails"), href: `/roles/${role.id}` },
-              { label: t("common.actions.delete"), danger: true, disabled: role.isSystem, onSelect: () => void removeRole(role) },
+              { label: t("common.actions.openDetails"), icon: Eye, href: `/roles/${role.id}` },
+              { label: t("common.actions.delete"), icon: Trash2, tone: "danger", disabled: role.isSystem, onSelect: () => void removeRole(role) },
             ]}
           />
         )}

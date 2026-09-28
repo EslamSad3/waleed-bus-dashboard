@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { deleteTrip, fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { fetchBusesPage } from "@/lib/actions/buses";
@@ -154,12 +155,12 @@ export default function TripsPage() {
           }
           emptyMessage={t("trips.empty")}
           renderItem={(trip) => (
-            <RowActionsMenu
+            <RowActions
               label={t("trips.list.rowActions", { tripOrigin: trip.origin, tripDestination: trip.destination })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/trips/${trip.id}` },
-                { label: t("common.actions.edit"), onSelect: () => setTripForEdit(trip) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeTrip(trip) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/trips/${trip.id}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setTripForEdit(trip) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTrip(trip) },
               ]}
             />
           )}

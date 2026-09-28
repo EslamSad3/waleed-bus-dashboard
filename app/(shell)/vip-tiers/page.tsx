@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
+import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/vip-tiers";
 import { rankOrdinalAr } from "@/lib/ordinals";
 import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
@@ -110,12 +110,12 @@ export default function VipTiersPage() {
           columnDefs={columns}
           emptyMessage={t("vipTiers.empty")}
           renderItem={(tier) => (
-            <RowActionsMenu
+            <RowActions
               label={t("vipTiers.list.rowActions", { tierName: tier.name })}
               actions={[
-                { label: t("common.actions.edit"), onSelect: () => openEdit(tier) },
-                { label: tier.isActive ? t("common.actions.disable") : t("common.actions.enable"), onSelect: () => void toggleActive(tier) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeTier(tier) },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => openEdit(tier) },
+                { label: tier.isActive ? t("common.actions.disable") : t("common.actions.enable"), icon: tier.isActive ? Ban : CheckCircle2, tone: tier.isActive ? "warning" : "success", onSelect: () => void toggleActive(tier) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTier(tier) },
               ]}
             />
           )}

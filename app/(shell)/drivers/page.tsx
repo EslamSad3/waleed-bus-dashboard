@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
@@ -188,12 +189,12 @@ export default function DriversPage() {
           columnDefs={columns}
           emptyMessage={t("drivers.empty")}
           renderItem={(driver) => (
-            <RowActionsMenu
+            <RowActions
               label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
-                { label: t("common.actions.edit"), onSelect: () => setDriverForEdit(driver) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeDriverRow(driver) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver) },
               ]}
             />
           )}

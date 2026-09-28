@@ -14,7 +14,7 @@
 
 ## 1. Vision
 
-A fully Arabic RTL web dashboard where a **`super_admin`** manages the entire multi-tenant bus platform from one place: fleets, buses, trips, bookings, drivers/owners, users, roles/permissions, passenger reports & ratings, and audit logs. The super_admin uses the backend **platform path** (`@Platform()`, system Prisma over `DIRECT_URL`, RLS bypassed by design) — so the dashboard must verify `app_role === super_admin` on every guarded surface and never leak platform routes to other roles.
+A fully Arabic RTL web dashboard where a **`super_admin`** manages the entire multi-tenant bus platform from one place: fleet owners and their companies, buses, trips, bookings, drivers, users, roles/permissions, passenger reports & ratings, and audit logs. The super_admin uses the backend **platform path** (`@Platform()`, system Prisma over `DIRECT_URL`, RLS bypassed by design) — so the dashboard must verify `app_role === super_admin` on every guarded surface and never leak platform routes to other roles.
 
 ### 1.1 Goals (v1)
 
@@ -117,7 +117,7 @@ bus_dashboard/
     (auth)/login/page.tsx       # super_admin login
     (shell)/layout.tsx          # sidebar + topbar, auth-guarded
     (shell)/page.tsx            # overview (KPIs + charts)
-    (shell)/fleets/...          # list / [id] (tabs) / new
+    (shell)/fleet-owners/...     # list / [id] (account + companies, expanded inline)
     (shell)/buses/...           # list / [id] (incl. trips tab) / new
     (shell)/trips/...           # list / [id]
     (shell)/bookings/...        # list / [id]
@@ -170,19 +170,25 @@ Backend uses cursor pagination (`?cursor=&limit=`, response `{items, nextCursor}
 
 - KPI cards: Fleets, Buses, Active (DEPARTED) trips, Bookings today, Avg bus/driver rating.
 - ApexCharts: bookings over time (area, filterable 7/30 days), trips by status (donut: SCHEDULED/DEPARTED/COMPLETED/CANCELLED), ratings trend (line), top fleets table (name, buses, trips, avg rating).
-- Sources: `GET /fleets`, `GET /fleet/reports`, per-fleet aggregates via proxy.
+- Sources: `GET /fleet-owners/fleets`, `GET /fleet/reports`, per-fleet aggregates via proxy.
 
-### 6.3 Fleets (`/fleets`, `/fleets/new`, `/fleets/[id]`)
+### 6.3 Fleet owners and their companies (`/fleet-owners`, `/fleet-owners/[id]`)
 
-- List (`GET /fleets`): search by name, active filter, cursor load-more.
-- Create (`POST /fleets`): name, owner (user picker), optional initial membership.
-- Detail tabs: Overview · Buses · Trips · Members · Bookings · Reports.
-- Edit (`PATCH /fleets/:id`), activate/deactivate, delete (`DELETE /fleets/:id`) with 409 guard message when buses/trips/bookings still reference it.
+Since spec 014 this is the **only** place fleets are administered; there is no
+`/fleets` screen any more (`/fleets` 308-redirects here).
+
+- List (`GET /fleet-owners`): search by name/nickname/phone **or company name**, cursor load-more. Each row shows the owner's companies inline (count + names) — the API embeds the owner on the fleet list, so no second call is needed.
+- Create owner (`POST /fleet-owners`): account + its first company atomically.
+- Detail tabs: **Account** (phone, national id, picture) · **Companies**.
+- Companies tab: one company expanded at a time, each with Summary (name, status, VIP tier, add owner) + Buses · Members · Trips · Bookings · Reports. Opening a company is what sets the fleet scope (`x-fleet-id`) those sections need.
+- Create company (`POST /fleet-owners/fleets`): name only — the owner is the row it is opened from.
+- Edit (`PATCH /fleet-owners/fleets/:fleetId`), activate/deactivate, delete (`DELETE /fleet-owners/fleets/:fleetId`) with 409 guard message when buses/trips/bookings still reference it. Delete owner is 409 while any company remains.
+- `?fleet=:fleetId` deep link (used by the `/fleets/:id` redirect) expands that company on load.
 
 ### 6.4 Buses (`/buses`, `/buses/new`, `/buses/[id]`)
 
 - Fleet-scope selector (persisted in zustand + cookie → sent as `x-fleet-id` on tenant-path calls).
-- List/detail via `/fleets/:fleetId/buses*`; create (`registrationNumber` unique-per-fleet → 409 message "رقم التسجيل مستخدم قبل كده"), edit plate/capacity.
+- List/detail via `/fleet-owners/fleets/:fleetId/buses*`; create (`registrationNumber` unique-per-fleet → 409 message "رقم التسجيل مستخدم قبل كده"), edit plate/capacity.
 - Actions: disable/reactivate (409 when DEPARTED trip blocks: "الأتوبيس عليه رحلة شغالة"); assign/unassign driver (`POST/DELETE /fleet/buses/:busId/driver`, idempotent messaging).
 - **Per-bus trips tab** (`GET /fleet/buses/:busId/trips`).
 
@@ -193,13 +199,13 @@ Backend uses cursor pagination (`?cursor=&limit=`, response `{items, nextCursor}
 
 ### 6.6 Bookings (`/bookings`, `/bookings/[id]`)
 
-- List (`GET /fleets/:fleetId/bookings`): filter by trip/status/payment, search passenger name/phone.
+- List (`GET /fleet-owners/fleets/:fleetId/bookings`): filter by trip/status/payment, search passenger name/phone.
 - Detail: timeline (confirmed → boarded → dropped, payment PAID + method echo, ratings 1–5 per side), cancel booking.
 
 ### 6.7 Drivers & owners (`/drivers`)
 
 - Users list (`GET /users`): search, verified/active filters, create user, edit, activate/deactivate.
-- Fleet members (`GET /fleets/:fleetId/members*`): invite driver (existing user or fresh phone+name+password), change role/status **with pre-action warning** ("هيقفل جلسات السواق"), remove (ends membership + active assignment).
+- Fleet members (`GET /fleet-owners/fleets/:fleetId/members*`): invite driver (existing user or fresh phone+name+password), change role/status **with pre-action warning** ("هيقفل جلسات السواق"), remove (ends membership + active assignment).
 - Assignment history per bus (ACTIVE/ENDED rows).
 
 ### 6.8 Reports (`/reports`)
@@ -275,7 +281,7 @@ Backend uses cursor pagination (`?cursor=&limit=`, response `{items, nextCursor}
 
 - **P0 scaffold**: Next.js + shadcn + Cairo/Poppins + RTL + theme tokens + login + proxy + session store + pdfkit Arabic spike.
   *Accept*: login/logout as super_admin against local API; `/api/health` proxies; spike PDF renders9650 Arabic correctly.*
-- **P1 platform CRUD**: fleets, buses (+trips tab), trips, bookings, members.
+- **P1 platform CRUD**: fleet owners + their companies, buses (+trips tab), trips, bookings, members.
   *Accept*: full CRUD walkthrough per module, 409/404 Arabic messages verified.*
 - **P2 governance**: users, roles/permissions matrix, audit viewer, overview charts.
   *Accept*: permission change reflects in matrix; audit row appears for each mutation; charts render with empty states.*

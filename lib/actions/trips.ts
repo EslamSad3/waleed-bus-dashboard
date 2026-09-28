@@ -27,11 +27,11 @@ export const TRIP_STATUS_AR: Record<Trip["status"], string> = {
 
 export function fetchTripsPage(fleetId: string, cursor: string | null): Promise<ActionResult<TripPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<TripPage>(`/api/fleets/${fleetId}/trips${q}`);
+  return apiGet<TripPage>(`/api/fleet-owners/fleets/${fleetId}/trips${q}`);
 }
 
 export function fetchTrip(fleetId: string, id: string): Promise<ActionResult<Trip>> {
-  return apiGet<Trip>(`/api/fleets/${fleetId}/trips/${id}`);
+  return apiGet<Trip>(`/api/fleet-owners/fleets/${fleetId}/trips/${id}`);
 }
 
 export async function findTripAcrossFleets(id: string): Promise<ActionResult<{ fleetId: string; trip: Trip }>> {
@@ -50,7 +50,7 @@ export async function findTripAcrossFleets(id: string): Promise<ActionResult<{ f
 }
 
 export function createTrip(fleetId: string, input: CreateTripInput): Promise<ActionResult<Trip>> {
-  return notifyResult(t("trips.toast.created"), apiSend<Trip>(`/api/fleets/${fleetId}/trips`, "POST", input));
+  return notifyResult(t("trips.toast.created"), apiSend<Trip>(`/api/fleet-owners/fleets/${fleetId}/trips`, "POST", input));
 }
 
 export function updateTrip(fleetId: string, id: string, input: { origin?: string; destination?: string; departAt?: string; status?: Trip["status"] }): Promise<ActionResult<Trip>> {
@@ -62,10 +62,10 @@ export function updateTrip(fleetId: string, id: string, input: { origin?: string
         : input.status === "CANCELLED"
           ? t("trips.toast.cancelled")
           : t("trips.toast.saved"),
-    apiSend<Trip>(`/api/fleets/${fleetId}/trips/${id}`, "PATCH", input),
+    apiSend<Trip>(`/api/fleet-owners/fleets/${fleetId}/trips/${id}`, "PATCH", input),
   );
 }
 
 export function deleteTrip(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult(t("trips.toast.deleted"), apiSend<null>(`/api/fleets/${fleetId}/trips/${id}`, "DELETE"));
+  return notifyResult(t("trips.toast.deleted"), apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/trips/${id}`, "DELETE"));
 }

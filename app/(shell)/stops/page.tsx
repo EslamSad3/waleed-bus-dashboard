@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   createStop,
@@ -310,11 +310,11 @@ export default function StopsPage() {
           columnDefs={columns}
           emptyMessage={t("stops.empty")}
           renderItem={(stop) => (
-            <RowActionsMenu
+            <RowActions
               label={t("stops.list.rowActions", { stopName: stop.name })}
               actions={[
-                { label: t("common.actions.edit"), onSelect: () => openEdit(stop) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeRow(stop) },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => openEdit(stop) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeRow(stop) },
               ]}
             />
           )}
