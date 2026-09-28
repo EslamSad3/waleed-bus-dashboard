@@ -21,6 +21,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
+import { t } from "@/lib/i18n/t";
 
 type DriverAssignment = NonNullable<DriverRow["assignments"]>[number];
 
@@ -63,14 +64,14 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
       setStatus(fresh.status);
     }
     if (fleetId) patchDetail(queryClient, qk.driver(fleetId, id), fresh);
-    setNote("اتحفظ بنجاح");
+    setNote(t("common.toast.saved"));
   }
 
   async function remove() {
     if (!fleetId) return;
     setError(null);
     setNote(null);
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده هيقفل جلسات المستخدم فورا — تمسح السواق (بينهي العضوية والتعيين النشط)؟`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const r = await removeDriver(fleetId, id);
     if (!r.ok) {
       setError(r.message);
@@ -89,11 +90,11 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     return (
       <div className="dashboard-page max-w-xl">
         <div>
-          <h1 className="page-title">إدارة السواق</h1>
-          <p className="page-description">اختار الأسطول الذي يتبعه السواق لعرض بياناته وإدارتها.</p>
+          <h1 className="page-title">{t("drivers.detail.manageTitle")}</h1>
+          <p className="page-description">{t("drivers.detail.pickFleetDescription")}</p>
         </div>
         <div className="panel-card p-5 sm:p-6">
-          <FleetPicker value="" onChange={selectFleet} label="اختار الأسطول" />
+          <FleetPicker value="" onChange={selectFleet} label={t("drivers.detail.pickFleet")} />
         </div>
       </div>
     );
@@ -102,15 +103,15 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   if (!driver) return <DetailPageSkeleton sections={2} />;
 
   const assignmentColumns: CommunityColumnDef<DriverAssignment>[] = [
-    { field: "plateNumber", headerName: "رقم اللوحة", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
-    { field: "status", headerName: "الحالة", filter: "agTextColumnFilter" },
+    { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
+    { field: "status", headerName: t("common.fields.status"), filter: "agTextColumnFilter" },
   ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div className="min-w-0"><h1 className="page-title">{driver.name ?? "السواق"}</h1><p className="page-description">بيانات الحساب وعضوية الأسطول وسجل تعيينات العربيات.</p></div>
-        <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> حذف السواق</AsyncButton>
+        <div className="min-w-0"><h1 className="page-title">{driver.name ?? t("common.fields.driver")}</h1><p className="page-description">{t("drivers.detail.description")}</p></div>
+        <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> {t("drivers.detail.deleteDriver")}</AsyncButton>
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
@@ -118,22 +119,22 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel-card p-5 sm:p-6">
-          <h2 className="section-title">العضوية</h2>
+          <h2 className="section-title">{t("drivers.detail.sections.membership")}</h2>
           <dl className="space-y-2 text-sm">
-            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">اسم الشهرة</dt><dd className="min-w-0 truncate">{driver.nickname ?? "—"}</dd></div>
-            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">الموبايل</dt><dd className="min-w-0 truncate" dir="ltr">{driver.phoneNumber ?? "—"}</dd></div>
-            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">الرقم القومي</dt><dd className="min-w-0 truncate" dir="ltr">{driver.nationalId ?? "—"}</dd></div>
-            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">الدور</dt><dd className="min-w-0 truncate" dir="ltr">{driver.roleSlug ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.nickname")}</dt><dd className="min-w-0 truncate">{driver.nickname ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.phone")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.phoneNumber ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("drivers.detail.fields.nationalId")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.nationalId ?? "—"}</dd></div>
+            <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.role")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.roleSlug ?? "—"}</dd></div>
           </dl>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <span className={status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[status]}</span>
             <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" aria-hidden="true" /> تعديل
+              <Pencil className="size-4" aria-hidden="true" /> {t("common.actions.edit")}
             </Button>
           </div>
         </div>
         <div className="panel-card p-5 sm:p-6">
-          <h2 className="section-title">سجل التعيينات</h2>
+          <h2 className="section-title">{t("drivers.detail.sections.assignments")}</h2>
           <CursorList<DriverAssignment>
             gridId={`driver-assignments-${driver.id}`}
             initialItems={driver.assignments ?? []}
@@ -142,7 +143,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
             keyOf={(assignment) => assignment.id}
             columnDefs={assignmentColumns}
             withActions={false}
-            emptyMessage="لا توجد تعيينات مسجلة"
+            emptyMessage={t("drivers.detail.assignmentsEmpty")}
           />
         </div>
       </div>

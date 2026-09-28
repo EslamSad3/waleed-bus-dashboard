@@ -10,8 +10,9 @@ import { ImagePicker } from "@/components/ui/image-picker";
 import { fetchDriver, updateDriver, MEMBER_STATUS_AR, type DriverRow, type Member } from "@/lib/actions/members";
 import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
 import type { StagedUpload } from "@/lib/actions/http";
+import { t } from "@/lib/i18n/t";
 
-const REVOKE_WARNING = "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟";
+const REVOKE_WARNING = t("common.confirm.revokeSessions");
 
 /**
  * نافذة تعديل بيانات السواق — مشتركة بين صفحة السواقين وصفحة التفاصيل.
@@ -64,14 +65,14 @@ export function EditDriverDialog({
     const fleetId = driver.fleet.id;
     setError(null);
     if (name.trim() === "") {
-      setError("الاسم مطلوب.");
+      setError(t("drivers.editDialog.errors.nameRequired"));
       return;
     }
     if (password && password.length < 8) {
-      setError("كلمة السر لازم تبقى 8 حروف على الأقل.");
+      setError(t("drivers.editDialog.errors.passwordMin"));
       return;
     }
-    if (status !== "ACTIVE" && !(await confirm({ title: "تأكيد الإجراء", description: REVOKE_WARNING, confirmLabel: "تأكيد", destructive: true }))) return;
+    if (status !== "ACTIVE" && !(await confirm({ title: t("common.actions.confirmAction"), description: REVOKE_WARNING, confirmLabel: t("common.actions.confirm"), destructive: true }))) return;
     setSaving(true);
     // الصورة بتترفع الأول مباشر للتخزين السحابي، وبعدين الحفظ بيتم في طلب
     // واحد — لو الرفع فشل مفيش تعديل يتطبق، ولو الحفظ فشل بنمسح المرحلية.
@@ -108,40 +109,40 @@ export function EditDriverDialog({
   }
 
   return (
-    <Dialog open={open && Boolean(driver)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="تعديل بيانات السواق" description="حدّث بيانات الحساب كاملة — تغيير كلمة السر هيقفل جلساته الحالية." size="lg">
+    <Dialog open={open && Boolean(driver)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("drivers.editDialog.title")} description={t("drivers.editDialog.description")} size="lg">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">الاسم بالكامل<span className="text-[#dc2626]"> *</span></span>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="كريم علي" autoComplete="name" />
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}<span className="text-[#dc2626]"> *</span></span>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("drivers.placeholders.fullName")} autoComplete="name" />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">اسم الشهرة</span>
-          <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="كريم" />
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span>
+          <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t("drivers.placeholders.nickname")} />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">رقم الموبايل</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span>
           <Input dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01xxxxxxxxx" inputMode="tel" autoComplete="tel" />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">الرقم القومي</span>
-          <Input dir="ltr" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder="14 رقم" inputMode="numeric" maxLength={14} />
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalId")}</span>
+          <Input dir="ltr" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder={t("drivers.placeholders.nationalIdDigits")} inputMode="numeric" maxLength={14} />
         </label>
         <ImagePicker
-          label="صورة السواق"
+          label={t("drivers.editDialog.imageLabel")}
           file={imageFile}
           onChange={setImageFile}
           existingUrl={driver?.picture ?? null}
           uploading={saving && Boolean(imageFile)}
-          hint="بتترفع كملف (FormData) للتخزين السحابي — من غير روابط."
+          hint={t("common.image.hintUploadFormData")}
         />
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">كلمة مرور جديدة <span className="font-normal text-slate-400">(اختياري)</span></span>
-          <Input dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="اتركها فاضية من غير تغيير" autoComplete="new-password" />
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("drivers.editDialog.newPasswordLabel")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
+          <Input dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("drivers.placeholders.keepPasswordEmpty")} autoComplete="new-password" />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">حالة العضوية</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("drivers.editDialog.membershipStatus")}</span>
           <select
-            aria-label="حالة السواق"
+            aria-label={t("drivers.editDialog.membershipStatusAria")}
             value={status}
             onChange={(e) => setStatus(e.target.value as Member["status"])}
             className="select-field w-full"
@@ -153,8 +154,8 @@ export function EditDriverDialog({
         </label>
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700 md:col-span-2">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end md:col-span-2">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <AsyncButton type="button" variant="success" onClick={save}>حفظ التعديلات</AsyncButton>
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+          <AsyncButton type="button" variant="success" onClick={save}>{t("common.actions.saveChanges")}</AsyncButton>
         </div>
       </div>
     </Dialog>

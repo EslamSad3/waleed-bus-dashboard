@@ -25,6 +25,7 @@ import {
   type Stop,
 } from "@/lib/actions/trip-lines";
 import { qk, upsertInList, removeFromList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 function coordinatesFromLink(value: string) {
   const match = value.match(/[?&]q=([-+]?\d+(?:\.\d+)?),\s*([-+]?\d+(?:\.\d+)?)/)
@@ -65,12 +66,12 @@ function LocationFields({
 }) {
   return (
     <>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">المحافظة</span><select value={governorateId} onChange={(event) => onGovernorate(event.target.value)} className="select-field w-full"><option value="">اختار المحافظة…</option>{governorates.map((governorate) => <option key={governorate.id} value={governorate.id}>{governorate.nameAr} · {governorate.nameEn}</option>)}</select></label>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">المركز</span><select value={markazId} onChange={(event) => onMarkaz(event.target.value)} className="select-field w-full" disabled={!governorateId}><option value="">اختار المركز…</option>{markazes.map((markaz) => <option key={markaz.id} value={markaz.id}>{markaz.nameAr} · {markaz.nameEn}</option>)}</select></label>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">المدينة / القرية</span><select value={localityId} onChange={(event) => onLocality(event.target.value)} className="select-field w-full" disabled={!markazId}><option value="">اختار المدينة أو القرية…</option>{localities.map((locality) => <option key={locality.id} value={locality.id}>{locality.type === "CITY" ? "مدينة" : "قرية"} {locality.nameAr} · {locality.nameEn}</option>)}</select></label>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">رابط موقع Google Maps</span><Input dir="ltr" value={mapLink} onChange={(event) => onMapLink(event.target.value)} placeholder="maps.google.com/?q=29.953140,31.104898" /></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span><select value={governorateId} onChange={(event) => onGovernorate(event.target.value)} className="select-field w-full"><option value="">{t("localities.dialog.pickGovernorate")}</option>{governorates.map((governorate) => <option key={governorate.id} value={governorate.id}>{governorate.nameAr} · {governorate.nameEn}</option>)}</select></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.markaz")}</span><select value={markazId} onChange={(event) => onMarkaz(event.target.value)} className="select-field w-full" disabled={!governorateId}><option value="">{t("localities.dialog.pickMarkaz")}</option>{markazes.map((markaz) => <option key={markaz.id} value={markaz.id}>{markaz.nameAr} · {markaz.nameEn}</option>)}</select></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.localityLabel")}</span><select value={localityId} onChange={(event) => onLocality(event.target.value)} className="select-field w-full" disabled={!markazId}><option value="">{t("stops.dialog.pickLocality")}</option>{localities.map((locality) => <option key={locality.id} value={locality.id}>{locality.type === "CITY" ? t("enums.localityType.city") : t("enums.localityType.village")} {locality.nameAr} · {locality.nameEn}</option>)}</select></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.mapsUrlLabel")}</span><Input dir="ltr" value={mapLink} onChange={(event) => onMapLink(event.target.value)} placeholder="maps.google.com/?q=29.953140,31.104898" /></label>
       {latitude && longitude ? <p dir="ltr" className="rounded-xl bg-[#eaf6ff] p-3 text-sm font-semibold text-[#00134c]">{latitude}, {longitude}</p> : null}
-      <p className="text-xs text-[#687886]">لا تحتاج إلى إدخال خطوط الطول والعرض يدويًا.</p>
+      <p className="text-xs text-[#687886]">{t("stops.dialog.coordsHint")}</p>
     </>
   );
 }
@@ -146,7 +147,7 @@ function CreateStopDialog({
   async function submit() {
     setError(null);
     if (!name.trim() || !chain.governorateId || !chain.markazId || !chain.localityId || !latitude || !longitude) {
-      setError("أكمل اسم النقطة والمحافظة والمركز والمدينة/القرية ورابط الموقع.");
+      setError(t("stops.errors.required"));
       return;
     }
     const result = await createStop({
@@ -165,9 +166,9 @@ function CreateStopDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="نقطة توقف جديدة" description="اختار المحافظة ثم المركز ثم المدينة/القرية، والصق رابط الموقع من خرائط Google لقراءة الإحداثيات تلقائيًا." size="sm">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("stops.createDialog.title")} description={t("stops.createDialog.description")} size="sm">
       <div className="space-y-4">
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم النقطة</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="مثل: كوبري بنها" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.nameLabel")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("stops.placeholders.name")} /></label>
         <LocationFields
           governorates={governorates}
           governorateId={chain.governorateId}
@@ -183,11 +184,11 @@ function CreateStopDialog({
           onLocality={chain.setLocalityId}
           onMapLink={readMapLink}
         />
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">العنوان <span className="font-normal text-slate-400">(اختياري)</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="ميدان رمسيس، القاهرة" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.address")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t("stops.placeholders.address")} /></label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <AsyncButton type="button" variant="success" onClick={submit}>حفظ نقطة التوقف</AsyncButton>
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+          <AsyncButton type="button" variant="success" onClick={submit}>{t("stops.createDialog.submit")}</AsyncButton>
         </div>
       </div>
     </Dialog>
@@ -253,7 +254,7 @@ export default function StopsPage() {
   async function save() {
     if (!editing) return;
     if (!name.trim() || !chain.governorateId || !latitude || !longitude) {
-      setDialogError("أدخل اسم النقطة والمحافظة ورابط موقع Google Maps صحيح.");
+      setDialogError(t("stops.errors.nameGovernorateMaps"));
       return;
     }
     const result = await updateStop(editing.id, {
@@ -270,7 +271,7 @@ export default function StopsPage() {
   }
 
   async function removeRow(stop: Stop) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح نقطة التوقف «${stop.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("stops.deleteConfirm.description", { stopName: stop.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteStop(stop.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList(queryClient, qk.stops, stop.id);
@@ -279,24 +280,24 @@ export default function StopsPage() {
   const columns: CommunityColumnDef<Stop>[] = [
     {
       field: "name",
-      headerName: "الاسم",
-      cellRenderer: (params: { data?: Stop }) => params.data ? <span className="font-bold">{params.data.name}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشطة" : "موقوفة"}</span></span> : null,
+      headerName: t("common.fields.name"),
+      cellRenderer: (params: { data?: Stop }) => params.data ? <span className="font-bold">{params.data.name}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.activeF") : t("common.status.inactiveF")}</span></span> : null,
     },
-    { field: "latitude", headerName: "خط العرض", filter: "agNumberColumnFilter", valueFormatter: (params) => Number(params.value).toFixed(6) },
-    { field: "longitude", headerName: "خط الطول", filter: "agNumberColumnFilter", valueFormatter: (params) => Number(params.value).toFixed(6) },
-    { field: "governorate.nameAr", headerName: "المحافظة", valueGetter: (params) => params.data?.governorate.nameAr },
-    { headerName: "المدينة / القرية", valueGetter: (params) => params.data?.locality ? `${params.data.locality.nameAr} (${params.data.locality.markaz?.nameAr ?? ""})` : "—" },
-    { field: "address", headerName: "العنوان", valueFormatter: (params) => params.value || "—" },
+    { field: "latitude", headerName: t("stops.columns.latitude"), filter: "agNumberColumnFilter", valueFormatter: (params) => Number(params.value).toFixed(6) },
+    { field: "longitude", headerName: t("stops.columns.longitude"), filter: "agNumberColumnFilter", valueFormatter: (params) => Number(params.value).toFixed(6) },
+    { field: "governorate.nameAr", headerName: t("common.fields.governorate"), valueGetter: (params) => params.data?.governorate.nameAr },
+    { headerName: t("stops.columns.locality"), valueGetter: (params) => params.data?.locality ? `${params.data.locality.nameAr} (${params.data.locality.markaz?.nameAr ?? ""})` : "—" },
+    { field: "address", headerName: t("common.fields.address"), valueFormatter: (params) => params.value || "—" },
   ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">نقاط التوقف</h1>
-          <p className="page-description">كل نقاط التوقف في النظام. الإضافة والتعديل بيتموا في نافذة من غير صفحات منفصلة.</p>
+          <h1 className="page-title">{t("stops.title")}</h1>
+          <p className="page-description">{t("stops.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> نقطة توقف جديدة</Button>
+        <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("stops.newStop")}</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <TableSkeleton columns={7} /> : (
@@ -307,22 +308,22 @@ export default function StopsPage() {
           loadMore={async () => ({ items: [], nextCursor: null })}
           keyOf={(stop) => stop.id}
           columnDefs={columns}
-          emptyMessage="لا توجد نقاط توقف بعد — ابدأ بتسجيل أول مكان."
+          emptyMessage={t("stops.empty")}
           renderItem={(stop) => (
             <RowActionsMenu
-              label={`إجراءات نقطة توقف ${stop.name}`}
+              label={t("stops.list.rowActions", { stopName: stop.name })}
               actions={[
-                { label: "تعديل", onSelect: () => openEdit(stop) },
-                { label: "مسح", danger: true, onSelect: () => void removeRow(stop) },
+                { label: t("common.actions.edit"), onSelect: () => openEdit(stop) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeRow(stop) },
               ]}
             />
           )}
         />
       )}
 
-      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) closeDialog(); }} title="تعديل نقطة التوقف" description="غيّر الاسم أو المحافظة، والصق رابط Google Maps لتحديث الإحداثيات تلقائيًا." size="sm">
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) closeDialog(); }} title={t("stops.editDialog.title")} description={t("stops.editDialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم النقطة</span><Input value={name} onChange={(event) => setName(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.nameLabel")}</span><Input value={name} onChange={(event) => setName(event.target.value)} /></label>
           <LocationFields
             governorates={governorates ?? []}
             governorateId={chain.governorateId}
@@ -338,11 +339,11 @@ export default function StopsPage() {
             onLocality={chain.setLocalityId}
             onMapLink={readMapLink}
           />
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">العنوان <span className="font-normal text-slate-400">(اختياري)</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="ميدان رمسيس، القاهرة" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.address")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t("stops.placeholders.address")} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={save}>حفظ التعديلات</AsyncButton>
+            <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>{t("common.actions.saveChanges")}</AsyncButton>
           </div>
         </div>
       </Dialog>

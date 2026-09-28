@@ -1,5 +1,6 @@
 import { apiGet, apiSend, type ActionResult } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
+import { t } from "@/lib/i18n/t";
 
 export type ServiceConfigEntry = {
   id: string;
@@ -24,7 +25,7 @@ export function fetchServiceConfig(): Promise<ActionResult<ServiceConfigEntry[]>
 
 export function replaceServiceConfig(entries: ServiceConfigEntryInput[]): Promise<ActionResult<ServiceConfigEntry[]>> {
   return notifyResult(
-    "اتحفظت إعدادات خدمة العملاء",
+    t("serviceConfig.toast.saved"),
     apiSend("/api/platform/config/customer-service", "PUT", { entries }),
   );
 }

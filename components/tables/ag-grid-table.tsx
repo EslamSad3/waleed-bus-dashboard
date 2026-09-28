@@ -11,6 +11,7 @@ import { AgGridReact } from "ag-grid-react";
 import { Loader2 } from "lucide-react";
 import { arabicGridDefaultColDef, arabicGridLocale } from "./ag-grid-locale";
 import type { AgGridTableProps } from "./ag-grid-types";
+import { t } from "@/lib/i18n/t";
 
 function safeCsvValue(value: unknown): string {
   const text = value == null ? "" : String(value);
@@ -77,7 +78,7 @@ export function AgGridTable<T>({
       setRows((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
     } catch {
-      setLoadError("حصلت مشكلة، حاول تاني");
+      setLoadError(t("common.error.unknown"));
     } finally {
       setLoadingMore(false);
     }
@@ -91,34 +92,34 @@ export function AgGridTable<T>({
       ...column,
       cellDataType: "text" as const,
       valueFormatter: column.valueFormatter ?? ((params: { value: unknown }) => {
-        if (column.field === "hasReports") return params.value ? "نعم" : "لا";
-        return params.value ? "نشط" : "موقوف";
+        if (column.field === "hasReports") return params.value ? t("common.value.yes") : t("common.value.no");
+        return params.value ? t("common.status.active") : t("common.status.inactive");
       }),
     };
   });
 
   return (
     <div className="ag-grid-shell" data-grid-id={gridId} dir="rtl">
-      <div className="ag-grid-toolbar" role="toolbar" aria-label="أدوات الجدول">
+      <div className="ag-grid-toolbar" role="toolbar" aria-label={t("agGridTable.toolbarAria")}>
         {showSearch ? (
           <input
             type="search"
             value={quickFilterText}
             onChange={(event) => setQuickFilterText(event.target.value)}
-            placeholder="بحث في النتائج المحملة"
-            aria-label="بحث في النتائج المحملة"
+            placeholder={t("agGridTable.searchPlaceholder")}
+            aria-label={t("agGridTable.searchAria")}
             className="ag-grid-search"
           />
         ) : null}
         {toolbar}
-        <span className="ag-grid-count" aria-live="polite">{rows.length} صف</span>
-        <button type="button" onClick={exportCsv} className="ag-grid-export" aria-label="تصدير البيانات إلى ملف CSV">
-          تصدير CSV
+        <span className="ag-grid-count" aria-live="polite">{rows.length} {t("agGridTable.rowsUnit")}</span>
+        <button type="button" onClick={exportCsv} className="ag-grid-export" aria-label={t("agGridTable.exportAria")}>
+          {t("agGridTable.exportCsv")}
         </button>
       </div>
 
       {displayError ? <p role="alert" className="ag-grid-error">{displayError}</p> : null}
-      {loading ? <p className="ag-grid-state">جاري التحميل…</p> : null}
+      {loading ? <p className="ag-grid-state">{t("common.loading.more")}</p> : null}
       {!loading && rows.length === 0 ? <p className="ag-grid-state">{emptyMessage}</p> : null}
 
       {rows.length > 0 ? (
@@ -146,7 +147,7 @@ export function AgGridTable<T>({
         <button type="button" onClick={() => void loadNextPage()} disabled={loadingMore} className="ag-grid-load-more">
           <span className="inline-flex items-center gap-2">
             {loadingMore ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {loadingMore ? "جاري التحميل…" : "عرض المزيد"}
+            {loadingMore ? t("common.loading.more") : t("agGridTable.loadMore")}
           </span>
         </button>
       ) : null}

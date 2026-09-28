@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { t } from "@/lib/i18n/t";
 
 /**
  * Composed loading skeletons matching the dashboard's real layout blocks
@@ -22,7 +23,7 @@ export type SkeletonGridColumns = keyof typeof GRID_COLUMNS;
 
 /** Announced once per skeleton root; the decorative bars themselves carry no text. */
 function LoadingStatus() {
-  return <span className="sr-only">جاري التحميل…</span>;
+  return <span className="sr-only">{t("common.loading.more")}</span>;
 }
 
 export type TableSkeletonProps = {

@@ -19,6 +19,7 @@ import { deleteBooking, fetchBookingsPage, BOOKING_STATUS_AR, PAYMENT_STATUS_AR,
 import { fetchFleetReports, type FleetReports } from "@/lib/actions/reports";
 import { qk, removeFromCursorList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 import type { ActionResult, CursorPage } from "@/lib/actions/http";
+import { t } from "@/lib/i18n/t";
 
 type ListingState<T> = { items: T[]; nextCursor: string | null };
 type FetchPage<T> = (fleetId: string, cursor: string | null) => Promise<ActionResult<CursorPage<T>>>;
@@ -87,23 +88,23 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
   }
 
   async function removeBus(bus: Bus) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح العربية «${bus.plateNumber || bus.registrationNumber}»؟ لازم تكون من غير رحلات أو تعيينات سواق.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("buses.list.deleteConfirm.description", { value: bus.plateNumber || bus.registrationNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBus(fleetId, bus.id);
     if (!result.ok) return;
     removeFromCursorList<Bus>(queryClient, qk.fleetBuses(fleetId), bus.id);
   }
 
   const columns: CommunityColumnDef<Bus>[] = [
-    { field: "registrationNumber", headerName: "رقم التسجيل", filter: "agTextColumnFilter" },
-    { field: "plateNumber", headerName: "رقم اللوحة", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
-    { field: "capacity", headerName: "السعة", filter: "agNumberColumnFilter" },
-    { field: "isActive", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? "نشط" : "موقوف") },
-    { field: "createdAt", headerName: "تاريخ الإنشاء", filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
+    { field: "registrationNumber", headerName: t("common.fields.registrationNumber"), filter: "agTextColumnFilter" },
+    { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
+    { field: "capacity", headerName: t("common.fields.capacity"), filter: "agNumberColumnFilter" },
+    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")) },
+    { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="عربيات الأسطول" actionLabel="إضافة عربية" onAction={() => setCreateOpen(true)} />
+      <TabHeader title={t("fleets.detail.tabs.busesTitle")} actionLabel={t("common.actions.addBus")} onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading} skeleton={<TableSkeleton rows={8} columns={6} />}>
         <CursorList<Bus>
           gridId={`fleet-buses-${fleetId}`}
@@ -116,15 +117,15 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
           }}
           keyOf={(bus) => bus.id}
           columnDefs={columns}
-          emptyMessage="لا توجد عربيات مسجلة في هذا الأسطول"
+          emptyMessage={t("fleets.detail.tabs.busesEmpty")}
           renderItem={(bus) => (
             <RowActionsMenu
-              label={`إجراءات عربية ${bus.registrationNumber}`}
+              label={t("fleets.detail.tabs.busRowActions", { busRegistrationNumber: bus.registrationNumber })}
               actions={[
-                { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${fleetId}` },
-                { label: "تعديل", onSelect: () => setBusForEdit(bus) },
-                { label: bus.isActive ? "إيقاف" : "إعادة تشغيل", onSelect: () => void toggleActive(bus) },
-                { label: "مسح", danger: true, onSelect: () => void removeBus(bus) },
+                { label: t("common.actions.openDetails"), href: `/buses/${bus.id}?fleetId=${fleetId}` },
+                { label: t("common.actions.edit"), onSelect: () => setBusForEdit(bus) },
+                { label: bus.isActive ? t("common.actions.disable") : t("buses.detail.actions.reactivate"), onSelect: () => void toggleActive(bus) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBus(bus) },
               ]}
             />
           )}
@@ -149,22 +150,22 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
   const { data: page, isLoading, error } = useApiQuery(qk.fleetTrips(fleetId), () => fetchTripsPage(fleetId, null));
 
   async function removeTrip(trip: Trip) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح الرحلة «${trip.origin} → ${trip.destination}»؟ لو عليها حجوزات هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleets.detail.tabs.tripDeleteConfirm", { tripOrigin: trip.origin, tripDestination: trip.destination }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteTrip(fleetId, trip.id);
     if (!result.ok) return;
     removeFromCursorList<Trip>(queryClient, qk.fleetTrips(fleetId), trip.id);
   }
 
   const columns: CommunityColumnDef<Trip>[] = [
-    { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
-    { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
-    { field: "departAt", headerName: "الميعاد", filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleString("ar-EG") : "—") },
-    { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
+    { field: "origin", headerName: t("common.fields.origin"), filter: "agTextColumnFilter" },
+    { field: "destination", headerName: t("common.fields.destination"), filter: "agTextColumnFilter" },
+    { field: "departAt", headerName: t("fleets.detail.tabs.tripsSchedule"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleString("ar-EG") : "—") },
+    { field: "status", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="رحلات الأسطول" actionLabel="إضافة رحلة" onAction={() => setCreateOpen(true)} />
+      <TabHeader title={t("fleets.detail.tabs.tripsTitle")} actionLabel={t("fleets.detail.tabs.addTrip")} onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading} skeleton={<TableSkeleton rows={8} columns={5} />}>
         <CursorList<Trip>
           gridId={`fleet-trips-${fleetId}`}
@@ -177,14 +178,14 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
           }}
           keyOf={(trip) => trip.id}
           columnDefs={columns}
-          emptyMessage="لا توجد رحلات مسجلة في هذا الأسطول"
+          emptyMessage={t("fleets.detail.tabs.tripsEmpty")}
           renderItem={(trip) => (
             <RowActionsMenu
-              label="إجراءات الرحلة"
+              label={t("fleets.detail.tabs.tripRowActions")}
               actions={[
-                { label: "فتح التفاصيل", href: `/trips/${trip.id}` },
-                { label: "تعديل", onSelect: () => setTripForEdit(trip) },
-                { label: "مسح", danger: true, onSelect: () => void removeTrip(trip) },
+                { label: t("common.actions.openDetails"), href: `/trips/${trip.id}` },
+                { label: t("common.actions.edit"), onSelect: () => setTripForEdit(trip) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeTrip(trip) },
               ]}
             />
           )}
@@ -207,23 +208,23 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
   const { data: page, isLoading, error } = useApiQuery(qk.fleetBookings(fleetId), () => fetchBookingsPage(fleetId, null));
 
   async function removeBooking(booking: Booking) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح حجز «${booking.passengerName}»؟ الإجراء ده مينفعش يتراجع.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleets.detail.tabs.bookingDeleteConfirm", { bookingPassengerName: booking.passengerName }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBooking(fleetId, booking.id);
     if (!result.ok) return;
     removeFromCursorList<Booking>(queryClient, qk.fleetBookings(fleetId), booking.id);
   }
 
   const columns: CommunityColumnDef<Booking>[] = [
-    { field: "passengerName", headerName: "الراكب", filter: "agTextColumnFilter" },
-    { field: "seats", headerName: "المقاعد", filter: "agNumberColumnFilter" },
-    { field: "status", headerName: "حالة الحجز", cellDataType: "text", valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
-    { field: "paymentStatus", headerName: "الدفع", cellDataType: "text", valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
-    { field: "totalAmount", headerName: "الإجمالي", filter: "agNumberColumnFilter", valueFormatter: (params) => (params.value == null ? "—" : String(params.value)) },
+    { field: "passengerName", headerName: t("common.fields.passenger"), filter: "agTextColumnFilter" },
+    { field: "seats", headerName: t("common.fields.seats"), filter: "agNumberColumnFilter" },
+    { field: "status", headerName: t("common.fields.bookingStatus"), cellDataType: "text", valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
+    { field: "paymentStatus", headerName: t("fleets.detail.tabs.paymentColumn"), cellDataType: "text", valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
+    { field: "totalAmount", headerName: t("common.fields.total"), filter: "agNumberColumnFilter", valueFormatter: (params) => (params.value == null ? "—" : String(params.value)) },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="حجوزات الأسطول" actionLabel="إضافة حجز" onAction={() => setCreateOpen(true)} />
+      <TabHeader title={t("fleets.detail.tabs.bookingsTitle")} actionLabel={t("fleets.detail.tabs.addBooking")} onAction={() => setCreateOpen(true)} />
       <ListingShell error={error?.message ?? null} isLoading={isLoading} skeleton={<TableSkeleton rows={8} columns={6} />}>
         <CursorList<Booking>
           gridId={`fleet-bookings-${fleetId}`}
@@ -236,13 +237,13 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
           }}
           keyOf={(booking) => booking.id}
           columnDefs={columns}
-          emptyMessage="لا توجد حجوزات مسجلة في هذا الأسطول"
+          emptyMessage={t("fleets.detail.tabs.bookingsEmpty")}
           renderItem={(booking) => (
             <RowActionsMenu
-              label="إجراءات الحجز"
+              label={t("fleets.detail.tabs.bookingRowActions")}
               actions={[
-                { label: "فتح التفاصيل", href: `/bookings/${booking.id}` },
-                { label: "مسح", danger: true, onSelect: () => void removeBooking(booking) },
+                { label: t("common.actions.openDetails"), href: `/bookings/${booking.id}` },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBooking(booking) },
               ]}
             />
           )}
@@ -278,19 +279,19 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
   const data = isCurrent ? state.data : null;
   const error = isCurrent ? state.error : null;
   const reportColumns: CommunityColumnDef<FleetReport>[] = [
-    { field: "note", headerName: "ملاحظة البلاغ", filter: "agTextColumnFilter" },
-    { field: "createdAt", headerName: "التاريخ", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+    { field: "note", headerName: t("fleets.detail.tabs.reportNote"), filter: "agTextColumnFilter" },
+    { field: "createdAt", headerName: t("common.fields.date"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
   ];
 
   return (
     <section className="panel-card p-5 sm:p-6">
-      <TabHeader title="تقارير ومراجعات الأسطول" />
+      <TabHeader title={t("fleets.detail.tabs.reportsTitle")} />
       <ListingShell error={error} isLoading={!data} skeleton={<ReportsTabSkeleton />}>
         {data && <div className="space-y-5">
           <dl className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم العربية</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.busAvg?.toFixed(1) ?? "—"}</dd></div>
-            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">متوسط تقييم السائق</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.driverAvg?.toFixed(1) ?? "—"}</dd></div>
-            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">الحجوزات المُقيّمة</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.count}</dd></div>
+            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">{t("fleets.detail.tabs.avgBusRating")}</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.busAvg?.toFixed(1) ?? "—"}</dd></div>
+            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">{t("fleets.detail.tabs.avgDriverRating")}</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.driverAvg?.toFixed(1) ?? "—"}</dd></div>
+            <div className="rounded-xl bg-[#eaf6ff] p-4"><dt className="text-sm text-[#5e6b78]">{t("fleets.detail.tabs.ratedBookings")}</dt><dd className="mt-1 text-xl font-bold text-[#00134c]">{data.ratingSummary.count}</dd></div>
           </dl>
           <CursorList<FleetReport>
             gridId={`fleet-reports-${fleetId}`}
@@ -300,7 +301,7 @@ export function FleetReportsTab({ fleetId }: { fleetId: string }) {
             keyOf={(report) => report.id}
             columnDefs={reportColumns}
             withActions={false}
-            emptyMessage="لا توجد بلاغات ركاب لهذا الأسطول"
+            emptyMessage={t("fleets.detail.tabs.reportsEmpty")}
           />
         </div>}
       </ListingShell>

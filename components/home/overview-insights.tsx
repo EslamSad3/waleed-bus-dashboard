@@ -22,6 +22,7 @@ import { qk, useApiQuery, useDataQuery } from "@/lib/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCardsSkeleton } from "@/components/ui/skeletons";
 import { ApexChart } from "@/components/charts/apex-chart";
+import { t } from "@/lib/i18n/t";
 
 type FleetLite = { id: string; name: string; isActive: boolean };
 
@@ -106,63 +107,63 @@ export function OverviewInsights() {
 
   const kpis: Kpi[] = [
     {
-      label: "الأساطيل النشطة",
+      label: t("home.insights.activeFleets"),
       value: fleetsQuery.isLoading ? loadingText : `${activeFleets} / ${fleets.length}`,
       href: "/fleets",
       icon: Building2,
       tint: "bg-[#f0edff] text-[#5d4ca8]",
     },
     {
-      label: "العربيات",
+      label: t("common.nav.buses"),
       value: busesPerFleetQuery.isLoading ? loadingText : totalBuses,
       href: "/buses",
       icon: BusFront,
       tint: "bg-[#e9f7f0] text-[#147353]",
     },
     {
-      label: "الرحلات",
+      label: t("common.nav.trips"),
       value: tripsPerFleetQuery.isLoading ? loadingText : totalTrips,
       href: "/trips",
       icon: Route,
       tint: "bg-[#eaf6ff] text-[#059ff8]",
     },
     {
-      label: "خطوط الرحلات",
+      label: t("common.nav.tripLines"),
       value: tripLinesQuery.isLoading ? loadingText : tripLinesQuery.data?.length ?? loadingText,
       href: "/trip-lines",
       icon: Waypoints,
       tint: "bg-[#fff7e3] text-[#8b6814]",
     },
     {
-      label: "نقاط التوقف",
+      label: t("common.nav.stops"),
       value: stopsQuery.isLoading ? loadingText : stopsQuery.data?.length ?? loadingText,
       href: "/stops",
       icon: MapPin,
       tint: "bg-[#e9f7f0] text-[#147353]",
     },
     {
-      label: "السواقين",
+      label: t("common.nav.drivers"),
       value: driversQuery.isLoading ? loadingText : driversQuery.data ?? loadingText,
       href: "/drivers",
       icon: UsersRound,
       tint: "bg-[#f3e8ff] text-[#7c3aed]",
     },
     {
-      label: "أصحاب العربيات",
+      label: t("common.nav.fleetOwners"),
       value: ownersQuery.isLoading ? loadingText : ownersQuery.data ?? loadingText,
       href: "/fleet-owners",
       icon: UserRoundCog,
       tint: "bg-[#eaf6ff] text-[#059ff8]",
     },
     {
-      label: "مستخدمو الإدارة",
+      label: t("common.nav.adminUsers"),
       value: usersQuery.isLoading ? loadingText : usersQuery.data ?? loadingText,
       href: "/users",
       icon: Users,
       tint: "bg-[#f0edff] text-[#5d4ca8]",
     },
     {
-      label: "حجوزات مؤكدة",
+      label: t("home.insights.confirmedBookings"),
       value: bookingsQuery.isLoading ? loadingText : statusCount("CONFIRMED"),
       href: "/bookings",
       icon: TicketCheck,
@@ -188,7 +189,7 @@ export function OverviewInsights() {
   const donutOptions = useMemo<ApexOptions>(
     () => ({
       ...baseOptions,
-      labels: ["مؤكدة", "مكتملة", "ملغية"],
+      labels: [t("enums.bookingStatus.confirmedChart"), t("enums.bookingStatus.completedChart"), t("enums.bookingStatus.cancelledChart")],
       colors: ["#059ff8", "#16a34a", "#dc2626"],
       stroke: { width: 0 },
       plotOptions: {
@@ -199,7 +200,7 @@ export function OverviewInsights() {
               show: true,
               name: { fontSize: "14px", fontWeight: 700 },
               value: { fontSize: "26px", fontWeight: 800, color: "#00134c" },
-              total: { show: true, label: "إجمالي", fontSize: "13px", fontWeight: 700 },
+              total: { show: true, label: t("home.insights.chartTotal"), fontSize: "13px", fontWeight: 700 },
             },
           },
         },
@@ -211,7 +212,7 @@ export function OverviewInsights() {
   const radialOptions = useMemo<ApexOptions>(
     () => ({
       ...baseOptions,
-      labels: ["نسبة التشغيل"],
+      labels: [t("home.insights.chartOperatingRate")],
       colors: ["#059ff8"],
       plotOptions: {
         radialBar: {
@@ -278,8 +279,8 @@ export function OverviewInsights() {
     <section className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h2 className="page-title text-[1.35rem] sm:text-2xl">نظرة سريعة على الأرقام</h2>
-          <p className="page-description">مؤشرات التشغيل الحالية — كل كارت لينك لصفحته، والأرقام بتتحدث تلقائيًا من الكاش.</p>
+          <h2 className="page-title text-[1.35rem] sm:text-2xl">{t("home.insights.title")}</h2>
+          <p className="page-description">{t("home.insights.description")}</p>
         </div>
       </div>
 
@@ -297,7 +298,7 @@ export function OverviewInsights() {
       {hasData ? (
         <div className="grid gap-4 xl:grid-cols-3">
           <div className={chartFrame}>
-            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">حالة الحجوزات</h3>
+            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.bookingsStatusTitle")}</h3>
             <ApexChart
               type="donut"
               options={donutOptions}
@@ -306,7 +307,7 @@ export function OverviewInsights() {
             />
           </div>
           <div className={chartFrame}>
-            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">نسبة تشغيل الأساطيل</h3>
+            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.fleetsOperatingTitle")}</h3>
             <ApexChart
               type="radialBar"
               options={radialOptions}
@@ -315,18 +316,18 @@ export function OverviewInsights() {
             />
           </div>
           <div className={chartFrame}>
-            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">العربيات لكل أسطول</h3>
+            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.busesPerFleetTitle")}</h3>
             <ApexChart
               type="bar"
               options={barOptions}
-              series={[{ name: "عربيات", data: (busesPerFleetQuery.data ?? []).map((row) => row.count) }]}
+              series={[{ name: t("home.insights.busesSeries"), data: (busesPerFleetQuery.data ?? []).map((row) => row.count) }]}
               height={280}
             />
           </div>
         </div>
       ) : (
         <div role="status" className="grid gap-4 xl:grid-cols-3">
-          <span className="sr-only">جاري التحميل…</span>
+          <span className="sr-only">{t("common.loading.more")}</span>
           {[0, 1, 2].map((index) => (
             <div key={index} className={`${chartFrame} space-y-3`}>
               <Skeleton className="h-5 w-28" />

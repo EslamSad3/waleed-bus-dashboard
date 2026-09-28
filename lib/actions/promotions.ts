@@ -1,5 +1,6 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
+import { t } from "@/lib/i18n/t";
 
 export type Promotion = {
   id: string;
@@ -50,26 +51,26 @@ export function fetchPromotions(cursor?: string): Promise<ActionResult<CursorPag
 }
 
 export function createPromotion(input: CreatePromotionInput): Promise<ActionResult<Promotion>> {
-  return notifyResult("اتضاف كود الخصم بنجاح", apiSend("/api/platform/promotions", "POST", input));
+  return notifyResult(t("promotions.toast.created"), apiSend("/api/platform/promotions", "POST", input));
 }
 
 export function updatePromotion(id: string, input: UpdatePromotionInput): Promise<ActionResult<Promotion>> {
   return notifyResult(
     input.isActive === undefined
-      ? "اتحفظت بيانات كود الخصم"
+      ? t("promotions.toast.saved")
       : input.isActive
-        ? "تم تنشيط كود الخصم"
-        : "تم إيقاف كود الخصم",
+        ? t("promotions.toast.activated")
+        : t("promotions.toast.deactivated"),
     apiSend(`/api/platform/promotions/${id}`, "PATCH", input),
   );
 }
 
 export function expirePromotion(id: string): Promise<ActionResult<Promotion>> {
-  return notifyResult("تم إنهاء كود الخصم", apiSend(`/api/platform/promotions/${id}/expire`, "POST"));
+  return notifyResult(t("promotions.toast.expired"), apiSend(`/api/platform/promotions/${id}/expire`, "POST"));
 }
 
 export function deletePromotion(id: string): Promise<ActionResult<null>> {
-  return notifyResult("اتمسح كود الخصم", apiSend(`/api/platform/promotions/${id}`, "DELETE"));
+  return notifyResult(t("promotions.toast.deleted"), apiSend(`/api/platform/promotions/${id}`, "DELETE"));
 }
 
 export function fetchPromotionUsages(id: string): Promise<ActionResult<CursorPage<PromotionUsage>>> {

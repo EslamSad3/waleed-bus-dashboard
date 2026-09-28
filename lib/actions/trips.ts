@@ -2,6 +2,7 @@ import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actio
 import { notifyResult } from "@/lib/actions/toast";
 import type { CreateTripInput } from "@/lib/schemas/p1";
 import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { t } from "@/lib/i18n/t";
 
 export type Trip = {
   id: string;
@@ -18,10 +19,10 @@ export type Trip = {
 export type TripPage = CursorPage<Trip>;
 
 export const TRIP_STATUS_AR: Record<Trip["status"], string> = {
-  SCHEDULED: "مجدولة",
-  DEPARTED: "شغالة",
-  COMPLETED: "خلصت",
-  CANCELLED: "ملغية",
+  SCHEDULED: t("enums.tripStatus.scheduled"),
+  DEPARTED: t("enums.tripStatus.running"),
+  COMPLETED: t("enums.tripStatus.completed"),
+  CANCELLED: t("enums.tripStatus.cancelled"),
 };
 
 export function fetchTripsPage(fleetId: string, cursor: string | null): Promise<ActionResult<TripPage>> {
@@ -45,26 +46,26 @@ export async function findTripAcrossFleets(id: string): Promise<ActionResult<{ f
     }
     cursor = fleets.data.nextCursor;
   } while (cursor);
-  return { ok: false, message: "العنصر مش موجود في الأسطول ده", code: "NOT_FOUND" };
+  return { ok: false, message: t("common.notFound.inFleet"), code: "NOT_FOUND" };
 }
 
 export function createTrip(fleetId: string, input: CreateTripInput): Promise<ActionResult<Trip>> {
-  return notifyResult("اتضافت الرحلة بنجاح", apiSend<Trip>(`/api/fleets/${fleetId}/trips`, "POST", input));
+  return notifyResult(t("trips.toast.created"), apiSend<Trip>(`/api/fleets/${fleetId}/trips`, "POST", input));
 }
 
 export function updateTrip(fleetId: string, id: string, input: { origin?: string; destination?: string; departAt?: string; status?: Trip["status"] }): Promise<ActionResult<Trip>> {
   return notifyResult(
     input.status === "DEPARTED"
-      ? "تم تشغيل الرحلة"
+      ? t("trips.toast.departed")
       : input.status === "COMPLETED"
-        ? "تم إنهاء الرحلة"
+        ? t("trips.toast.completed")
         : input.status === "CANCELLED"
-          ? "تم إلغاء الرحلة"
-          : "اتحفظت بيانات الرحلة",
+          ? t("trips.toast.cancelled")
+          : t("trips.toast.saved"),
     apiSend<Trip>(`/api/fleets/${fleetId}/trips/${id}`, "PATCH", input),
   );
 }
 
 export function deleteTrip(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult("اتمسحت الرحلة", apiSend<null>(`/api/fleets/${fleetId}/trips/${id}`, "DELETE"));
+  return notifyResult(t("trips.toast.deleted"), apiSend<null>(`/api/fleets/${fleetId}/trips/${id}`, "DELETE"));
 }

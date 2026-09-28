@@ -12,6 +12,7 @@ import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { createRole, deleteRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
 import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type FirstPage = { items: Role[]; nextCursor: string | null };
 
@@ -28,10 +29,10 @@ export default function RolesPage() {
 
   async function removeRole(role: Role) {
     if (role.isSystem) {
-      setError("مستويات الوصول الأساسية مينفعش تتمسح — قفلها بدل كده من صفحتها.");
+      setError(t("roles.errors.systemRole"));
       return;
     }
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مستوى وصول «${role.name}»؟ أي حسابات مرتبطة بيه هتفقد صلاحياته.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("roles.deleteConfirm.description", { roleName: role.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteRole(role.id);
     if (!result.ok) return setError(result.message);
     removeFromCursorList<Role>(queryClient, qk.roles, role.id);
@@ -39,7 +40,7 @@ export default function RolesPage() {
 
   async function save() {
     if (!name.trim()) {
-      setError("اكتب اسم مستوى الوصول");
+      setError(t("roles.errors.nameRequired"));
       return;
     }
     setSaving(true);
@@ -59,13 +60,13 @@ export default function RolesPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">مستويات الوصول</h1>
-          <p className="page-description">حدّد ما يستطيع كل فريق القيام به، مثل إدارة الرحلات أو متابعة الحجوزات.</p>
+          <h1 className="page-title">{t("roles.title")}</h1>
+          <p className="page-description">{t("roles.description")}</p>
         </div>
-        <Button type="button" onClick={() => setOpen(true)}><Plus aria-hidden="true" /> مستوى وصول جديد</Button>
+        <Button type="button" onClick={() => setOpen(true)}><Plus aria-hidden="true" /> {t("roles.newRole")}</Button>
       </div>
 
-      {(error || fetchError) ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error ?? fetchError?.message ?? "حصلت مشكلة"}</p> : null}
+      {(error || fetchError) ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error ?? fetchError?.message ?? t("common.error.somethingWentWrong")}</p> : null}
       {isLoading ? <TableSkeleton rows={8} columns={6} /> : <CursorList<Role>
         initialItems={first?.items ?? []}
         initialCursor={first?.nextCursor ?? null}
@@ -74,23 +75,23 @@ export default function RolesPage() {
           return result.data;
         })}
         keyOf={(role) => role.id}
-        emptyMessage="لا توجد أدوار متاحة"
+        emptyMessage={t("roles.empty")}
         renderItem={(role) => (
           <RowActionsMenu
-            label={`إجراءات مستوى ${role.name}`}
+            label={t("roles.list.rowActions", { roleName: role.name })}
             actions={[
-              { label: "فتح التفاصيل", href: `/roles/${role.id}` },
-              { label: "مسح", danger: true, disabled: role.isSystem, onSelect: () => void removeRole(role) },
+              { label: t("common.actions.openDetails"), href: `/roles/${role.id}` },
+              { label: t("common.actions.delete"), danger: true, disabled: role.isSystem, onSelect: () => void removeRole(role) },
             ]}
           />
         )}
       />}
 
-      <Dialog open={open} onOpenChange={setOpen} title="مستوى وصول جديد" description="اختر اسمًا واضحًا للفريق، ثم حدّد المهام المسموح بها في الخطوة التالية." size="sm">
+      <Dialog open={open} onOpenChange={setOpen} title={t("roles.createDialog.title")} description={t("roles.createDialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">اسم مستوى الوصول</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="مثال: مسؤول التشغيل" autoFocus /></label>
-          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">متى يُستخدم؟</span><Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="مثال: للفريق الذي يتابع الرحلات اليومية" /></label>
-          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end"><Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={saving}>إلغاء</Button><Button type="button" onClick={save} loading={saving}>{saving ? "جاري الحفظ…" : "التالي: اختيار المهام"}</Button></div>
+          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.createDialog.nameLabel")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("roles.placeholders.name")} autoFocus /></label>
+          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.createDialog.whenLabel")}</span><Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("roles.placeholders.when")} /></label>
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end"><Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={saving}>{t("common.actions.cancel")}</Button><Button type="button" onClick={save} loading={saving}>{saving ? t("common.loading.saving") : t("roles.createDialog.next")}</Button></div>
         </div>
       </Dialog>
     </div>

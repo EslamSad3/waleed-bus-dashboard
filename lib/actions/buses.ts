@@ -1,6 +1,7 @@
 import { apiDiscardStaged, apiGet, apiSend, apiSendFile, apiStageImage, type ActionResult, type CursorPage, type StagedUpload } from "@/lib/actions/http";
 import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateBusInput, AssignDriverInput } from "@/lib/schemas/p1";
+import { t } from "@/lib/i18n/t";
 
 export type VehicleBrand = {
   id: string;
@@ -42,14 +43,14 @@ export function fetchBus(fleetId: string, id: string): Promise<ActionResult<Bus>
 
 export function createBus(fleetId: string, input: CreateBusInput): Promise<ActionResult<Bus>> {
   return notifyResult(
-    "اتضافت العربية بنجاح",
+    t("buses.toast.created"),
     apiSend<Bus>(`/api/fleets/${fleetId}/buses`, "POST", input, "REGISTRATION_TAKEN"),
   );
 }
 
 export function updateBus(fleetId: string, id: string, input: { plateNumber?: string; color?: string; imageUrl?: string; brandId?: string | null; isAirConditioned?: boolean; modelYear?: number; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
   return notifyResult(
-    "اتحفظت بيانات العربية",
+    t("buses.toast.saved"),
     apiSend<Bus>(`/api/fleets/${fleetId}/buses/${id}`, "PATCH", input, "REGISTRATION_TAKEN"),
   );
 }
@@ -74,7 +75,7 @@ export function discardBusImage(fleetId: string, staged: StagedUpload): Promise<
  */
 export function uploadBusImage(fleetId: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(
-    "اترفعت صورة العربية",
+    t("buses.toast.imageUploaded"),
     apiSendFile<{ url: string }>(`/api/fleets/${fleetId}/uploads/bus-image`, file),
     opts,
   );
@@ -84,58 +85,58 @@ export const fetchBrands = (includeInactive = false) =>
   apiGet<VehicleBrand[]>(`/api/brands${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchBrandById = (id: string) => apiGet<VehicleBrand>(`/api/brands/${id}`);
 export const createBrand = (input: { name: string; sortOrder?: number; isActive?: boolean }) =>
-  notifyResult("اتضافت الماركة بنجاح", apiSend<VehicleBrand>("/api/brands", "POST", input));
+  notifyResult(t("brands.toast.created"), apiSend<VehicleBrand>("/api/brands", "POST", input));
 export const updateBrand = (id: string, input: { name?: string; sortOrder?: number; isActive?: boolean }) =>
   notifyResult(
-    input.isActive === undefined ? "اتحفظت بيانات الماركة" : input.isActive ? "تم تنشيط الماركة" : "تم إيقاف الماركة",
+    input.isActive === undefined ? t("brands.toast.saved") : input.isActive ? t("brands.toast.activated") : t("brands.toast.deactivated"),
     apiSend<VehicleBrand>(`/api/brands/${id}`, "PATCH", input),
   );
 export const deleteBrand = (id: string) =>
-  notifyResult("اتمسحت الماركة", apiSend<null>(`/api/brands/${id}`, "DELETE"));
+  notifyResult(t("brands.toast.deleted"), apiSend<null>(`/api/brands/${id}`, "DELETE"));
 
 export function deleteBus(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult("اتمسحت العربية", apiSend<null>(`/api/fleets/${fleetId}/buses/${id}`, "DELETE"));
+  return notifyResult(t("buses.toast.deleted"), apiSend<null>(`/api/fleets/${fleetId}/buses/${id}`, "DELETE"));
 }
 
 /** Tenant lifecycle actions (research R1) — fleetId sent as x-fleet-id. */
 export function disableBus(fleetId: string, busId: string): Promise<ActionResult<Bus>> {
   return notifyResult(
-    "تم إيقاف العربية",
+    t("buses.toast.disabled"),
     apiSend<Bus>(`/api/fleet/buses/${busId}/disable`, "POST", undefined, undefined, fleetId),
   );
 }
 
 export function reactivateBus(fleetId: string, busId: string): Promise<ActionResult<Bus>> {
   return notifyResult(
-    "تم إعادة تشغيل العربية",
+    t("buses.toast.enabled"),
     apiSend<Bus>(`/api/fleet/buses/${busId}/reactivate`, "POST", undefined, undefined, fleetId),
   );
 }
 
 export function assignDriver(fleetId: string, busId: string, input: AssignDriverInput): Promise<ActionResult<unknown>> {
   return notifyResult(
-    "تم تعيين السواق على العربية",
+    t("buses.toast.driverAssigned"),
     apiSend(`/api/fleet/buses/${busId}/driver`, "POST", input, undefined, fleetId),
   );
 }
 
 export function unassignDriver(fleetId: string, busId: string): Promise<ActionResult<null>> {
   return notifyResult(
-    "تم إلغاء تعيين السواق",
+    t("buses.toast.driverUnassigned"),
     apiSend<null>(`/api/fleet/buses/${busId}/driver`, "DELETE", undefined, undefined, fleetId),
   );
 }
 
 export function assignTripLine(fleetId: string, busId: string, tripLineId: string): Promise<ActionResult<Bus>> {
   return notifyResult(
-    "تم ربط العربية بالخط",
+    t("buses.toast.lineAssigned"),
     apiSend<Bus>(`/api/fleet/buses/${busId}/trip-line`, "POST", { tripLineId }, undefined, fleetId),
   );
 }
 
 export function unassignTripLine(fleetId: string, busId: string): Promise<ActionResult<null>> {
   return notifyResult(
-    "تم إلغاء ربط العربية بالخط",
+    t("buses.toast.lineUnassigned"),
     apiSend<null>(`/api/fleet/buses/${busId}/trip-line`, "DELETE", undefined, undefined, fleetId),
   );
 }

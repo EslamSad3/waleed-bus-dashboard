@@ -14,6 +14,7 @@ import { TableSkeleton } from "@/components/ui/skeletons";
 import { createBrand, deleteBrand, fetchBrands, updateBrand, type VehicleBrand } from "@/lib/actions/buses";
 import { rankOrdinalAr } from "@/lib/ordinals";
 import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 export default function BrandsPage() {
   const queryClient = useQueryClient();
@@ -49,7 +50,7 @@ export default function BrandsPage() {
 
   async function save() {
     if (!name.trim()) {
-      setDialogError("أدخل اسم الماركة.");
+      setDialogError(t("brands.errors.nameRequired"));
       return;
     }
     const result = editing
@@ -67,7 +68,7 @@ export default function BrandsPage() {
   }
 
   async function removeBrand(brand: VehicleBrand) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح ماركة «${brand.name}»؟ لو فيها عربيات مسجلة هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("brands.deleteConfirm.description", { brandName: brand.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBrand(brand.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList<VehicleBrand>(queryClient, qk.brands, brand.id);
@@ -78,12 +79,12 @@ export default function BrandsPage() {
   const columns: CommunityColumnDef<VehicleBrand>[] = [
     {
       field: "name",
-      headerName: "الماركة",
-      cellRenderer: (params: { data?: VehicleBrand }) => params.data ? <span className="font-bold">{params.data.name}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشطة" : "موقوفة"}</span></span> : null,
+      headerName: t("common.fields.brand"),
+      cellRenderer: (params: { data?: VehicleBrand }) => params.data ? <span className="font-bold">{params.data.name}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.activeF") : t("common.status.inactiveF")}</span></span> : null,
     },
     {
       field: "sortOrder",
-      headerName: "الترتيب",
+      headerName: t("common.fields.order"),
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => rankOrdinalAr(params.value as number),
     },
@@ -93,10 +94,10 @@ export default function BrandsPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">ماركات العربيات</h1>
-          <p className="page-description">قاموس الماركات المتاحة عند تسجيل العربيات.</p>
+          <h1 className="page-title">{t("brands.title")}</h1>
+          <p className="page-description">{t("brands.description")}</p>
         </div>
-        <Button onClick={openCreate}><Plus className="size-4" /> ماركة جديدة</Button>
+        <Button onClick={openCreate}><Plus className="size-4" /> {t("brands.newBrand")}</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <TableSkeleton columns={3} /> : (
@@ -107,27 +108,27 @@ export default function BrandsPage() {
           loadMore={async () => ({ items: [], nextCursor: null })}
           keyOf={(brand) => brand.id}
           columnDefs={columns}
-          emptyMessage="لا توجد ماركات بعد — ابدأ بإضافة أول ماركة."
+          emptyMessage={t("brands.empty")}
           renderItem={(brand) => (
             <RowActionsMenu
-              label={`إجراءات ماركة ${brand.name}`}
+              label={t("brands.rowActions", { brandName: brand.name })}
               actions={[
-                { label: "تعديل", onSelect: () => openEdit(brand) },
-                { label: brand.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(brand) },
-                { label: "مسح", danger: true, onSelect: () => void removeBrand(brand) },
+                { label: t("common.actions.edit"), onSelect: () => openEdit(brand) },
+                { label: brand.isActive ? t("common.actions.disable") : t("common.actions.enable"), onSelect: () => void toggleActive(brand) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBrand(brand) },
               ]}
             />
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل الماركة" : "ماركة جديدة"} description="اسم فريد للماركة وترتيب ظهورها في القوائم." size="sm">
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("brands.dialog.editTitle") : t("brands.dialog.createTitle")} description={t("brands.dialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Mercedes" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الترتيب</span><Input dir="ltr" inputMode="numeric" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.name")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Mercedes" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.order")}</span><Input dir="ltr" inputMode="numeric" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
+            <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>{t("common.actions.save")}</AsyncButton>
           </div>
         </div>
       </Dialog>

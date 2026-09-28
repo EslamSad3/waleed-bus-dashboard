@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPermissionCatalog, type Permission } from "@/lib/actions/permissions";
 import { qk, useApiQuery } from "@/lib/queries";
 import { presentPermission } from "@/lib/permission-presentation";
+import { t } from "@/lib/i18n/t";
 
 type FirstPage = { items: Permission[]; nextCursor: string | null };
 
@@ -20,20 +21,20 @@ export default function PermissionsPage() {
   const first: FirstPage | null = catalog ? { items: catalog, nextCursor: null } : null;
   const permissionColumns: CommunityColumnDef<Permission>[] = [
     {
-      headerName: "المهمة",
+      headerName: t("permissions.columns.action"),
       flex: 1,
       valueGetter: (params) => (params.data ? presentPermission(params.data).title : ""),
       cellRenderer: (params: { data?: Permission }) => params.data ? <span className="font-bold text-[#1a1a1a]">{presentPermission(params.data).title}</span> : null,
     },
     {
-      headerName: "الوصف",
+      headerName: t("permissions.columns.description"),
       flex: 2,
       valueGetter: (params) => (params.data ? presentPermission(params.data).description : ""),
       cellRenderer: (params: { data?: Permission }) => params.data ? <span className="text-sm text-[#5e6b78]">{presentPermission(params.data).description}</span> : null,
     },
     {
-      headerName: "الحالة",
-      cellRenderer: (params: { data?: Permission }) => params.data ? <span className={params.data.isActive ? "status-pill" : "status-pill status-pill-muted"}>{params.data.isActive ? "متاحة للتعيين" : "غير متاحة حاليًا"}</span> : null,
+      headerName: t("common.fields.status"),
+      cellRenderer: (params: { data?: Permission }) => params.data ? <span className={params.data.isActive ? "status-pill" : "status-pill status-pill-muted"}>{params.data.isActive ? t("permissions.assignable") : t("permissions.notAssignable")}</span> : null,
     },
   ];
 
@@ -47,8 +48,8 @@ export default function PermissionsPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">دليل المهام</h1>
-          <p className="page-description">شرح للمهام المتاحة داخل المنصة. لتحديد من يستطيع تنفيذها، افتح مستوى الوصول المناسب.</p>
+          <h1 className="page-title">{t("permissions.title")}</h1>
+          <p className="page-description">{t("permissions.description")}</p>
         </div>
       </div>
       {error ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
@@ -60,7 +61,7 @@ export default function PermissionsPage() {
         keyOf={(permission) => permission.id}
         withActions={false}
         columnDefs={permissionColumns}
-        emptyMessage="لا توجد مهام في هذه المجموعة"
+        emptyMessage={t("permissions.empty")}
       /></section>)}</div>}
     </div>
   );

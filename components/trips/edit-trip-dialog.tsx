@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { updateTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { qk, upsertInCursorList, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type TripRow = Trip & { fleetName?: string; busName?: string; driverName?: string };
 
@@ -50,7 +51,7 @@ export function EditTripDialog({
     if (!trip) return;
     setError(null);
     if (!origin.trim() || !destination.trim() || !departAt) {
-      setError("أكمل البداية والوجهة والميعاد.");
+      setError(t("trips.editDialog.errors.required"));
       return;
     }
     setSaving(true);
@@ -72,24 +73,24 @@ export function EditTripDialog({
   }
 
   return (
-    <Dialog open={open && Boolean(trip)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="تعديل رحلة" description={trip ? `رحلة ${trip.origin} → ${trip.destination} — عربية ${trip.busName}.` : undefined} size="sm">
+    <Dialog open={open && Boolean(trip)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("trips.editDialog.title")} description={trip ? t("trips.editDialog.description", { tripOrigin: trip.origin, tripDestination: trip.destination, tripBusName: trip.busName }) : undefined} size="sm">
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">البداية</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.origin")}</span>
             <Input value={origin} onChange={(event) => setOrigin(event.target.value)} />
           </label>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">الوجهة</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.destination")}</span>
             <Input value={destination} onChange={(event) => setDestination(event.target.value)} />
           </label>
         </div>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">موعد الرحلة</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("trips.columns.departAt")}</span>
           <Input dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">الحالة</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.status")}</span>
           <select value={status} onChange={(event) => setStatus(event.target.value as Trip["status"])} className="select-field w-full">
             {(Object.keys(TRIP_STATUS_AR) as Trip["status"][]).map((value) => (
               <option key={value} value={value}>{TRIP_STATUS_AR[value]}</option>
@@ -98,8 +99,8 @@ export function EditTripDialog({
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? t("common.loading.saving") : t("common.actions.saveChanges")}</Button>
         </div>
       </div>
     </Dialog>

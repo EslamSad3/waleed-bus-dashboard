@@ -17,6 +17,7 @@ import type { StagedUpload } from "@/lib/actions/http";
 import { driverFreshSchema } from "@/lib/schemas/p1";
 import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
+import { t } from "@/lib/i18n/t";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
 
@@ -42,11 +43,11 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
   async function submit() {
     setError(null);
     if (!fleetId) {
-      setError("اختار صاحب العربيات ثم الأسطول المطلوب");
+      setError(t("drivers.errors.pickOwnerAndFleet"));
       return;
     }
     if (password !== passwordConfirmation) {
-      setError("كلمتا السر غير متطابقتين");
+      setError(t("common.validation.passwordsMismatch"));
       return;
     }
     const parsed = driverFreshSchema.safeParse({
@@ -58,7 +59,7 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
       picture: undefined,
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "أكمل البيانات المطلوبة.");
+      setError(parsed.error.issues[0]?.message ?? t("common.validation.required"));
       return;
     }
     setSaving(true);
@@ -97,27 +98,27 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="إضافة سواق" description="اختار صاحب العربيات الأول. تعيين العربية بيتعمل لاحقًا من صفحة العربية." size="lg">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("drivers.createDialog.title")} description={t("drivers.createDialog.description")} size="lg">
       <div>
         <div className="mb-5"><FleetOwnerFleetPicker fleetId={fleetId} onFleetChange={setFleetId} /></div>
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالكامل</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="كريم علي" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">اسم الشهرة</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="كريم" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">رقم الموبايل</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الرقم القومي (اختياري)</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder="14 رقم" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("drivers.placeholders.fullName")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("drivers.placeholders.nickname")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("drivers.placeholders.nationalIdDigits")} /></label>
           <ImagePicker
-            label="صورة السواق (اختياري)"
+            label={t("drivers.createDialog.imageLabel")}
             file={imageFile}
             onChange={setImageFile}
             uploading={saving && Boolean(imageFile)}
-            hint="بتترفع كملف للتخزين السحابي — من غير روابط."
+            hint={t("common.image.hintUploadFile")}
           />
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">كلمة السر</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">تأكيد كلمة السر</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
           {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row md:col-span-2">
-            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-            <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الإنشاء…" : "إنشاء حساب السواق"}</Button>
+            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+            <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? t("common.loading.creating") : t("drivers.createDialog.submit")}</Button>
           </div>
         </div>
       </div>
@@ -134,8 +135,8 @@ export default function DriversPage() {
   const drivers = page?.items ?? [];
 
   async function removeDriverRow(driver: SystemDriverRow) {
-    const label = driver.name || driver.nickname || driver.phoneNumber || "السواق ده";
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح السواق «${label}» من أسطول «${driver.fleet.name}»؟`, confirmLabel: "مسح", destructive: true }))) return;
+    const label = driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel");
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.list.deleteConfirm.description", { label: label, value: driver.fleet.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await removeDriver(driver.fleet.id, driver.id);
     if (!result.ok) return;
     removeFromCursorList<SystemDriverRow>(queryClient, qk.drivers, driver.id);
@@ -147,14 +148,14 @@ export default function DriversPage() {
   }
 
   const columns: CommunityColumnDef<SystemDriverRow>[] = [
-    { field: "name", headerName: "السواق", filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "بدون اسم" },
-    { field: "phoneNumber", headerName: "الموبايل", filter: "agTextColumnFilter" },
-    { field: "fleet.name", headerName: "الأسطول", valueGetter: (params) => params.data?.fleet.name },
-    { field: "fleetOwner.name", headerName: "صاحب العربيات", valueGetter: (params) => params.data?.fleetOwner.name || "بدون اسم" },
-    { field: "assignedBus.registrationNumber", headerName: "العربية المعيّنة", valueGetter: (params) => params.data?.assignedBus?.registrationNumber || "غير معيّنة" },
+    { field: "name", headerName: t("common.fields.driver"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || t("common.value.withoutName") },
+    { field: "phoneNumber", headerName: t("common.fields.phone"), filter: "agTextColumnFilter" },
+    { field: "fleet.name", headerName: t("common.fields.fleet"), valueGetter: (params) => params.data?.fleet.name },
+    { field: "fleetOwner.name", headerName: t("common.fields.fleetOwner"), valueGetter: (params) => params.data?.fleetOwner.name || t("common.value.withoutName") },
+    { field: "assignedBus.registrationNumber", headerName: t("drivers.columns.assignedBus"), valueGetter: (params) => params.data?.assignedBus?.registrationNumber || t("drivers.list.notAssigned") },
     {
       field: "status",
-      headerName: "الحالة",
+      headerName: t("common.fields.status"),
       filter: "agTextColumnFilter",
       valueFormatter: (params) => MEMBER_STATUS_AR[params.value as keyof typeof MEMBER_STATUS_AR] ?? params.value,
     },
@@ -164,10 +165,10 @@ export default function DriversPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0">
-          <h1 className="page-title">السواقين</h1>
-          <p className="page-description">كل حسابات السواقين في النظام، مع الأسطول وصاحب العربيات والعربية المعيّنة حاليًا.</p>
+          <h1 className="page-title">{t("drivers.title")}</h1>
+          <p className="page-description">{t("drivers.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>إضافة سواق</Button>
+        <Button onClick={() => setCreateOpen(true)}>{t("drivers.newDriver")}</Button>
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
@@ -185,14 +186,14 @@ export default function DriversPage() {
           }}
           keyOf={(driver) => driver.id}
           columnDefs={columns}
-          emptyMessage="لا يوجد سواقون مطابقون للبحث."
+          emptyMessage={t("drivers.empty")}
           renderItem={(driver) => (
             <RowActionsMenu
-              label={`إجراءات السواق ${driver.name || driver.nickname || driver.phoneNumber || ""}`}
+              label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
               actions={[
-                { label: "فتح التفاصيل", href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
-                { label: "تعديل", onSelect: () => setDriverForEdit(driver) },
-                { label: "مسح", danger: true, onSelect: () => void removeDriverRow(driver) },
+                { label: t("common.actions.openDetails"), href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
+                { label: t("common.actions.edit"), onSelect: () => setDriverForEdit(driver) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeDriverRow(driver) },
               ]}
             />
           )}

@@ -1,6 +1,7 @@
 import { apiDiscardStaged, apiGet, apiSend, apiSendFile, apiStageImage, type ActionResult, type CursorPage, type StagedUpload } from "@/lib/actions/http";
 import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateFleetOwnerInput, UpdateFleetOwnerInput } from "@/lib/schemas/p1";
+import { t } from "@/lib/i18n/t";
 
 export type FleetOwnerAccount = {
   id: string;
@@ -24,15 +25,15 @@ export function fetchFleetOwner(id: string): Promise<ActionResult<FleetOwnerAcco
 }
 
 export function createFleetOwner(input: CreateFleetOwnerInput): Promise<ActionResult<FleetOwnerAccount>> {
-  return notifyResult("اتضاف مالك العربية بنجاح", apiSend("/api/fleet-owners", "POST", input));
+  return notifyResult(t("fleetOwners.toast.created"), apiSend("/api/fleet-owners", "POST", input));
 }
 
 export function updateFleetOwner(id: string, input: UpdateFleetOwnerInput): Promise<ActionResult<FleetOwnerAccount>> {
-  return notifyResult("اتحفظت بيانات صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "PATCH", input));
+  return notifyResult(t("fleetOwners.toast.saved"), apiSend(`/api/fleet-owners/${id}`, "PATCH", input));
 }
 
 export function deleteFleetOwner(id: string): Promise<ActionResult<null>> {
-  return notifyResult("اتمسح صاحب العربية", apiSend(`/api/fleet-owners/${id}`, "DELETE"));
+  return notifyResult(t("fleetOwners.toast.deleted"), apiSend(`/api/fleet-owners/${id}`, "DELETE"));
 }
 
 /**
@@ -55,7 +56,7 @@ export function discardFleetOwnerPicture(staged: StagedUpload): Promise<void> {
  */
 export function uploadFleetOwnerPicture(id: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(
-    "اترفعت صورة مالك العربية",
+    t("fleetOwners.toast.imageUploaded"),
     apiSendFile<{ url: string }>(`/api/fleet-owners/${id}/picture`, file),
     opts,
   );

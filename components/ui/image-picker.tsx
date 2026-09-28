@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 type ImagePickerProps = {
   label: string;
@@ -57,9 +58,9 @@ export function ImagePicker({
         <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#d8e4ec] bg-[#f8fbfd]">
           {shown ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={shown} alt="معاينة الصورة" className="size-full object-cover" />
+            <img src={shown} alt={t("ui.imagePicker.previewAlt")} className="size-full object-cover" />
           ) : (
-            <span className="text-xs text-[#8b98a5]">لا صورة</span>
+            <span className="text-xs text-[#8b98a5]">{t("ui.imagePicker.empty")}</span>
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">
@@ -70,12 +71,12 @@ export function ImagePicker({
             className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#eaf6ff] px-4 text-xs font-extrabold text-[#00134c] transition hover:bg-[#d6eeff] disabled:pointer-events-none disabled:opacity-50"
           >
             {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            اختار صورة
+            {t("ui.imagePicker.choose")}
           </button>
           {file ? (
             <p className="truncate text-xs text-[#5e6b78]">{file.name}</p>
           ) : null}
-          {uploading ? <p className="text-xs text-[#059ff8]">جاري رفع الصورة وضغطها…</p> : null}
+          {uploading ? <p className="text-xs text-[#059ff8]">{t("ui.imagePicker.uploading")}</p> : null}
           {hint ? <p className="text-xs text-[#8b98a5]">{hint}</p> : null}
         </div>
       </div>

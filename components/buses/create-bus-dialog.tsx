@@ -26,6 +26,7 @@ import { useFilterStore } from "@/stores/filters";
 import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { Skeleton } from "@/components/ui/skeleton";
+import { t } from "@/lib/i18n/t";
 
 type BusRow = Bus & { fleetName: string };
 
@@ -104,11 +105,11 @@ export function CreateBusDialog({
   async function onSubmit(values: CreateValues) {
     setFormError(null);
     if (!fleetId) {
-      setFormError("اختار الأسطول الأول قبل إضافة العربية.");
+      setFormError(t("buses.createDialog.errors.pickFleet"));
       return;
     }
     if (!imageFile) {
-      setFormError("صورة العربية مطلوبة.");
+      setFormError(t("buses.createDialog.errors.imageRequired"));
       return;
     }
     setFleetId(fleetId);
@@ -144,7 +145,7 @@ export function CreateBusDialog({
   const color = form.watch("color");
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="عربية جديدة" description="سجّل العربية داخل أسطولها: اللوحة واللون والصورة مطلوبين — رقم التسجيل بيتولد تلقائيًا." size="sm">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
       <div>
         {lockedFleetId ? null : (
           <div className="mb-4">
@@ -155,7 +156,7 @@ export function CreateBusDialog({
           onSubmit={(event) => {
             if (!imageFile) {
               event.preventDefault();
-              setFormError("صورة العربية مطلوبة.");
+              setFormError(t("buses.createDialog.errors.imageRequired"));
               return;
             }
             void form.handleSubmit(onSubmit)(event);
@@ -164,19 +165,19 @@ export function CreateBusDialog({
           noValidate
         >
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">رقم اللوحة</span>
-            <Input dir="ltr" placeholder="أ ب ج 1234" {...form.register("plateNumber")} />
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.plateNumber")}</span>
+            <Input dir="ltr" placeholder={t("buses.placeholders.plateNumber")} {...form.register("plateNumber")} />
           </label>
           {form.formState.errors.plateNumber ? <p role="alert" className="text-sm text-red-600">{form.formState.errors.plateNumber.message}</p> : null}
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">اللون</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.color")}</span>
             <select
               value={color ?? ""}
               onChange={(event) => form.setValue("color", event.target.value, { shouldValidate: true })}
               onBlur={() => form.trigger("color")}
               className="select-field w-full"
             >
-              <option value="">اختار اللون…</option>
+              <option value="">{t("buses.detail.pickColor")}</option>
               {BUS_COLORS.map((option) => (
                 <option key={option.name} value={option.name}>{option.name}</option>
               ))}
@@ -190,15 +191,15 @@ export function CreateBusDialog({
           ) : null}
           {form.formState.errors.color ? <p role="alert" className="text-sm text-red-600">{form.formState.errors.color.message}</p> : null}
           <ImagePicker
-            label="صورة العربية"
+            label={t("buses.detail.imageLabel")}
             file={imageFile}
             onChange={(file) => void onFileSelect(file)}
             uploading={uploading}
             required
-            hint="الصورة بتترفع كملف (FormData) للتخزين السحابي تلقائيًا."
+            hint={t("buses.detail.imageHint")}
           />
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">الماركة <span className="font-normal text-slate-400">(اختياري)</span></span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.brand")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
             {brandsPending ? (
               <Skeleton className="h-[2.75rem] w-full" />
             ) : (
@@ -206,14 +207,14 @@ export function CreateBusDialog({
                 {...form.register("brandId")}
                 className="select-field w-full"
               >
-                <option value="">بدون ماركة…</option>
+                <option value="">{t("buses.detail.noBrand")}</option>
                 {(brands ?? []).filter((brand) => brand.isActive).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
               </select>
             )}
           </label>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block text-sm">
-              <span className="mb-1.5 block font-bold text-[#334454]">سنة الموديل <span className="font-normal text-slate-400">(اختياري)</span></span>
+              <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.modelYear")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
               <Input
                 dir="ltr"
                 inputMode="numeric"
@@ -225,7 +226,7 @@ export function CreateBusDialog({
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1.5 block font-bold text-[#334454]">السعة (1–300)</span>
+              <span className="mb-1.5 block font-bold text-[#334454]">{t("buses.detail.capacityRange")}</span>
               <Input
                 dir="ltr"
                 inputMode="numeric"
@@ -243,13 +244,13 @@ export function CreateBusDialog({
           ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             <input type="checkbox" {...form.register("isAirConditioned")} className="size-4" />
-            مكيّف
+            {t("common.fields.ac")}
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
             <Button type="submit" variant="success" loading={form.formState.isSubmitting || uploading}>
-              {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة العربية"}
+              {form.formState.isSubmitting ? t("common.loading.saving") : t("buses.createDialog.submit")}
             </Button>
           </div>
         </form>

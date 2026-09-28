@@ -1,4 +1,5 @@
 import type { Permission } from "@/lib/actions/permissions";
+import { t } from "@/lib/i18n/t";
 
 type PermissionPresentation = {
   group: string;
@@ -7,38 +8,38 @@ type PermissionPresentation = {
 };
 
 const RESOURCES: Record<string, { group: string; name: string }> = {
-  users: { group: "الحسابات", name: "حسابات المستخدمين" },
-  fleets: { group: "التشغيل", name: "الأساطيل" },
-  buses: { group: "التشغيل", name: "العربيات" },
-  trips: { group: "التشغيل", name: "الرحلات" },
-  bookings: { group: "التشغيل", name: "الحجوزات" },
-  members: { group: "التشغيل", name: "أعضاء الأسطول" },
-  "fleet.buses": { group: "تشغيل الأسطول", name: "عربيات الأسطول" },
-  "fleet.trips": { group: "تشغيل الأسطول", name: "رحلات الأسطول" },
-  "fleet.drivers": { group: "تشغيل الأسطول", name: "سائقي الأسطول" },
-  "fleet.reports": { group: "تشغيل الأسطول", name: "تقارير الأسطول" },
-  roles: { group: "إدارة النظام", name: "أدوار الوصول" },
-  permissions: { group: "إدارة النظام", name: "دليل الصلاحيات" },
-  audit: { group: "إدارة النظام", name: "سجل النشاط" },
-  driver: { group: "تشغيل السائق", name: "مهام السائق" },
+  users: { group: t("permissions.groups.accounts"), name: t("permissions.resources.users") },
+  fleets: { group: t("permissions.groups.operations"), name: t("permissions.resources.fleets") },
+  buses: { group: t("permissions.groups.operations"), name: t("permissions.resources.buses") },
+  trips: { group: t("permissions.groups.operations"), name: t("permissions.resources.trips") },
+  bookings: { group: t("permissions.groups.operations"), name: t("permissions.resources.bookings") },
+  members: { group: t("permissions.groups.operations"), name: t("permissions.resources.members") },
+  "fleet.buses": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetBuses") },
+  "fleet.trips": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetTrips") },
+  "fleet.drivers": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetDrivers") },
+  "fleet.reports": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetReports") },
+  roles: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.roles") },
+  permissions: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.permissions") },
+  audit: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.audit") },
+  driver: { group: t("permissions.groups.driverOps"), name: t("permissions.resources.driver") },
 };
 
 const ACTIONS: Record<string, string> = {
-  read: "عرض",
-  create: "إضافة",
-  update: "تعديل",
-  delete: "حذف",
-  manage: "إدارة",
-  operate: "تنفيذ المهام التشغيلية",
+  read: t("permissions.actions.read"),
+  create: t("permissions.actions.create"),
+  update: t("permissions.actions.update"),
+  delete: t("permissions.actions.delete"),
+  manage: t("permissions.actions.manage"),
+  operate: t("permissions.actions.operate"),
 };
 
 /** Converts API permission identifiers into administrator-friendly Arabic. */
 export function presentPermission(permission: Pick<Permission, "key" | "resource" | "action" | "description">): PermissionPresentation {
-  const resource = RESOURCES[permission.resource] ?? { group: "صلاحيات أخرى", name: "إعدادات إضافية" };
-  const action = ACTIONS[permission.action] ?? "استخدام";
+  const resource = RESOURCES[permission.resource] ?? { group: t("permissions.resources.otherGroup"), name: t("permissions.resources.other") };
+  const action = ACTIONS[permission.action] ?? t("permissions.actions.other");
   return {
     group: resource.group,
     title: `${action} ${resource.name}`,
-    description: permission.description || `يسمح هذا الدور بـ${action} ${resource.name}.`,
+    description: permission.description || t("permissions.descriptionTemplate", { action: action, resourceName: resource.name }),
   };
 }

@@ -37,7 +37,7 @@ This file defines the high-signal constraints, architecture patterns, and operat
 ## 2. What to Extract
 
 ### Must capture:
-- **Exact commands**: `pnpm install`, `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm build`
+- **Exact commands**: `pnpm install`, `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm i18n:check`, `pnpm build`
 - **Verification flow**: `lint → typecheck → test` order and dependencies
 - **Monorepo boundaries**: Which packages belong to which workspace
 - **Framework quirks**: Next.js 16 App Router, RSC-first rendering, pnpm-only
@@ -66,15 +66,25 @@ This file defines the high-signal constraints, architecture patterns, and operat
 4. Logout: `POST /auth/logout` + clear cookies
 
 ### 3.3 Error Code Map (PRD §9)
-| Code | Message |
-|---|---|
-| `AUTHENTICATION_FAILED` | بيانات الدخول غير صحيحة |
-| `BUS_ACTION_NOT_ALLOWED` | العملية مرفوضة: الأتوبيس عليه رحلة شغالة (DEPARTED) |
-| `DRIVER_ASSIGNMENT_NOT_ALLOWED` | تعيين السواق مرفوض: مش نشط أو من أسطول تاني |
-| `RESOURCE_NOT_OWNED` / 404 | العنصر مش موجود في الأسطول ده |
-| `CONFLICTING_ASSIGNMENT` | البيانات متعارضة مع سجل موجود |
-| `VALIDATION_FAILED` | راجع الحقول المطلوبة |
-| 429 | محاولات كتير، حاول بعد شوية |
+`lib/errors.ts` binds a backend code to a dictionary key; the copy itself is in `lib/i18n/ar.json` under `errors.*`.
+
+| Code | Key | Message |
+|---|---|---|
+| `AUTHENTICATION_FAILED` | `errors.AUTHENTICATION_FAILED` | بيانات الدخول غير صحيحة |
+| `BUS_ACTION_NOT_ALLOWED` | `errors.BUS_ACTION_NOT_ALLOWED` | العملية مرفوضة: الأتوبيس عليه رحلة شغالة (DEPARTED) |
+| `DRIVER_ASSIGNMENT_NOT_ALLOWED` | `errors.DRIVER_ASSIGNMENT_NOT_ALLOWED` | تعيين السواق مرفوض: مش نشط أو من شركة تانية |
+| `RESOURCE_NOT_OWNED` / 404 | `errors.RESOURCE_NOT_OWNED` | العنصر مش موجود في الشركة دي |
+| `CONFLICTING_ASSIGNMENT` | `errors.CONFLICTING_ASSIGNMENT` | البيانات متعارضة مع سجل موجود |
+| `VALIDATION_FAILED` | `errors.VALIDATION_FAILED` | راجع الحقول المطلوبة |
+| 429 | `errors.RATE_LIMITED_429` | محاولات كتير، حاول بعد شوية |
+
+### 3.3b i18n (single source of truth)
+- **All user-facing Arabic copy lives in `lib/i18n/ar.json`.** Nothing is hardcoded in pages, components, libs or server actions.
+- Read it with `t("dotted.key")` from `@/lib/i18n/t` — isomorphic, so it works in server components, client components, plain libs and action modules: `t("bookings.detail.title")`, `t("buses.list.rowActions", { name })`.
+- Keys are type-checked: a typo or a missing key fails `pnpm typecheck`. Values may contain `{placeholder}` slots.
+- Dictionary sections: `common` (shared actions/fields/values), `enums` (backend enum labels), `errors`, `validation` (zod messages), `agGrid`, `colors`, `ordinals`, then one section per screen/feature.
+- `pnpm i18n:check` fails when Arabic is hardcoded outside `ar.json`, when a `t()` key is missing, and lists unused keys. Run it with `lint` + `typecheck` as the dashboard gate.
+- Adding a locale: drop `<locale>.json` beside `ar.json` and resolve the dictionary per request in `lib/i18n/t.ts` — nothing else needs to change.
 
 ### 3.4 PDF Reports (PRD §7)
 - Route: `GET /api/reports/fleet`, `GET /api/reports/trip`, `GET /api/reports/digest`

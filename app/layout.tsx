@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cairo, Poppins } from "next/font/google";
 import { Providers } from "./providers";
+import { t } from "@/lib/i18n/t";
 import "./globals.css";
 
 const cairo = Cairo({
@@ -16,8 +17,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "منصة العربيات | لوحة تحكم المشرف",
-  description: "لوحة تحكم المشرف العام لمنصة العربيات",
+  title: t("common.app.metadataTitle"),
+  description: t("common.app.metadataDescription"),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

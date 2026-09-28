@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { t } from "@/lib/i18n/t";
 
 export function SignOutButton() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export function SignOutButton() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {
-      toast.error("حصلت مشكلة", { description: "مشكلة في الاتصال بالسيرفر", duration: 6000 });
+      toast.error(t("common.error.somethingWentWrong"), { description: t("common.error.network"), duration: 6000 });
     } finally {
       router.push("/login");
       router.refresh();
@@ -24,9 +25,9 @@ export function SignOutButton() {
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={signOut} loading={busy} aria-label="تسجيل الخروج">
+    <Button variant="ghost" size="sm" onClick={signOut} loading={busy} aria-label={t("shell.signOut.aria")}>
       <LogOut aria-hidden="true" />
-      <span className="hidden sm:inline">{busy ? "جاري الخروج…" : "خروج"}</span>
+      <span className="hidden sm:inline">{busy ? t("common.loading.signingOut") : t("shell.signOut.label")}</span>
     </Button>
   );
 }

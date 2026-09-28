@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "@/lib/i18n/t";
 
 /**
  * Shared login schema — imported by BOTH the client form and the API route
@@ -6,8 +7,8 @@ import { z } from "zod";
  * resolves users by email; no `loginType` is ever sent from this dashboard.
  */
 export const loginSchema = z.object({
-  email: z.email("اكتب بريد إلكتروني صحيح"),
-  password: z.string().min(8, "كلمة السر لازم تبقى 8 حروف على الأقل"),
+  email: z.email(t("validation.email")),
+  password: z.string().min(8, t("validation.passwordMin")),
   rememberMe: z.boolean().default(false),
 });
 

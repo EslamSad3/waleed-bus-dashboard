@@ -1,5 +1,6 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
+import { t } from "@/lib/i18n/t";
 
 export type Role = {
   id: string;
@@ -24,27 +25,27 @@ export function fetchRole(id: string): Promise<ActionResult<RoleDetail>> {
 }
 
 export function createRole(input: { name: string; slug: string; description?: string }): Promise<ActionResult<Role>> {
-  return notifyResult("اتضاف مستوى الوصول بنجاح", apiSend<Role>("/api/roles", "POST", input));
+  return notifyResult(t("roles.toast.created"), apiSend<Role>("/api/roles", "POST", input));
 }
 
 export function updateRole(id: string, input: { name?: string; description?: string; isActive?: boolean }): Promise<ActionResult<Role>> {
   return notifyResult(
     input.isActive === undefined
-      ? "اتحفظت بيانات مستوى الوصول"
+      ? t("roles.toast.saved")
       : input.isActive
-        ? "تم تنشيط مستوى الوصول"
-        : "تم إيقاف مستوى الوصول",
+        ? t("roles.toast.activated")
+        : t("roles.toast.deactivated"),
     apiSend<Role>(`/api/roles/${id}`, "PATCH", input),
   );
 }
 
 export function replaceRolePermissions(id: string, permissionKeys: string[]): Promise<ActionResult<Role>> {
   return notifyResult(
-    "تم تحديث مهام مستوى الوصول",
+    t("roles.toast.permissionsUpdated"),
     apiSend<Role>(`/api/roles/${id}/permissions`, "PUT", { permissionKeys }),
   );
 }
 
 export function deleteRole(id: string): Promise<ActionResult<null>> {
-  return notifyResult("اتمسح مستوى الوصول", apiSend<null>(`/api/roles/${id}`, "DELETE"));
+  return notifyResult(t("roles.toast.deleted"), apiSend<null>(`/api/roles/${id}`, "DELETE"));
 }

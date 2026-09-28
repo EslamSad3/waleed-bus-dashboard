@@ -1,5 +1,6 @@
 import { apiGet, apiSend, type ActionResult } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
+import { t } from "@/lib/i18n/t";
 
 export type Governorate = {
   id: string;
@@ -68,14 +69,14 @@ export const fetchMarkazAll = (includeInactive = true) =>
   apiGet<Markaz[]>(`/api/markaz${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchMarkazById = (id: string) => apiGet<Markaz>(`/api/markaz/${id}`);
 export const createMarkaz = (input: { governorateId: string; code: string; nameAr: string; nameEn: string; isActive?: boolean }) =>
-  notifyResult("اتضاف المركز بنجاح", apiSend<Markaz>("/api/markaz", "POST", input));
+  notifyResult(t("markaz.toast.created"), apiSend<Markaz>("/api/markaz", "POST", input));
 export const updateMarkaz = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) =>
   notifyResult(
-    input.isActive === undefined ? "اتحفظت بيانات المركز" : input.isActive ? "تم تنشيط المركز" : "تم إيقاف المركز",
+    input.isActive === undefined ? t("markaz.toast.saved") : input.isActive ? t("markaz.toast.activated") : t("markaz.toast.deactivated"),
     apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input),
   );
 export const deleteMarkaz = (id: string) =>
-  notifyResult("اتمسح المركز", apiSend<null>(`/api/markaz/${id}`, "DELETE"));
+  notifyResult(t("markaz.toast.deleted"), apiSend<null>(`/api/markaz/${id}`, "DELETE"));
 export const fetchLocalities = (markazId: string, includeInactive = false) =>
   apiGet<Locality[]>(`/api/markaz/${markazId}/localities${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchLocalitiesAll = (
@@ -90,42 +91,42 @@ export const fetchLocalitiesAll = (
 };
 export const fetchLocalityById = (id: string) => apiGet<Locality>(`/api/localities/${id}`);
 export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; nameEn: string; isActive?: boolean }) =>
-  notifyResult("اتضافت المدينة/القرية بنجاح", apiSend<Locality>("/api/localities", "POST", input));
+  notifyResult(t("localities.toast.created"), apiSend<Locality>("/api/localities", "POST", input));
 export const updateLocality = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined
-      ? "اتحفظت بيانات المدينة/القرية"
+      ? t("localities.toast.saved")
       : input.isActive
-        ? "تم تنشيط المدينة/القرية"
-        : "تم إيقاف المدينة/القرية",
+        ? t("localities.toast.activated")
+        : t("localities.toast.deactivated"),
     apiSend<Locality>(`/api/localities/${id}`, "PATCH", input),
   );
 export const deleteLocality = (id: string) =>
-  notifyResult("اتمسحت المدينة/القرية", apiSend<null>(`/api/localities/${id}`, "DELETE"));
+  notifyResult(t("localities.toast.deleted"), apiSend<null>(`/api/localities/${id}`, "DELETE"));
 export const fetchStop = (id: string) => apiGet<Stop>(`/api/stops/${id}`);
 export type StopInput = Omit<Stop, "id" | "governorate">;
 export const createStop = (input: StopInput) =>
-  notifyResult("اتضافت نقطة التوقف بنجاح", apiSend<Stop>("/api/stops", "POST", input));
+  notifyResult(t("stops.toast.created"), apiSend<Stop>("/api/stops", "POST", input));
 export const updateStop = (id: string, input: Partial<StopInput>) =>
-  notifyResult("اتحفظت بيانات نقطة التوقف", apiSend<Stop>(`/api/stops/${id}`, "PATCH", input));
+  notifyResult(t("stops.toast.saved"), apiSend<Stop>(`/api/stops/${id}`, "PATCH", input));
 export const deleteStop = (id: string) =>
-  notifyResult("اتمسحت نقطة التوقف", apiSend<null>(`/api/stops/${id}`, "DELETE"));
+  notifyResult(t("stops.toast.deleted"), apiSend<null>(`/api/stops/${id}`, "DELETE"));
 
 export const fetchTripLines = () => apiGet<TripLine[]>("/api/trip-lines");
 export const fetchTripLine = (id: string) => apiGet<TripLine>(`/api/trip-lines/${id}`);
 export const createTripLine = (input: { name: string; code: string; isActive?: boolean; outboundStops: { stopId: string; stopType: "BOARDING" | "LANDING"; estimatedStopMinutes?: number }[]; returnStops: { stopId: string; stopType: "BOARDING" | "LANDING"; estimatedStopMinutes?: number }[] }) =>
-  notifyResult("اتضاف الخط بنجاح", apiSend<TripLine>("/api/trip-lines", "POST", input));
+  notifyResult(t("tripLines.toast.created"), apiSend<TripLine>("/api/trip-lines", "POST", input));
 export const updateTripLine = (id: string, input: { name?: string; code?: string; isActive?: boolean }) =>
   notifyResult(
-    input.isActive === undefined ? "اتحفظت بيانات الخط" : input.isActive ? "تم تنشيط الخط" : "تم إيقاف الخط",
+    input.isActive === undefined ? t("tripLines.toast.saved") : input.isActive ? t("tripLines.toast.activated") : t("tripLines.toast.deactivated"),
     apiSend<TripLine>(`/api/trip-lines/${id}`, "PATCH", input),
   );
 export const updateTripLineDirectionStops = (lineId: string, directionId: string, stops: { stopId: string; stopType: "BOARDING" | "LANDING"; estimatedStopMinutes?: number }[]) =>
   notifyResult(
-    "اتحفظت محطات الخط",
+    t("tripLines.toast.stopsSaved"),
     apiSend<TripLine>(`/api/trip-lines/${lineId}/directions/${directionId}/stops`, "PATCH", { stops }),
   );
 export const deleteTripLine = (id: string) =>
-  notifyResult("اتمسح الخط", apiSend<null>(`/api/trip-lines/${id}`, "DELETE"));
+  notifyResult(t("tripLines.toast.deleted"), apiSend<null>(`/api/trip-lines/${id}`, "DELETE"));
 
 export type { ActionResult };

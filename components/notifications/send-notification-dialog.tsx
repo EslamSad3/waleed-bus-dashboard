@@ -24,6 +24,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { t as tr } from "@/lib/i18n/t";
 
 type Props = {
   open: boolean;
@@ -53,7 +54,7 @@ function matchesPhone(phone: string | null | undefined, query: string): boolean 
 function PendingSelectSkeleton() {
   return (
     <div role="status">
-      <span className="sr-only">جاري التحميل…</span>
+      <span className="sr-only">{tr("common.loading.more")}</span>
       <Skeleton className="h-11 w-full rounded-xl" />
     </div>
   );
@@ -63,7 +64,7 @@ function PendingSelectSkeleton() {
 function PickerRowsSkeleton() {
   return (
     <div role="status" className="space-y-3 p-3">
-      <span className="sr-only">جاري التحميل…</span>
+      <span className="sr-only">{tr("common.loading.more")}</span>
       {Array.from({ length: 4 }, (_, row) => (
         <div key={row} className="flex items-center gap-2.5">
           <Skeleton className="size-7 shrink-0 rounded-full" />
@@ -192,11 +193,11 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     const trimmedBody = body.trim();
 
     if (!trimmedTitle) {
-      setError("يرجى إدخال عنوان الإشعار");
+      setError(tr("notifications.send.errors.titleRequired"));
       return;
     }
     if (!trimmedBody) {
-      setError("يرجى إدخال محتوى الإشعار");
+      setError(tr("notifications.send.errors.bodyRequired"));
       return;
     }
 
@@ -209,15 +210,15 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     }
 
     if (!isGlobal && !targetUserId) {
-      setError("يرجى اختيار المستخدم المستهدف من القائمة أو اختيار إرسال عام");
+      setError(tr("notifications.send.errors.targetRequired"));
       return;
     }
     if (category === "TRIP" && !tripId) {
-      setError("يرجى اختيار الرحلة من القائمة");
+      setError(tr("notifications.send.errors.tripRequired"));
       return;
     }
     if (category === "DISCOUNT_CODE" && !promotionId) {
-      setError("يرجى اختيار كود الخصم من القائمة");
+      setError(tr("notifications.send.errors.promoRequired"));
       return;
     }
 
@@ -238,8 +239,8 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
     if (res.ok) {
       const msg = res.data.isGlobal
-        ? `تم إرسال الإشعار العام بنجاح إلى ${res.data.sentCount} مستخدم`
-        : "تم إرسال الإشعار بنجاح إلى المستخدم المحدد";
+        ? tr("notifications.send.successGlobal", { value: res.data.sentCount })
+        : tr("notifications.send.successDirect");
       resetForm();
       onOpenChange(false);
       onSuccess(msg);
@@ -255,8 +256,8 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         if (!next) resetForm();
         onOpenChange(next);
       }}
-      title="إرسال إشعار جديد"
-      description="إرسال إشعار مباشر يظهر في جدول إشعارات المستخدمين وصناديق وارد تطبيقاتهم"
+      title={tr("notifications.send.title")}
+      description={tr("notifications.send.description")}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -272,7 +273,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Target Mode Toggle */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-[#00134c]">المستهدفون بالإشعار</label>
+          <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.targetsLabel")}</label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
@@ -284,7 +285,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               }`}
             >
               <Users className="size-4" />
-              <span>إشعار عام (لكل المستخدمين)</span>
+              <span>{tr("notifications.send.audienceAll")}</span>
             </button>
             <button
               type="button"
@@ -296,7 +297,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               }`}
             >
               <User className="size-4" />
-              <span>مستخدم محدد (فردي)</span>
+              <span>{tr("notifications.send.audienceSpecific")}</span>
             </button>
           </div>
         </div>
@@ -306,11 +307,11 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           <div className="space-y-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#00134c]">
-                اختر المستخدم المستهدف *
+                {tr("notifications.send.pickUserLabel")}
               </label>
               {userId && (
                 <span className="text-[11px] font-semibold text-emerald-700">
-                  تم تحديد المستخدم بنجاح
+                  {tr("notifications.send.userSelected")}
                 </span>
               )}
             </div>
@@ -324,7 +325,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                   </div>
                   <div className="min-w-0">
                     <div className="truncate text-xs font-bold text-emerald-950">
-                      {selectedUserObj.name || "مستخدم بدون اسم"}
+                      {selectedUserObj.name || tr("notifications.fallbackUserWithoutName")}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-emerald-800">
                       {selectedUserObj.phoneNumber && (
@@ -352,7 +353,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                   className="shrink-0 gap-1 border-emerald-200 text-xs text-emerald-900 hover:bg-emerald-100"
                 >
                   <X className="size-3.5" />
-                  <span>تغيير</span>
+                  <span>{tr("common.actions.change")}</span>
                 </Button>
               </div>
             ) : (
@@ -360,7 +361,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               <div className="space-y-2">
                 <div className="relative">
                   <Input
-                    placeholder="ابحث بالاسم، رقم الموبايل (مثال: 0100...)، أو البريد الإلكتروني…"
+                    placeholder={tr("notifications.placeholders.userSearch")}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -406,7 +407,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                           </div>
                           <div className="min-w-0 text-right">
                             <div className="truncate text-xs font-bold text-[#00134c]">
-                              {u.name || "مستخدم بدون اسم"}
+                              {u.name || tr("notifications.fallbackUserWithoutName")}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#5e6b78]">
                               {u.phoneNumber && <span dir="ltr">{u.phoneNumber}</span>}
@@ -415,29 +416,29 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                           </div>
                         </div>
                         <span className="shrink-0 rounded-lg bg-[#d6eeff] px-2 py-0.5 text-[11px] font-bold text-[#00134c]">
-                          اختيار
+                          {tr("common.actions.select")}
                         </span>
                       </button>
                     ))
                   ) : loadingUsers ? (
                     <div className="flex items-center justify-center gap-2 p-4 text-xs text-slate-500">
                       <Loader2 className="size-4 animate-spin text-[#059ff8]" />
-                      <span>جاري البحث…</span>
+                      <span>{tr("common.loading.searching")}</span>
                     </div>
                   ) : !usersSettled ? (
                     <PickerRowsSkeleton />
                   ) : (
                     <div className="p-4 text-center text-xs text-slate-500">
                       {userSearch.trim()
-                        ? `لا يوجد مستخدم يطابق "${userSearch}"`
-                        : "لا يوجد مستخدمون متاحون حاليًا"}
+                        ? tr("notifications.send.noUserMatch", { userSearch: userSearch })
+                        : tr("notifications.send.noUsers")}
                     </div>
                   )}
                 </div>
                 <p className="text-[11px] text-[#5e6b78]">
                   {userSearch.trim()
-                    ? `اضغط على المستخدم لاختياره أو اضغط Enter لاختيار أول نتيجة (${filteredUsers.length} نتيجة)`
-                    : `اختر المستخدم من القائمة أعلاه (${filteredUsers.length} متاح) أو اكتب للبحث`}
+                    ? tr("notifications.send.keyboardHint", { filteredUsersLength: filteredUsers.length })
+                    : tr("notifications.send.noUserSelectedHint", { filteredUsersLength: filteredUsers.length })}
                 </p>
               </div>
             )}
@@ -446,22 +447,22 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Category select */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#00134c]">نوع الإشعار</label>
+          <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.typeLabel")}</label>
           <select
             className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
             value={category}
             onChange={(e) => setCategory(e.target.value as "TEXT" | "TRIP" | "DISCOUNT_CODE")}
           >
-            <option value="TEXT">تنبيه عام (نصي فقط)</option>
-            <option value="TRIP">مرتبط برحلة (TRIP)</option>
-            <option value="DISCOUNT_CODE">مرتبط بكود خصم (DISCOUNT_CODE)</option>
+            <option value="TEXT">{tr("notifications.send.typeText")}</option>
+            <option value="TRIP">{tr("notifications.send.typeTrip")}</option>
+            <option value="DISCOUNT_CODE">{tr("notifications.send.typePromo")}</option>
           </select>
         </div>
 
         {/* Trip Dropdown if TRIP (NO UUID) */}
         {category === "TRIP" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#00134c]">اختر الرحلة *</label>
+            <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.pickTripLabel")}</label>
             {tripsLoading ? (
               <PendingSelectSkeleton />
             ) : (
@@ -471,7 +472,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                   value={tripId}
                   onChange={(e) => setTripId(e.target.value)}
                 >
-                  <option value="">-- اختر الرحلة من القائمة --</option>
+                  <option value="">{tr("notifications.send.pickTripOption")}</option>
                   {trips.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.origin} ← {t.destination} ({new Date(t.departAt).toLocaleString("ar-EG")})
@@ -479,7 +480,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                   ))}
                 </select>
                 {trips.length === 0 && (
-                  <p className="text-[11px] text-amber-700">لا توجد رحلات مجدولة حاليًا في النظام.</p>
+                  <p className="text-[11px] text-amber-700">{tr("notifications.send.noTrips")}</p>
                 )}
               </>
             )}
@@ -489,7 +490,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Promotion Dropdown if DISCOUNT_CODE (NO UUID) */}
         {category === "DISCOUNT_CODE" && (
           <div className="space-y-1">
-            <label className="text-xs font-bold text-[#00134c]">اختر كود الخصم *</label>
+            <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.pickPromoLabel")}</label>
             {promotionsLoading ? (
               <PendingSelectSkeleton />
             ) : (
@@ -499,15 +500,15 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                   value={promotionId}
                   onChange={(e) => setPromotionId(e.target.value)}
                 >
-                  <option value="">-- اختر كود الخصم من القائمة --</option>
+                  <option value="">{tr("notifications.send.pickPromoOption")}</option>
                   {promotions.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.code} — خصم {p.value} جنيه ({p.isGlobal ? "كود عام" : "كود مخصص"})
+                      {p.code} {tr("notifications.send.promoDiscountPrefix")} {p.value} {tr("promotions.columns.discountUnitPrefix")}{p.isGlobal ? tr("promotions.placeholders.promoGlobal") : tr("promotions.placeholders.promoSpecific")})
                     </option>
                   ))}
                 </select>
                 {promotions.length === 0 && (
-                  <p className="text-[11px] text-amber-700">لا توجد أكواد خصم نشطة حاليًا في النظام.</p>
+                  <p className="text-[11px] text-amber-700">{tr("notifications.send.noPromos")}</p>
                 )}
               </>
             )}
@@ -516,9 +517,9 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#00134c]">عنوان الإشعار *</label>
+          <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.titleLabel")}</label>
           <Input
-            placeholder="مثال: تنبيه هام بخصوص مواعيد الرحلات"
+            placeholder={tr("notifications.placeholders.title")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
@@ -527,10 +528,10 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
 
         {/* Body */}
         <div className="space-y-1">
-          <label className="text-xs font-bold text-[#00134c]">نص ومحتوى الإشعار *</label>
+          <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.bodyLabel")}</label>
           <textarea
             rows={4}
-            placeholder="اكتب تفاصيل الإشعار هنا..."
+            placeholder={tr("notifications.placeholders.body")}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             maxLength={2000}
@@ -549,7 +550,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            إلغاء
+            {tr("common.actions.cancel")}
           </Button>
           <Button
             type="submit"
@@ -557,7 +558,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
             className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
           >
             <Send className="size-4" />
-            <span>{submitting ? "جاري الإرسال…" : "إرسال الإشعار"}</span>
+            <span>{submitting ? tr("common.loading.sending") : tr("notifications.send.submit")}</span>
           </Button>
         </div>
       </form>

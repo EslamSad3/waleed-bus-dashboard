@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { t } from "@/lib/i18n/t";
 
 /** عربية لطيفة بتتحرك في مكانها — عيون بترمش، عجلات بتلف، ودخان خفيف ورا. */
 function LostBusCharacter() {
@@ -10,7 +11,7 @@ function LostBusCharacter() {
     <svg
       viewBox="0 0 340 210"
       role="img"
-      aria-label="عربية اتوهت في الطريق"
+      aria-label={t("notFound.ariaLabel")}
       className="mx-auto w-full max-w-md drop-shadow-[0_24px_40px_rgba(0,19,76,0.18)]"
     >
       {/* الطريق */}
@@ -23,7 +24,7 @@ function LostBusCharacter() {
       <circle className="notfound-puff" cx="52" cy="150" r="11" fill="#c2d3e0" style={{ animationDelay: "1s" }} />
 
       {/* علامة استفهام طايرة */}
-      <text x="286" y="64" textAnchor="middle" fontSize="40" fontWeight="800" fill="#059ff8" className="notfound-mark">؟</text>
+      <text x="286" y="64" textAnchor="middle" fontSize="40" fontWeight="800" fill="#059ff8" className="notfound-mark">{t("notFound.questionMark")}</text>
 
       {/* العربية كلها بتنطّ */}
       <g className="notfound-bus">
@@ -91,19 +92,18 @@ export default function NotFoundPage() {
         404
       </p>
       <h1 className="mt-3 text-2xl font-extrabold text-[#00134c] sm:text-3xl">
-        العربية جت على طريق مغلق!
+        {t("notFound.title")}
       </h1>
       <p className="mt-3 max-w-md text-sm leading-7 text-[#5e6b78] sm:text-base">
-        الصفحة اللي بتدور عليها مش موجودة — يا اللينك اللي معاك غلط، يا الصفحة اتنقلت من مكانها.
-        مفيش مشكلة، خد اللينك ده وارجع تاني.
+        {t("notFound.description")}
       </p>
 
       <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row">
         <Button asChild size="lg">
-          <Link href="/">ارجع للوحة التحكم</Link>
+          <Link href="/">{t("notFound.backToDashboard")}</Link>
         </Button>
         <Button type="button" size="lg" variant="secondary" onClick={() => router.back()}>
-          ارجع خطوة للوراء
+          {t("notFound.goBack")}
         </Button>
       </div>
     </div>

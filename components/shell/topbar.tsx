@@ -1,6 +1,7 @@
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { BusFront, ShieldCheck } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 export function Topbar({ email }: { email: string | null }) {
   return (
@@ -14,23 +15,23 @@ export function Topbar({ email }: { email: string | null }) {
           </span>
           <div className="min-w-0">
             <div className="truncate text-base font-extrabold text-[#00134c] sm:text-lg">
-              منصة العربيات
+              {t("shell.topbar.brand")}
             </div>
             <div className="hidden items-center gap-1 text-[11px] font-semibold text-[#5e6b78] sm:flex">
               <ShieldCheck className="size-3.5 text-[#059ff8]" aria-hidden="true" />
-              لوحة المشرف العام
+              {t("shell.topbar.subtitle")}
             </div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-          <span className="hidden max-w-48 truncate text-xs text-[#5e6b78] xl:block" aria-label="حساب المشرف">
-            {email ?? "مشرف عام"}
+          <span className="hidden max-w-48 truncate text-xs text-[#5e6b78] xl:block" aria-label={t("shell.topbar.accountAria")}>
+            {email ?? t("shell.topbar.superAdmin")}
           </span>
           <span
             className="grid size-9 shrink-0 place-items-center rounded-full bg-[#d6eeff] text-xs font-extrabold text-[#00134c]"
-            title={email ?? "مشرف عام"}
+            title={email ?? t("shell.topbar.superAdmin")}
           >
-            {(email ?? "م").slice(0, 1).toUpperCase()}
+            {(email ?? t("shell.topbar.avatarInitial")).slice(0, 1).toUpperCase()}
           </span>
           <SignOutButton />
         </div>
