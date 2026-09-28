@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, Filter, Plus, RotateCcw, Ticket } from "lucide-react";
+import { AlertTriangle, Eye, Filter, Plus, RotateCcw, Ticket, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
 import { apiGet } from "@/lib/actions/http";
 import { findTripAcrossFleets } from "@/lib/actions/trips";
 import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
@@ -202,11 +202,11 @@ export default function BookingsPage() {
           columnDefs={columns}
           emptyMessage={t("bookings.list.empty")}
           renderItem={(booking) => (
-            <RowActionsMenu
+            <RowActions
               label={t("bookings.list.rowActions", { value: booking.passengerName || booking.passengerPhone || "" })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/bookings/${booking.id}` },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBooking(booking) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/bookings/${booking.id}` },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBooking(booking) },
               ]}
             />
           )}

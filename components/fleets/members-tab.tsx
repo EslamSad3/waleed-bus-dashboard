@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Ban, CheckCircle2, ShieldAlert, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   addMember,
@@ -177,16 +178,18 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
         columnDefs={columns}
         emptyMessage={t("members.empty")}
         renderItem={(member) => (
-          <RowActionsMenu
+          <RowActions
             label={t("members.list.rowActions", { value: member.user?.name ?? "" })}
             actions={[
               ...(["ACTIVE", "SUSPENDED", "REVOKED"] as Member["status"][])
                 .filter((status) => status !== member.status)
                 .map((status) => ({
                   label: status === "ACTIVE" ? t("common.actions.enable") : status === "SUSPENDED" ? t("common.actions.disable") : t("members.actions.revokeRole"),
+                  icon: status === "ACTIVE" ? CheckCircle2 : status === "SUSPENDED" ? Ban : ShieldAlert,
+                  tone: status === "ACTIVE" ? ("success" as const) : status === "SUSPENDED" ? ("warning" as const) : ("primary" as const),
                   onSelect: () => changeStatus(member, status),
                 })),
-              { label: t("members.actions.removeMembership"), danger: true, onSelect: () => remove(member) },
+              { label: t("members.actions.removeMembership"), icon: Trash2, tone: "danger", onSelect: () => remove(member) },
             ]}
           />
         )}

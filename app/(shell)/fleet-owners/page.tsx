@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { ImagePicker } from "@/components/ui/image-picker";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   createFleetOwner,
@@ -367,13 +368,13 @@ export default function FleetOwnersPage() {
           filterBar={<Input aria-label={t("fleetOwners.filters.searchAria")} placeholder={t("fleetOwners.filters.searchPlaceholder")} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full md:w-auto md:max-w-72 md:min-w-0 md:basis-64 md:flex-1 bg-white" />}
           emptyMessage={t("fleetOwners.empty")}
           renderItem={(owner) => (
-            <RowActionsMenu
+            <RowActions
               label={t("fleetOwners.list.rowActions", { value: owner.name ?? owner.phoneNumber ?? "" })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/fleet-owners/${owner.id}` },
-                { label: t("common.actions.edit"), onSelect: () => setOwnerForEdit(owner) },
-                { label: t("fleetOwners.actions.addFleet"), onSelect: () => setFleetOwnerForFleet(owner) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeOwner(owner) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/fleet-owners/${owner.id}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setOwnerForEdit(owner) },
+                { label: t("fleetOwners.actions.addFleet"), icon: Plus, onSelect: () => setFleetOwnerForFleet(owner) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeOwner(owner) },
               ]}
             />
           )}

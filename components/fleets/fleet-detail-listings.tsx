@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Ban, Eye, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -119,13 +120,13 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
           columnDefs={columns}
           emptyMessage={t("fleetOwners.fleets.detail.tabs.busesEmpty")}
           renderItem={(bus) => (
-            <RowActionsMenu
+            <RowActions
               label={t("fleetOwners.fleets.detail.tabs.busRowActions", { busRegistrationNumber: bus.registrationNumber })}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/buses/${bus.id}?fleetId=${fleetId}` },
-                { label: t("common.actions.edit"), onSelect: () => setBusForEdit(bus) },
-                { label: bus.isActive ? t("common.actions.disable") : t("buses.detail.actions.reactivate"), onSelect: () => void toggleActive(bus) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBus(bus) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?fleetId=${fleetId}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
+                { label: bus.isActive ? t("common.actions.disable") : t("buses.detail.actions.reactivate"), icon: bus.isActive ? Ban : RotateCcw, tone: bus.isActive ? "warning" : "success", onSelect: () => void toggleActive(bus) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBus(bus) },
               ]}
             />
           )}
@@ -180,12 +181,12 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
           columnDefs={columns}
           emptyMessage={t("fleetOwners.fleets.detail.tabs.tripsEmpty")}
           renderItem={(trip) => (
-            <RowActionsMenu
+            <RowActions
               label={t("fleetOwners.fleets.detail.tabs.tripRowActions")}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/trips/${trip.id}` },
-                { label: t("common.actions.edit"), onSelect: () => setTripForEdit(trip) },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeTrip(trip) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/trips/${trip.id}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setTripForEdit(trip) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTrip(trip) },
               ]}
             />
           )}
@@ -239,11 +240,11 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
           columnDefs={columns}
           emptyMessage={t("fleetOwners.fleets.detail.tabs.bookingsEmpty")}
           renderItem={(booking) => (
-            <RowActionsMenu
+            <RowActions
               label={t("fleetOwners.fleets.detail.tabs.bookingRowActions")}
               actions={[
-                { label: t("common.actions.openDetails"), href: `/bookings/${booking.id}` },
-                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBooking(booking) },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/bookings/${booking.id}` },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBooking(booking) },
               ]}
             />
           )}
