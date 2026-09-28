@@ -51,6 +51,11 @@ export function AddFleetToOwnerDialog({
     }
     const refreshed = await fetchFleetOwnersPage(null);
     if (refreshed.ok) queryClient.setQueryData(qk.fleetOwners, refreshed.data);
+    // This dialog is used from the owner LIST *and* the owner DETAIL screen, and each
+    // renders from a different cache. Refreshing only the list left the new company
+    // invisible when it was created from the detail page, so both are invalidated here.
+    await queryClient.invalidateQueries({ queryKey: qk.fleetOwner(owner.id) });
+    await queryClient.invalidateQueries({ queryKey: qk.fleets });
     onCreated?.(result.data.id);
     resetForm();
     onClose();

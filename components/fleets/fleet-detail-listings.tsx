@@ -17,7 +17,7 @@ import { deleteBus, disableBus, fetchBusesPage, reactivateBus, type Bus } from "
 import { deleteTrip, fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { deleteBooking, fetchBookingsPage, BOOKING_STATUS_AR, PAYMENT_STATUS_AR, type Booking } from "@/lib/actions/bookings";
 import { fetchFleetReports, type FleetReports } from "@/lib/actions/reports";
-import { qk, removeFromCursorList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import type { ActionResult, CursorPage } from "@/lib/actions/http";
 import { t } from "@/lib/i18n/t";
 
@@ -84,7 +84,7 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
   async function toggleActive(bus: Bus) {
     const result = bus.isActive ? await disableBus(fleetId, bus.id) : await reactivateBus(fleetId, bus.id);
     if (!result.ok) return;
-    upsertInList(queryClient, qk.fleetBuses(fleetId), result.data);
+    upsertInCursorList(queryClient, qk.fleetBuses(fleetId), result.data);
   }
 
   async function removeBus(bus: Bus) {
@@ -134,7 +134,7 @@ export function FleetBusesTab({ fleetId }: { fleetId: string }) {
       <CreateBusDialog
         open={createOpen}
         lockedFleetId={fleetId}
-        onCreated={(bus) => upsertInList(queryClient, qk.fleetBuses(fleetId), bus)}
+        onCreated={(bus) => upsertInCursorList(queryClient, qk.fleetBuses(fleetId), bus)}
         onClose={() => setCreateOpen(false)}
       />
       <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => setBusForEdit(null)} />
@@ -193,7 +193,7 @@ export function FleetTripsTab({ fleetId }: { fleetId: string }) {
       </ListingShell>
       <CreateTripDialog
         open={createOpen}
-        onCreated={(trip) => upsertInList(queryClient, qk.fleetTrips(fleetId), trip)}
+        onCreated={(trip) => upsertInCursorList(queryClient, qk.fleetTrips(fleetId), trip)}
         onClose={() => setCreateOpen(false)}
       />
       <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} onClose={() => setTripForEdit(null)} />
@@ -251,7 +251,7 @@ export function FleetBookingsTab({ fleetId }: { fleetId: string }) {
       </ListingShell>
       <CreateBookingDialog
         open={createOpen}
-        onCreated={(booking) => upsertInList(queryClient, qk.fleetBookings(fleetId), booking)}
+        onCreated={(booking) => upsertInCursorList(queryClient, qk.fleetBookings(fleetId), booking)}
         onClose={() => setCreateOpen(false)}
       />
     </section>

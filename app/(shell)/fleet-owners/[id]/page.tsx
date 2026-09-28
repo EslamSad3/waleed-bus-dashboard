@@ -213,7 +213,7 @@ export default function FleetOwnerDetailPage({
                     </div>
                     {open ? (
                       <div className="space-y-4 border-t border-[#e4ecf2] p-4">
-                        <OwnedFleetBody fleetId={owned.id} />
+                        <OwnedFleetBody fleetId={owned.id} ownerId={id} />
                       </div>
                     ) : null}
                   </li>
@@ -267,13 +267,26 @@ export default function FleetOwnerDetailPage({
  * Summary card + the five fleet sections for one company. The owner payload only nests
  * `{id, name, isActive}`, so the full row (needed for the VIP tier) is fetched here.
  */
-function OwnedFleetBody({ fleetId }: { fleetId: string }) {
+function OwnedFleetBody({ fleetId, ownerId }: { fleetId: string; ownerId: string }) {
+  const queryClient = useQueryClient();
   const { data: fleet, isPending, error } = useApiQuery<Fleet>(qk.fleet(fleetId), () => fetchFleet(fleetId));
+
+  // The row that opens this body renders the owner's embedded fleet summary, which is a
+  // different cache from qk.fleet(fleetId). Without this the row kept the old name after
+  // a rename, or the old status after a toggle, until the page was reloaded.
+  function mirrorToOwner(next: Fleet) {
+    queryClient.setQueryData<FleetOwnerAccount>(qk.fleetOwner(ownerId), (prev) =>
+      prev
+        ? { ...prev, fleets: prev.fleets.map((owned) => (owned.id === next.id ? { ...owned, name: next.name, isActive: next.isActive } : owned)) }
+        : prev,
+    );
+  }
+
   if (error) return <p role="alert" className="text-sm text-red-600">{error.message}</p>;
   if (!fleet || isPending) return <DetailPageSkeleton sections={1} />;
   return (
     <div className="space-y-4">
-      <FleetSummaryCard fleet={fleet} />
+      <FleetSummaryCard fleet={fleet} onChanged={mirrorToOwner} />
       <FleetSections fleetId={fleet.id} />
     </div>
   );

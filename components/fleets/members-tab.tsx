@@ -19,7 +19,7 @@ import {
   type MemberPage,
 } from "@/lib/actions/members";
 import { fetchUserOptions } from "@/lib/actions/fleets";
-import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
 const REVOKE_WARNING = t("common.confirm.revokeSessions");
@@ -115,14 +115,14 @@ export function MembersTab({ fleetId }: { fleetId: string }) {
     if (next !== "ACTIVE" && !(await confirm({ title: t("common.actions.confirmAction"), description: REVOKE_WARNING, confirmLabel: t("common.actions.confirm"), destructive: true }))) return;
     const r = await updateMember(fleetId, member.id, { status: next });
     if (!r.ok) return;
-    upsertInList(queryClient, qk.fleetMembers(fleetId), r.data);
+    upsertInCursorList(queryClient, qk.fleetMembers(fleetId), r.data);
   }
 
   async function remove(member: Member) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("members.deleteConfirm.description", { REVOKE_WARNING: REVOKE_WARNING }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const r = await removeMember(fleetId, member.id);
     if (!r.ok) return;
-    removeFromList(queryClient, qk.fleetMembers(fleetId), member.id);
+    removeFromCursorList(queryClient, qk.fleetMembers(fleetId), member.id);
   }
 
   const columns: CommunityColumnDef<Member>[] = [

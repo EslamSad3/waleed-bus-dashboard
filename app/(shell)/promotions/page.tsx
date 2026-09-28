@@ -23,7 +23,7 @@ import {
   type PromotionUsage,
 } from "@/lib/actions/promotions";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
-import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
 export default function PromotionsPage() {
@@ -108,7 +108,7 @@ export default function PromotionsPage() {
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
         });
     if (!result.ok) return setError(result.message);
-    upsertInList(queryClient, qk.promotions, result.data);
+    upsertInCursorList(queryClient, qk.promotions, result.data);
     setEditing(null);
     setCreating(false);
     setError(null);
@@ -117,14 +117,14 @@ export default function PromotionsPage() {
   async function expire(promo: Promotion) {
     const result = await expirePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    upsertInList(queryClient, qk.promotions, result.data);
+    upsertInCursorList(queryClient, qk.promotions, result.data);
   }
 
   async function removePromo(promo: Promotion) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("promotions.deleteConfirm.description", { promoCode: promo.code }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deletePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    removeFromList<Promotion>(queryClient, qk.promotions, promo.id);
+    removeFromCursorList<Promotion>(queryClient, qk.promotions, promo.id);
   }
 
   async function openUsages(promo: Promotion) {
