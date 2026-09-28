@@ -1,6 +1,7 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
 import type { AddMemberInput, AddDriverInput } from "@/lib/schemas/p1";
+import { t } from "@/lib/i18n/t";
 
 export type Member = {
   id: string;
@@ -19,9 +20,9 @@ export type Member = {
 export type MemberPage = CursorPage<Member>;
 
 export const MEMBER_STATUS_AR: Record<Member["status"], string> = {
-  ACTIVE: "نشط",
-  SUSPENDED: "موقوف",
-  REVOKED: "ملغي الصلاحية",
+  ACTIVE: t("enums.memberStatus.active"),
+  SUSPENDED: t("enums.memberStatus.suspended"),
+  REVOKED: t("enums.memberStatus.revoked"),
 };
 
 /** Driver roster row — fields beyond id/status render defensively (backend-owned shape). */
@@ -53,7 +54,7 @@ export function fetchMembersPage(fleetId: string, cursor: string | null): Promis
 
 export function addMember(fleetId: string, input: AddMemberInput): Promise<ActionResult<Member>> {
   return notifyResult(
-    "اتضاف العضو للأسطول",
+    t("members.toast.added"),
     apiSend<Member>(`/api/fleets/${fleetId}/members`, "POST", input, "MEMBER_EXISTS"),
   );
 }
@@ -61,19 +62,19 @@ export function addMember(fleetId: string, input: AddMemberInput): Promise<Actio
 export function updateMember(fleetId: string, memberId: string, input: { roleSlug?: string; status?: Member["status"] }): Promise<ActionResult<Member>> {
   return notifyResult(
     input.status === "ACTIVE"
-      ? "تم تنشيط العضو"
+      ? t("members.toast.activated")
       : input.status === "SUSPENDED"
-        ? "تم إيقاف العضو"
+        ? t("members.toast.suspended")
         : input.status === "REVOKED"
-          ? "تم إلغاء صلاحية العضو"
-          : "اتحفظت بيانات العضو",
+          ? t("members.toast.revoked")
+          : t("members.toast.saved"),
     apiSend<Member>(`/api/fleets/${fleetId}/members/${memberId}`, "PATCH", input),
   );
 }
 
 export function removeMember(fleetId: string, memberId: string): Promise<ActionResult<null>> {
   return notifyResult(
-    "اتمسح العضو من الأسطول",
+    t("members.toast.removed"),
     apiSend<null>(`/api/fleets/${fleetId}/members/${memberId}`, "DELETE"),
   );
 }
@@ -91,7 +92,7 @@ export function fetchSystemDriversPage(cursor: string | null): Promise<ActionRes
 
 export function inviteDriver(fleetId: string, input: AddDriverInput): Promise<ActionResult<DriverRow>> {
   return notifyResult(
-    "اتبعتت دعوة السواق بنجاح",
+    t("members.toast.inviteSent"),
     apiSend(`/api/fleet/drivers`, "POST", input, "MEMBER_EXISTS", fleetId),
   );
 }
@@ -116,19 +117,19 @@ export function updateDriver(
 ): Promise<ActionResult<DriverRow>> {
   return notifyResult(
     input.status === "ACTIVE"
-      ? "تم تنشيط السواق"
+      ? t("members.toast.driverActivated")
       : input.status === "SUSPENDED"
-        ? "تم إيقاف السواق"
+        ? t("members.toast.driverSuspended")
         : input.status === "REVOKED"
-          ? "تم إلغاء صلاحية السواق"
-          : "اتحفظت بيانات السواق",
+          ? t("members.toast.driverRevoked")
+          : t("members.toast.driverSaved"),
     apiSend(`/api/fleet/drivers/${driverId}`, "PATCH", input, undefined, fleetId),
   );
 }
 
 export function removeDriver(fleetId: string, driverId: string): Promise<ActionResult<null>> {
   return notifyResult(
-    "اتمسح السواق",
+    t("members.toast.driverDeleted"),
     apiSend<null>(`/api/fleet/drivers/${driverId}`, "DELETE", undefined, undefined, fleetId),
   );
 }

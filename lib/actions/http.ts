@@ -1,4 +1,5 @@
 import { conflictMessage, type ConflictKey } from "@/lib/errors";
+import { t } from "@/lib/i18n/t";
 
 /**
  * Client-callable BFF action helpers (P0 login precedent: client fetch to
@@ -21,7 +22,7 @@ type ApiEnvelope<T> = {
 function normalizeFields(raw: Record<string, string | string[]> | undefined): Record<string, string> | undefined {
   if (!raw) return undefined;
   return Object.fromEntries(
-    Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? v.join("، ") : v]),
+    Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? v.join(t("common.listSeparator")) : v]),
   );
 }
 
@@ -36,7 +37,7 @@ async function parse<T>(res: Response, conflictKey?: ConflictKey): Promise<Actio
   const message =
     code === "CONFLICT" && conflictKey
       ? conflictMessage(conflictKey)
-      : (payload?.message ?? "حصلت مشكلة، حاول تاني");
+      : (payload?.message ?? t("common.error.unknown"));
   return { ok: false, message, code, fields: normalizeFields(payload?.details?.fields) };
 }
 
@@ -48,7 +49,7 @@ export async function apiGet<T>(path: string, fleetId?: string | null): Promise<
     });
     return parse<T>(res);
   } catch {
-    return { ok: false, message: "مشكلة في الاتصال بالسيرفر", code: "NETWORK_ERROR" };
+    return { ok: false, message: t("common.error.network"), code: "NETWORK_ERROR" };
   }
 }
 
@@ -70,7 +71,7 @@ export async function apiSend<T>(
     });
     return parse<T>(res, conflictKey);
   } catch {
-    return { ok: false, message: "مشكلة في الاتصال بالسيرفر", code: "NETWORK_ERROR" };
+    return { ok: false, message: t("common.error.network"), code: "NETWORK_ERROR" };
   }
 }
 
@@ -86,9 +87,9 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 /** Client-side file validation (Arabic message or null when valid). */
 export function validateImageFile(file: File): string | null {
-  if (!IMAGE_MIMES.includes(file.type)) return "الصورة لازم تكون JPEG أو PNG أو WebP";
-  if (file.size > MAX_IMAGE_BYTES) return "حجم الصورة لازم يكون 5 ميجا أو أقل";
-  if (file.size === 0) return "ملف الصورة فاضي";
+  if (!IMAGE_MIMES.includes(file.type)) return t("common.validation.imageType");
+  if (file.size > MAX_IMAGE_BYTES) return t("common.validation.imageSize");
+  if (file.size === 0) return t("common.validation.imageEmpty");
   return null;
 }
 
@@ -141,13 +142,13 @@ export async function apiStageImage(
       signal: signal ?? AbortSignal.timeout(30000),
     });
     if (!put.ok) {
-      return { ok: false, message: "رفع الصورة فشل، حاول تاني", code: "STORAGE_UPLOAD_FAILED" };
+      return { ok: false, message: t("common.error.uploadFailed"), code: "STORAGE_UPLOAD_FAILED" };
     }
   } catch (error) {
     if (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) {
-      return { ok: false, message: "رفع الصورة أخد وقت أطول من اللازم — حاول تاني", code: "UPSTREAM_TIMEOUT" };
+      return { ok: false, message: t("common.error.uploadTimeout"), code: "UPSTREAM_TIMEOUT" };
     }
-    return { ok: false, message: "مشكلة في الاتصال بالسيرفر", code: "NETWORK_ERROR" };
+    return { ok: false, message: t("common.error.network"), code: "NETWORK_ERROR" };
   }
   const { bucket, path, publicUrl } = signed.data;
   return { ok: true, data: { bucket, path, publicUrl } };
@@ -177,7 +178,7 @@ export async function apiSendFile<T>(
     const res = await fetch(path, { method: "POST", body: form });
     return parse<T>(res);
   } catch {
-    return { ok: false, message: "مشكلة في الاتصال بالسيرفر", code: "NETWORK_ERROR" };
+    return { ok: false, message: t("common.error.network"), code: "NETWORK_ERROR" };
   }
 }
 

@@ -15,6 +15,7 @@ import { FleetPicker } from "@/components/fleet-picker";
 import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { useApiQuery, useQueryClient } from "@/lib/queries";
 import { InlineBlockSkeleton } from "@/components/ui/skeletons";
+import { t as tr } from "@/lib/i18n/t";
 
 type Values = z.input<typeof createBookingSchema>;
 type TripOpt = { id: string; origin: string; destination: string };
@@ -55,7 +56,7 @@ export function CreateBookingDialog({
   async function onSubmit(values: Values) {
     setFormError(null);
     if (!fleetId) {
-      setFormError("اختار الأسطول الأول قبل إضافة الحجز.");
+      setFormError(tr("bookings.createDialog.errors.pickFleet"));
       return;
     }
     setFleetId(fleetId);
@@ -73,19 +74,19 @@ export function CreateBookingDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="حجز جديد" description="سجّل بيانات الراكب واربط الحجز بالرحلة المطلوبة." size="sm">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={tr("bookings.createDialog.title")} description={tr("bookings.createDialog.description")} size="sm">
       <div>
         <div className="mb-4">
           <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("tripId", ""); }} />
         </div>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">الرحلة (من نفس الأسطول)<span className="text-[#dc2626]"> *</span></span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{tr("bookings.createDialog.tripLabel")}<span className="text-[#dc2626]"> *</span></span>
             {tripsLoading ? (
               <InlineBlockSkeleton className="h-11 w-full" />
             ) : (
-              <select aria-label="اختار الرحلة" {...form.register("tripId")} className="select-field w-full">
-                <option value="">اختار الرحلة</option>
+              <select aria-label={tr("bookings.createDialog.pickTrip")} {...form.register("tripId")} className="select-field w-full">
+                <option value="">{tr("bookings.createDialog.pickTripOption")}</option>
                 {trips.map((t) => (
                   <option key={t.id} value={t.id}>{t.origin} ← {t.destination}</option>
                 ))}
@@ -94,20 +95,20 @@ export function CreateBookingDialog({
             {form.formState.errors.tripId ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.tripId.message}</p> : null}
           </label>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">اسم الراكب<span className="text-[#dc2626]"> *</span></span>
-            <Input placeholder="اسم الراكب" {...form.register("passengerName")} />
+            <span className="mb-1.5 block font-bold text-[#334454]">{tr("bookings.createDialog.passengerNameLabel")}<span className="text-[#dc2626]"> *</span></span>
+            <Input placeholder={tr("bookings.createDialog.passengerNamePlaceholder")} {...form.register("passengerName")} />
             {form.formState.errors.passengerName ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.passengerName.message}</p> : null}
           </label>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">موبايل الراكب<span className="text-[#dc2626]"> *</span></span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{tr("bookings.createDialog.passengerPhoneLabel")}<span className="text-[#dc2626]"> *</span></span>
             <Input dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" {...form.register("passengerPhone")} />
             {form.formState.errors.passengerPhone ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.passengerPhone.message}</p> : null}
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{tr("common.actions.cancel")}</Button>
             <Button type="submit" variant="success" loading={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "جاري الحفظ…" : "إضافة الحجز"}
+              {form.formState.isSubmitting ? tr("common.loading.saving") : tr("bookings.createDialog.submit")}
             </Button>
           </div>
         </form>

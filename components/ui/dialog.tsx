@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n/t";
 
 type DialogProps = {
   open: boolean;
@@ -25,7 +26,7 @@ export function Dialog({
   description,
   children,
   size = "md",
-  closeLabel = "إغلاق النافذة",
+  closeLabel = t("ui.dialog.closeLabel"),
 }: DialogProps) {
   const titleId = useId();
   const descriptionId = useId();

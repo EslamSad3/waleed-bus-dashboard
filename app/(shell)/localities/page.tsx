@@ -23,8 +23,9 @@ import {
   type Markaz,
 } from "@/lib/actions/trip-lines";
 import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
-const TYPE_LABEL: Record<string, string> = { CITY: "مدينة", VILLAGE: "قرية" };
+const TYPE_LABEL: Record<string, string> = { CITY: t("enums.localityType.city"), VILLAGE: t("enums.localityType.village") };
 
 export default function LocalitiesPage() {
   const queryClient = useQueryClient();
@@ -97,7 +98,7 @@ export default function LocalitiesPage() {
   async function save() {
     if (!creating) {
       if (!nameAr.trim() || !nameEn.trim()) {
-        setDialogError("أكمل الاسم بالعربي والإنجليزي.");
+        setDialogError(t("localities.errors.nameRequired"));
         return;
       }
       const result = await updateLocality(editing!.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
@@ -107,7 +108,7 @@ export default function LocalitiesPage() {
       return;
     }
     if (!dialogMarkazId || !nameAr.trim() || !nameEn.trim()) {
-      setDialogError("أكمل المحافظة والمركز والاسم بالعربي والإنجليزي.");
+      setDialogError(t("localities.errors.hierarchyRequired"));
       return;
     }
     const result = await createLocality({
@@ -128,7 +129,7 @@ export default function LocalitiesPage() {
   }
 
   async function removeLocality(locality: Locality) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح «${locality.nameAr}»؟ لو عليها مواقف مسجلة هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("localities.deleteConfirm.description", { localityNameAr: locality.nameAr }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteLocality(locality.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList<Locality>(queryClient, qk.localitiesAll({}), locality.id);
@@ -139,18 +140,18 @@ export default function LocalitiesPage() {
   const columns: CommunityColumnDef<Locality>[] = [
     {
       field: "nameAr",
-      headerName: "الاسم",
-      cellRenderer: (params: { data?: Locality }) => params.data ? <span className="font-bold">{params.data.nameAr} · {params.data.nameEn}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشطة" : "موقوفة"}</span></span> : null,
+      headerName: t("common.fields.name"),
+      cellRenderer: (params: { data?: Locality }) => params.data ? <span className="font-bold">{params.data.nameAr} · {params.data.nameEn}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.activeF") : t("common.status.inactiveF")}</span></span> : null,
     },
-    { headerName: "النوع", valueGetter: (params) => params.data ? TYPE_LABEL[params.data.type] ?? params.data.type : "", filter: "agTextColumnFilter" },
+    { headerName: t("common.fields.type"), valueGetter: (params) => params.data ? TYPE_LABEL[params.data.type] ?? params.data.type : "", filter: "agTextColumnFilter" },
     {
       field: "markazId",
-      headerName: "المركز",
+      headerName: t("common.fields.markaz"),
       filter: "agTextColumnFilter",
       valueGetter: (params) => params.data?.markaz ? `${params.data.markaz.nameAr} · ${params.data.markaz.nameEn}` : "",
     },
     {
-      headerName: "المحافظة",
+      headerName: t("common.fields.governorate"),
       filter: "agTextColumnFilter",
       valueGetter: (params) => params.data?.markaz?.governorate ? `${params.data.markaz.governorate.nameAr} · ${params.data.markaz.governorate.nameEn}` : "",
     },
@@ -160,14 +161,14 @@ export default function LocalitiesPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">المدن والقرى</h1>
-          <p className="page-description">المدينة/القرية تحت المركز — فلتر بالمحافظة أو بالمركز أو بالاتنين مع بعض.</p>
+          <h1 className="page-title">{t("localities.title")}</h1>
+          <p className="page-description">{t("localities.description")}</p>
         </div>
-        <Button onClick={openCreate}><Plus className="size-4" /> منطقة جديدة</Button>
+        <Button onClick={openCreate}><Plus className="size-4" /> {t("localities.newLocality")}</Button>
       </div>
       <div className="mb-4 grid max-w-2xl gap-3 sm:grid-cols-2">
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">فلتر المحافظة</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("localities.filters.governorate")}</span>
           <select
             value={governorateFilter}
             onChange={(event) => {
@@ -176,14 +177,14 @@ export default function LocalitiesPage() {
             }}
             className="select-field w-full"
           >
-            <option value="">كل المحافظات</option>
+            <option value="">{t("localities.filters.allGovernorates")}</option>
             {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
           </select>
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">فلتر المركز</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("localities.filters.markaz")}</span>
           <select value={markazFilter} onChange={(event) => setMarkazFilter(event.target.value)} className="select-field w-full" disabled={!governorateFilter}>
-            <option value="">{governorateFilter ? "كل المراكز" : "اختار محافظة الأول…"}</option>
+            <option value="">{governorateFilter ? t("localities.filters.allMarkaz") : t("localities.filters.pickGovernorateFirst")}</option>
             {(filterMarkazes ?? []).map((m) => <option key={m.id} value={m.id}>{m.nameAr} · {m.nameEn}</option>)}
           </select>
         </label>
@@ -198,24 +199,24 @@ export default function LocalitiesPage() {
           keyOf={(locality) => locality.id}
           filter={filterPredicate}
           columnDefs={columns}
-          emptyMessage="لا توجد مناطق مطابقة — ابدأ بإضافة أول مدينة أو قرية."
+          emptyMessage={t("localities.empty")}
           renderItem={(locality) => (
             <RowActionsMenu
-              label={`إجراءات ${locality.nameAr}`}
+              label={t("localities.list.rowActions", { localityNameAr: locality.nameAr })}
               actions={[
-                { label: "تعديل", onSelect: () => openEdit(locality) },
-                { label: locality.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(locality) },
-                { label: "مسح", danger: true, onSelect: () => void removeLocality(locality) },
+                { label: t("common.actions.edit"), onSelect: () => openEdit(locality) },
+                { label: locality.isActive ? t("common.actions.disable") : t("common.actions.enable"), onSelect: () => void toggleActive(locality) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeLocality(locality) },
               ]}
             />
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المنطقة" : "منطقة جديدة"} description={editing ? "المركز ثابت — عدّل الأسماء والنوع فقط." : "اختار المحافظة الأول، بعدها تظهر مراكزها في قايمة المركز."} size="sm">
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("localities.dialog.editTitle") : t("localities.dialog.createTitle")} description={editing ? t("localities.dialog.description") : t("localities.dialog.hierarchyHint")} size="sm">
         <div className="space-y-4">
           {!editing ? (
             <label className="block text-sm">
-              <span className="mb-1.5 block font-bold text-[#334454]">المحافظة</span>
+              <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span>
               <select
                 value={dialogGovernorateId}
                 onChange={(event) => {
@@ -224,32 +225,32 @@ export default function LocalitiesPage() {
                 }}
                 className="select-field w-full"
               >
-                <option value="">اختار المحافظة…</option>
+                <option value="">{t("localities.dialog.pickGovernorate")}</option>
                 {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
               </select>
             </label>
           ) : null}
           {!editing ? (
             <label className="block text-sm">
-              <span className="mb-1.5 block font-bold text-[#334454]">المركز</span>
+              <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.markaz")}</span>
               <select
                 value={dialogMarkazId}
                 onChange={(event) => setDialogMarkazId(event.target.value)}
                 className="select-field w-full"
                 disabled={!dialogGovernorateId}
               >
-                <option value="">{dialogGovernorateId ? "اختار المركز…" : "اختار محافظة الأول…"}</option>
+                <option value="">{dialogGovernorateId ? t("localities.dialog.pickMarkaz") : t("localities.dialog.pickGovernorateFirst")}</option>
                 {(dialogMarkazes ?? []).map((m) => <option key={m.id} value={m.id}>{m.nameAr} · {m.nameEn}</option>)}
               </select>
             </label>
           ) : null}
-          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">النوع</span><select value={type} onChange={(event) => setType(event.target.value as "CITY" | "VILLAGE")} className="select-field w-full"><option value="CITY">مدينة</option><option value="VILLAGE">قرية</option></select></label> : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالعربي</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder="بنها" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالإنجليزي</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
+          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.type")}</span><select value={type} onChange={(event) => setType(event.target.value as "CITY" | "VILLAGE")} className="select-field w-full"><option value="CITY">{t("enums.localityType.city")}</option><option value="VILLAGE">{t("enums.localityType.village")}</option></select></label> : null}
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameAr")}</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder={t("localities.placeholders.nameAr")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameEn")}</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
+            <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>{t("common.actions.save")}</AsyncButton>
           </div>
         </div>
       </Dialog>

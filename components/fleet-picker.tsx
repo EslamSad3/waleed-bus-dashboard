@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet } from "@/lib/actions/http";
+import { t } from "@/lib/i18n/t";
 
 type FleetOption = { id: string; name: string };
 
@@ -13,7 +14,7 @@ type FleetOption = { id: string; name: string };
 export function FleetPicker({
   value,
   onChange,
-  label = "الأسطول",
+  label = t("common.fields.fleet"),
 }: {
   value: string;
   onChange: (id: string) => void;
@@ -39,7 +40,7 @@ export function FleetPicker({
           onChange={(e) => onChange(e.target.value)}
           className="select-field w-full"
         >
-          <option value="">اختار الأسطول</option>
+          <option value="">{t("fleetOwnerPicker.pickFleetOption")}</option>
           {fleets.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -48,7 +49,7 @@ export function FleetPicker({
         </select>
       ) : (
         <span role="status" className="block">
-          <span className="sr-only">جاري التحميل…</span>
+          <span className="sr-only">{t("common.loading.more")}</span>
           <Skeleton aria-hidden="true" className="h-11 w-full rounded-xl" />
         </span>
       )}

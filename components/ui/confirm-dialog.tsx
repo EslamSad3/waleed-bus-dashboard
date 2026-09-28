@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { t } from "@/lib/i18n/t";
 
 export type ConfirmOptions = {
   title: string;
@@ -54,14 +55,14 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
       >
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="outline" onClick={() => settle(false)}>
-            {options?.cancelLabel ?? "إلغاء"}
+            {options?.cancelLabel ?? t("common.actions.cancel")}
           </Button>
           <Button
             type="button"
             variant={options?.destructive ? "destructive" : "default"}
             onClick={() => settle(true)}
           >
-            {options?.confirmLabel ?? "تأكيد"}
+            {options?.confirmLabel ?? t("common.actions.confirm")}
           </Button>
         </div>
       </Dialog>

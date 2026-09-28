@@ -13,6 +13,7 @@ import { useFilterStore } from "@/stores/filters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, upsertInCursorList, removeFromCursorList, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type FleetRow = Fleet & { ownerName: string };
 
@@ -21,11 +22,11 @@ type Owner = { id: string; name?: string | null; email?: string | null; phone?: 
 async function withOwnerNames(page: { items: Fleet[]; nextCursor: string | null }): Promise<{ items: FleetRow[]; nextCursor: string | null }> {
   const users = await fetchUserOptions();
   const ownerNames = users.ok
-    ? new Map(users.data.items.map((user) => [user.id, user.name || user.email || user.phone || user.phoneNumber || "غير معروف"]))
+    ? new Map(users.data.items.map((user) => [user.id, user.name || user.email || user.phone || user.phoneNumber || t("common.value.unknown")]))
     : new Map<string, string>();
   return {
     nextCursor: page.nextCursor,
-    items: page.items.map((fleet) => ({ ...fleet, ownerName: ownerNames.get(fleet.ownerId) ?? "غير معروف" })),
+    items: page.items.map((fleet) => ({ ...fleet, ownerName: ownerNames.get(fleet.ownerId) ?? t("common.value.unknown") })),
   };
 }
 
@@ -44,7 +45,7 @@ function CreateFleetDialog({ open, onClose }: { open: boolean; onClose: () => vo
   const [error, setError] = useState<string | null>(null);
 
   const { data: ownersPage, isLoading: ownersLoading } = useApiQuery<{ items: Owner[] }>(["users", "options"], () => fetchUserOptions(), { enabled: open });
-  const ownerName = (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.name ?? "غير معروف";
+  const ownerName = (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.name ?? t("common.value.unknown");
 
   function resetForm() {
     setName("");
@@ -55,7 +56,7 @@ function CreateFleetDialog({ open, onClose }: { open: boolean; onClose: () => vo
   async function submit() {
     setError(null);
     if (!name.trim() || !ownerId) {
-      setError("أكمل اسم الأسطول واختار المالك.");
+      setError(t("fleets.errors.nameAndOwner"));
       return;
     }
     setSaving(true);
@@ -72,22 +73,22 @@ function CreateFleetDialog({ open, onClose }: { open: boolean; onClose: () => vo
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="أسطول جديد" description="أضف أسطولًا جديدًا واربطه بالمالك المسؤول." size="sm">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleets.createDialog.title")} description={t("fleets.createDialog.description")} size="sm">
       <div className="space-y-4">
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">اسم الأسطول</span>
-          <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="أسطول القاهرة" />
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fleetName")}</span>
+          <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("fleets.placeholders.cairo")} />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">المالك</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.owner")}</span>
           {ownersLoading ? (
             <span role="status" className="block">
-              <span className="sr-only">جاري التحميل…</span>
+              <span className="sr-only">{t("common.loading.more")}</span>
               <Skeleton aria-hidden="true" className="h-11 w-full rounded-xl" />
             </span>
           ) : (
-            <select aria-label="اختار المالك" value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full">
-              <option value="">اختار المالك</option>
+            <select aria-label={t("fleets.createDialog.pickOwner")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full">
+              <option value="">{t("fleets.createDialog.pickOwnerOption")}</option>
               {(ownersPage?.items ?? []).map((owner) => (
                 <option key={owner.id} value={owner.id}>
                   {owner.name || owner.email || owner.phone || owner.id}
@@ -98,9 +99,9 @@ function CreateFleetDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
           <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>
-            {saving ? "جاري الحفظ…" : "إضافة الأسطول"}
+            {saving ? t("common.loading.saving") : t("fleets.createDialog.submit")}
           </Button>
         </div>
       </div>
@@ -133,7 +134,7 @@ function EditFleetDialog({ open, fleet, onClose }: { open: boolean; fleet: Fleet
     if (!fleet) return;
     setError(null);
     if (!name.trim()) {
-      setError("اكتب اسم الأسطول.");
+      setError(t("fleets.errors.nameRequired"));
       return;
     }
     setSaving(true);
@@ -150,20 +151,20 @@ function EditFleetDialog({ open, fleet, onClose }: { open: boolean; fleet: Fleet
   }
 
   return (
-    <Dialog open={open && Boolean(fleet)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="تعديل أسطول" description={fleet ? `بتعدّل بيانات «${fleet.name}».` : undefined} size="sm">
+    <Dialog open={open && Boolean(fleet)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleets.editDialog.title")} description={fleet ? t("fleets.editDialog.description", { fleetName: fleet.name }) : undefined} size="sm">
       <div className="space-y-4">
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">اسم الأسطول</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fleetName")}</span>
           <Input value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm">
           <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="size-4 accent-[#059ff8]" />
-          الأسطول نشط ويشغّل عربيات
+          {t("fleets.editDialog.activeLabel")}
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving}>{saving ? t("common.loading.saving") : t("common.actions.saveChanges")}</Button>
         </div>
       </div>
     </Dialog>
@@ -184,7 +185,7 @@ export default function FleetsPage() {
   );
 
   async function removeFleet(fleet: FleetRow) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح أسطول «${fleet.name}»؟ امسح عربياته ورحلاته الأول لو لسه فيها بيانات.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleets.list.deleteConfirm.description", { fleetName: fleet.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const r = await deleteFleet(fleet.id);
     if (!r.ok) return;
     removeFromCursorList<FleetRow>(queryClient, qk.fleets, fleet.id);
@@ -197,21 +198,21 @@ export default function FleetsPage() {
     (status === "all" || (status === "active" ? fleet.isActive : !fleet.isActive));
 
   const columns: CommunityColumnDef<FleetRow>[] = [
-    { field: "name", headerName: "الأسطول", filter: "agTextColumnFilter" },
-    { field: "ownerName", headerName: "صاحب العربيات", filter: "agTextColumnFilter" },
-    { field: "isActive", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? "نشط" : "موقوف" },
-    { field: "createdAt", headerName: "تاريخ الإنشاء", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
-    { field: "updatedAt", headerName: "آخر تحديث", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
+    { field: "name", headerName: t("common.fields.fleet"), filter: "agTextColumnFilter" },
+    { field: "ownerName", headerName: t("common.fields.fleetOwner"), filter: "agTextColumnFilter" },
+    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? t("common.status.active") : t("common.status.inactive") },
+    { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
+    { field: "updatedAt", headerName: t("common.fields.updatedAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
   ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0">
-          <h1 className="page-title">الأساطيل</h1>
-          <p className="page-description">كل الأساطيل المسجلة وحالة تشغيل كل أسطول.</p>
+          <h1 className="page-title">{t("fleets.title")}</h1>
+          <p className="page-description">{t("fleets.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>أسطول جديد</Button>
+        <Button onClick={() => setCreateOpen(true)}>{t("fleets.newFleet")}</Button>
       </div>
 
       {error ? (
@@ -234,32 +235,32 @@ export default function FleetsPage() {
           filterBar={
             <div className="contents">
               <Input
-                aria-label="دور باسم الأسطول أو المالك"
-                placeholder="دور باسم الأسطول أو المالك"
+                aria-label={t("fleets.filters.searchAria")}
+                placeholder={t("fleets.filters.searchPlaceholder")}
                 value={f.q ?? ""}
                 onChange={(e) => setListFilter("fleets", { q: e.target.value })}
                 className="min-w-0 flex-1 bg-white md:max-w-72"
               />
               <select
-                aria-label="الحالة"
+                aria-label={t("common.fields.status")}
                 value={status}
                 onChange={(e) => setListFilter("fleets", { status: e.target.value })}
                 className="select-field max-md:w-full"
               >
-                <option value="all">الكل</option>
-                <option value="active">نشط</option>
-                <option value="inactive">موقوف</option>
+                <option value="all">{t("common.value.all")}</option>
+                <option value="active">{t("common.status.active")}</option>
+                <option value="inactive">{t("common.status.inactive")}</option>
               </select>
             </div>
           }
-          emptyMessage="لا توجد أساطيل بعد — ابدأ بإضافة جديد"
+          emptyMessage={t("fleets.empty")}
           renderItem={(fleet) => (
             <RowActionsMenu
-              label={`إجراءات أسطول ${fleet.name}`}
+              label={t("fleets.list.rowActions", { fleetName: fleet.name })}
               actions={[
-                { label: "فتح التفاصيل", href: `/fleets/${fleet.id}` },
-                { label: "تعديل", onSelect: () => setFleetForEdit(fleet) },
-                { label: "مسح", danger: true, onSelect: () => void removeFleet(fleet) },
+                { label: t("common.actions.openDetails"), href: `/fleets/${fleet.id}` },
+                { label: t("common.actions.edit"), onSelect: () => setFleetForEdit(fleet) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeFleet(fleet) },
               ]}
             />
           )}

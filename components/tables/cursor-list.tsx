@@ -6,6 +6,7 @@ import type { ICellRendererParams } from "ag-grid-community";
 import { AgGridTable } from "./ag-grid-table";
 import { arabicGridHeaders } from "./ag-grid-locale";
 import type { CommunityColumnDef } from "./ag-grid-types";
+import { t } from "@/lib/i18n/t";
 
 export type CursorPage<T> = { items: T[]; nextCursor: string | null };
 
@@ -70,7 +71,7 @@ export function CursorList<T>({
       setItems((prev) => [...prev, ...page.items]);
       setCursor(page.nextCursor);
     } catch {
-      setError("حصلت مشكلة، حاول تاني");
+      setError(t("common.error.unknown"));
     } finally {
       setLoading(false);
     }
@@ -92,7 +93,7 @@ export function CursorList<T>({
           filter: (typeof sample[field] === "number" ? "agNumberColumnFilter" : "agTextColumnFilter") as CommunityColumnDef<T>["filter"],
           valueFormatter: (params) => {
             if (params.value == null) return "";
-            if (typeof params.value === "boolean") return params.value ? "نشط" : "موقوف";
+            if (typeof params.value === "boolean") return params.value ? t("common.status.active") : t("common.status.inactive");
             if (field.endsWith("At")) return new Date(String(params.value)).toLocaleString("ar-EG");
             return String(params.value);
           },
@@ -104,7 +105,7 @@ export function CursorList<T>({
     ...(withActions
       ? [
           {
-            headerName: "إجراءات",
+            headerName: t("cursorList.actionsColumn"),
             pinned: "right" as const,
             sortable: false,
             filter: false,
@@ -114,7 +115,7 @@ export function CursorList<T>({
               if (!params.data) return null;
               const rendered = renderItem?.(params.data, visible.indexOf(params.data));
               if (isValidElement<{ href?: string }>(rendered) && typeof rendered.props.href === "string") {
-                return <Link href={rendered.props.href} className="ag-grid-row-action">فتح</Link>;
+                return <Link href={rendered.props.href} className="ag-grid-row-action">{t("cursorList.open")}</Link>;
               }
               return rendered ?? null;
             },

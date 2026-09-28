@@ -17,6 +17,7 @@ import {
   type DropStatus,
 } from "@/lib/actions/bookings";
 import { AlertTriangle, CheckCircle2, RotateCcw, XCircle, ShieldAlert } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 // ---------------------------------------------------------------------------
 // 1. Verify Payment Dialog
@@ -46,15 +47,15 @@ export function VerifyPaymentDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!reference.trim()) {
-      setError("رقم المعاملة الخارجية مطلوب");
+      setError(t("bookings.actions.errors.referenceRequired"));
       return;
     }
     if (isNaN(numAmount) || numAmount <= 0) {
-      setError("المبلغ لازم يكون رقماً موجباً");
+      setError(t("bookings.actions.errors.amountPositive"));
       return;
     }
     if (mismatch) {
-      setError(`المبلغ المدخل (${amount}) غير مطابق لقيمة الحجز بالظبط (${booking.totalAmount} ج.م)`);
+      setError(t("bookings.actions.errors.amountMismatch", { amount: amount, bookingTotalAmount: booking.totalAmount }));
       return;
     }
 
@@ -70,7 +71,7 @@ export function VerifyPaymentDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess("تم تأكيد وتوثيق استلام الدفع بنجاح");
+      onSuccess(t("bookings.actions.verify.success"));
     } else {
       setError(res.message);
     }
@@ -80,8 +81,8 @@ export function VerifyPaymentDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="تأكيد وتسوية الدفع الإلكتروني / المحفظة"
-      description={`توثيق استلام المبلغ للحجز #${booking.id.slice(0, 8)} للمسافر ${booking.passenger?.name ?? "—"}`}
+      title={t("bookings.actions.verify.title")}
+      description={t("bookings.actions.verify.description", { value: booking.id.slice(0, 8), value2: booking.passenger?.name ?? "—" })}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -93,18 +94,18 @@ export function VerifyPaymentDialog({
 
         <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
           <div className="flex justify-between items-center">
-            <span className="text-[#5e6b78]">قيمة الحجز الإجمالية:</span>
+            <span className="text-[#5e6b78]">{t("bookings.actions.verify.totalLabel")}</span>
             <span className="font-bold text-[#00134c] text-base" dir="ltr">{booking.totalAmount} EGP</span>
           </div>
           <p className="mt-1 text-xs text-[#5e6b78]">
-            تنبيه: يتطلب النظام مطابقة المبلغ المسدد بالكامل مع إجمالي الحجز (Exact Match).
+            {t("bookings.actions.verify.exactMatchWarning")}
           </p>
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">رقم المعاملة / المرجع الخارجي *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.verify.referenceLabel")}</span>
           <Input
-            placeholder="مثال: VF-9021849 أو رقم إيصال إنستاباي"
+            placeholder={t("bookings.actions.placeholders.verifyReference")}
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             dir="ltr"
@@ -114,7 +115,7 @@ export function VerifyPaymentDialog({
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">المبلغ المستلم المؤكد (ج.م) *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.verify.amountLabel")}</span>
           <Input
             type="number"
             step="0.01"
@@ -125,44 +126,44 @@ export function VerifyPaymentDialog({
           />
           {mismatch && (
             <p className="mt-1 text-xs text-red-600 font-medium">
-              تنبيه: المبلغ المدخل لا يطابق قيمة الحجز ({booking.totalAmount} ج.م)
+              {t("bookings.actions.verify.amountMismatchWarning")}{booking.totalAmount} {t("common.unit.egpSuffix")}
             </p>
           )}
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">طريقة الدفع</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("common.fields.paymentMethod")}</span>
           <select
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
             className="select-field w-full"
           >
-            <option value="VODAFONE_CASH">فودافون كاش (Vodafone Cash)</option>
-            <option value="INSTAPAY">إنستاباي (InstaPay)</option>
-            <option value="WALLET">محفظة إلكترونية أخرى</option>
-            <option value="CASH">نقدي (كاش)</option>
-            <option value="CARD">بطاقة بنكية</option>
+            <option value="VODAFONE_CASH">{t("enums.paymentMethod.vodafoneCashLong")}</option>
+            <option value="INSTAPAY">{t("enums.paymentMethod.instapayLong")}</option>
+            <option value="WALLET">{t("enums.paymentMethod.walletLong")}</option>
+            <option value="CASH">{t("enums.paymentMethod.cashLong")}</option>
+            <option value="CARD">{t("enums.paymentMethod.bankCardLong")}</option>
           </select>
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">ملاحظات التسوية (اختياري)</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.verify.notesLabel")}</span>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="مثلاً: تم التأكد من كشف حساب محفظة التاجر بتاريخ اليوم"
+            placeholder={t("bookings.actions.placeholders.verifyNotes")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
           />
         </label>
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            إلغاء
+            {t("common.actions.cancel")}
           </Button>
           <Button type="submit" loading={loading} disabled={mismatch} className="gap-1.5">
             <CheckCircle2 className="size-4" />
-            {loading ? "جاري التأكيد…" : "تأكيد واستلام الدفع"}
+            {loading ? t("common.loading.confirming") : t("bookings.actions.verify.submit")}
           </Button>
         </div>
       </form>
@@ -192,7 +193,7 @@ export function FailPaymentDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) {
-      setError("سبب تسجيل فشل الدفع إلزامي");
+      setError(t("bookings.actions.failure.errors.reasonRequired"));
       return;
     }
 
@@ -206,7 +207,7 @@ export function FailPaymentDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess("تم تسجيل العملية كفاشلة وتحديث حالة الدفع إلى FAILED");
+      onSuccess(t("bookings.actions.failure.success"));
     } else {
       setError(res.message);
     }
@@ -216,8 +217,8 @@ export function FailPaymentDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="تسجيل فشل الدفع / إلغاء المعاملة"
-      description="استخدم هذا الإجراء في حال عدم العثور على التحويل، أو تقديم بيانات وهمية أو انتهاء مهلة السداد."
+      title={t("bookings.actions.failure.title")}
+      description={t("bookings.actions.failure.description")}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -228,9 +229,9 @@ export function FailPaymentDialog({
         )}
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">سبب الفشل / الرفض *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.reasonLabel")}</span>
           <Input
-            placeholder="مثال: لم يتم العثور على رقم العملية في كشف الحساب بعد انقضاء المهلة"
+            placeholder={t("bookings.actions.placeholders.failureReason")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             required
@@ -239,23 +240,23 @@ export function FailPaymentDialog({
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">ملاحظات إضافية (اختياري)</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.extraNotesLabel")}</span>
           <textarea
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="تفاصيل المحادثة مع العميل أو تتبع كشف الحساب"
+            placeholder={t("bookings.actions.placeholders.failureNotes")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
           />
         </label>
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            إلغاء
+            {t("common.actions.cancel")}
           </Button>
           <Button type="submit" variant="destructive" loading={loading} className="gap-1.5">
             <XCircle className="size-4" />
-            {loading ? "جاري التسجيل…" : "تسجيل فشل الدفع"}
+            {loading ? t("common.loading.submitting") : t("bookings.actions.failure.submit")}
           </Button>
         </div>
       </form>
@@ -294,19 +295,19 @@ export function RefundPaymentDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!refundReference.trim()) {
-      setError("رقم إشعار أو مرجع الاسترداد مطلوب");
+      setError(t("bookings.actions.refund.errors.referenceRequired"));
       return;
     }
     if (isNaN(enteredAmount) || enteredAmount <= 0) {
-      setError("مبلغ الاسترداد لازم يكون رقماً موجباً");
+      setError(t("bookings.actions.refund.errors.amountPositive"));
       return;
     }
     if (exceeds) {
-      setError(`مبلغ الاسترداد (${enteredAmount}) يتجاوز الرصيد المتبقي القابل للاسترداد (${remaining.toFixed(2)} ج.م)`);
+      setError(t("bookings.actions.refund.errors.exceedsBalance", { enteredAmount: enteredAmount, value: remaining.toFixed(2) }));
       return;
     }
     if (!reason.trim()) {
-      setError("سبب الاسترداد إلزامي");
+      setError(t("bookings.actions.refund.errors.reasonRequired"));
       return;
     }
 
@@ -322,7 +323,7 @@ export function RefundPaymentDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess(`تم تسجيل استرداد مبلغ ${enteredAmount} ج.م بنجاح`);
+      onSuccess(t("bookings.actions.refund.success", { enteredAmount: enteredAmount }));
     } else {
       setError(res.message);
     }
@@ -332,8 +333,8 @@ export function RefundPaymentDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="استرداد مالي (كلي أو جزئي)"
-      description="تسجيل عملية تحويل استرداد المبلغ للمسافر وتحديث رصيد الحجز."
+      title={t("bookings.actions.refund.title")}
+      description={t("bookings.actions.refund.description")}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -345,23 +346,23 @@ export function RefundPaymentDialog({
 
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:grid-cols-3 sm:text-sm">
           <div>
-            <span className="text-[#5e6b78] block">إجمالي الحجز:</span>
+            <span className="text-[#5e6b78] block">{t("bookings.actions.refund.totalLabel")}</span>
             <span className="font-bold text-[#00134c]" dir="ltr">{booking.totalAmount} EGP</span>
           </div>
           <div>
-            <span className="text-[#5e6b78] block">المسترد سابقاً:</span>
+            <span className="text-[#5e6b78] block">{t("bookings.actions.refund.refundedLabel")}</span>
             <span className="font-bold text-[#e16800]" dir="ltr">{booking.refundedAmount} EGP</span>
           </div>
           <div>
-            <span className="text-[#5e6b78] block">الرصيد المتبقي:</span>
+            <span className="text-[#5e6b78] block">{t("bookings.actions.refund.remainingLabel")}</span>
             <span className="font-bold text-green-700" dir="ltr">{remaining.toFixed(2)} EGP</span>
           </div>
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">رقم إشعار التحويل / المرجع البنكي *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.refund.referenceLabel")}</span>
           <Input
-            placeholder="مثال: REF-VF-10928"
+            placeholder={t("bookings.actions.placeholders.refundReference")}
             value={refundReference}
             onChange={(e) => setRefundReference(e.target.value)}
             dir="ltr"
@@ -371,7 +372,7 @@ export function RefundPaymentDialog({
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">المبلغ المطلوب استرداده (ج.م) *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.refund.amountLabel")}</span>
           <Input
             type="number"
             step="0.01"
@@ -383,15 +384,15 @@ export function RefundPaymentDialog({
           />
           {exceeds && (
             <p className="mt-1 text-xs text-red-600 font-medium">
-              المبلغ يتجاوز الرصيد المتبقي ({remaining.toFixed(2)} ج.م)
+              {t("bookings.actions.refund.exceedsWarning")}{remaining.toFixed(2)} {t("common.unit.egpSuffix")}
             </p>
           )}
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">سبب الاسترداد *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.refund.reasonLabel")}</span>
           <Input
-            placeholder="مثال: إلغاء رحلة / إلغاء مقعد بناء على طلب العميل"
+            placeholder={t("bookings.actions.placeholders.refundReason")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             required
@@ -399,23 +400,23 @@ export function RefundPaymentDialog({
         </label>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">ملاحظات إضافية (اختياري)</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.extraNotesLabel")}</span>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="بيانات الحساب أو المحفظة المحول إليها"
+            placeholder={t("bookings.actions.placeholders.refundAccount")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
           />
         </label>
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            إلغاء
+            {t("common.actions.cancel")}
           </Button>
           <Button type="submit" loading={loading} disabled={exceeds || remaining <= 0} className="gap-1.5">
             <RotateCcw className="size-4" />
-            {loading ? "جاري التنفيذ…" : "تنفيذ الاسترداد"}
+            {loading ? t("common.loading.executing") : t("bookings.actions.refund.submit")}
           </Button>
         </div>
       </form>
@@ -445,7 +446,7 @@ export function ForceCancelDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) {
-      setError("سبب الإلغاء الإداري إلزامي");
+      setError(t("bookings.actions.forceCancel.errors.reasonRequired"));
       return;
     }
 
@@ -459,7 +460,7 @@ export function ForceCancelDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess(`تم إلغاء الحجز إدارياً ${res.data.seatsRestored ? "(وتم تحرير المقاعد للرحلة)" : ""}`);
+      onSuccess(t("bookings.actions.forceCancel.success", { seatsNote: res.data.seatsRestored ? t("bookings.actions.forceCancel.seatsRestoredNote") : "" }));
     } else {
       setError(res.message);
     }
@@ -469,8 +470,8 @@ export function ForceCancelDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="إلغاء الحجز إدارياً (Force Cancel)"
-      description="إلغاء فوري للحجز من صلاحيات الإدارة العليا مع التحكم في تحرير المقاعد لركاب آخرين."
+      title={t("bookings.actions.forceCancel.title")}
+      description={t("bookings.actions.forceCancel.description")}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -481,12 +482,12 @@ export function ForceCancelDialog({
         )}
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">سبب الإلغاء الإداري *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.forceCancel.reasonLabel")}</span>
           <textarea
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="اكتب التبرير أو سبب الإلغاء بالتفصيل (مطلوب لأغراض سجل التدقيق)..."
+            placeholder={t("bookings.actions.placeholders.forceCancelReason")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
             autoFocus
@@ -502,9 +503,9 @@ export function ForceCancelDialog({
               className="mt-1 size-4 rounded text-[#059ff8] focus:ring-[#059ff8]"
             />
             <div className="text-sm">
-              <span className="font-semibold text-[#1a1a1a] block">إرجاع المقاعد لسعة الرحلة المتاحة</span>
+              <span className="font-semibold text-[#1a1a1a] block">{t("bookings.actions.forceCancel.restoreSeats")}</span>
               <span className="text-xs text-[#5e6b78]">
-                إذا كانت الرحلة مجدولة ولم تتحرك بعد، سيتم زيادة المقاعد المتاحة فوراً بمقدار ({booking.seats}) مقعد.
+                {t("bookings.actions.reinstate.seatsWarningPrefix")}{booking.seats}{t("bookings.actions.reinstate.seatsWarningSuffix")}
               </span>
             </div>
           </label>
@@ -512,11 +513,11 @@ export function ForceCancelDialog({
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            تراجع
+            {t("bookings.actions.forceCancel.yesLabel")}
           </Button>
           <Button type="submit" variant="destructive" loading={loading} className="gap-1.5">
             <XCircle className="size-4" />
-            {loading ? "جاري الإلغاء…" : "تأكيد إلغاء الحجز"}
+            {loading ? t("common.loading.cancelling") : t("bookings.actions.forceCancel.submit")}
           </Button>
         </div>
       </form>
@@ -545,7 +546,7 @@ export function ReinstateDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) {
-      setError("سبب استرجاع الحجز إلزامي");
+      setError(t("bookings.actions.reinstate.errors.reasonRequired"));
       return;
     }
 
@@ -558,7 +559,7 @@ export function ReinstateDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess("تم استرجاع الحجز وتأكيده بنجاح");
+      onSuccess(t("bookings.actions.reinstate.success"));
     } else {
       setError(res.message);
     }
@@ -568,8 +569,8 @@ export function ReinstateDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="استرجاع وتأكيد الحجز الملغي"
-      description="إعادة تفعيل الحجز المحذوف أو الملغي عن طريق الخطأ بعد التحقق من توفر المقاعد."
+      title={t("bookings.actions.reinstate.title")}
+      description={t("bookings.actions.reinstate.description")}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -580,17 +581,17 @@ export function ReinstateDialog({
         )}
 
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 leading-relaxed">
-          <p className="font-semibold mb-1">فحص سعة العربية الفورية:</p>
-          المقاعد المطلوبة للحجز: <strong>{booking.seats}</strong> مقعد. سيتحقق السيرفر تلقائياً من توفر السعة في الرحلة، وسيتم رفض العملية إذا كانت الرحلة ممتلئة بالكامل.
+          <p className="font-semibold mb-1">{t("bookings.actions.reinstate.capacityCheck")}</p>
+          {t("bookings.actions.reinstate.seatsRequested")} <strong>{booking.seats}</strong> {t("bookings.actions.reinstate.seatsWarning")}
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">سبب وتبرير الاسترجاع *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.reinstate.reasonLabel")}</span>
           <textarea
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="مثال: الإلغاء تم بالخطأ من العميل وأكد رغبته في السفر..."
+            placeholder={t("bookings.actions.placeholders.reinstateReason")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
             autoFocus
@@ -599,11 +600,11 @@ export function ReinstateDialog({
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            إلغاء
+            {t("common.actions.cancel")}
           </Button>
           <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
-            {loading ? "جاري الاسترجاع…" : "استرجاع الحجز"}
+            {loading ? t("common.loading.reinstating") : t("bookings.actions.reinstate.submit")}
           </Button>
         </div>
       </form>
@@ -636,7 +637,7 @@ export function OperationalOverrideDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!justification.trim()) {
-      setError("مبرر التعديل التشغيلي إلزامي لأغراض الرقابة وسجل التدقيق");
+      setError(t("bookings.actions.override.errors.justificationRequired"));
       return;
     }
 
@@ -653,7 +654,7 @@ export function OperationalOverrideDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess("تم تحديث الحالة التشغيلية للراكب بنجاح");
+      onSuccess(t("bookings.actions.override.success"));
     } else {
       setError(res.message);
     }
@@ -663,8 +664,8 @@ export function OperationalOverrideDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="تعديل الحالة التشغيلية للمسافر (تجاوز إداري)"
-      description="تصحيح بيانات الصعود والنزول في حالات انقطاع اتصال تطبيق السائق أو عطل جهازه."
+      title={t("bookings.actions.override.title")}
+      description={t("bookings.actions.override.description")}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -682,29 +683,29 @@ export function OperationalOverrideDialog({
               onChange={(e) => setBoarded(e.target.checked)}
               className="size-4 rounded text-[#059ff8] focus:ring-[#059ff8]"
             />
-            <span className="text-sm font-semibold text-[#1a1a1a]">صعود الراكب (Boarded)</span>
+            <span className="text-sm font-semibold text-[#1a1a1a]">{t("bookings.actions.override.boardedLabel")}</span>
           </label>
           <p className="text-xs text-[#5e6b78] ps-7">
-            تحديد هذا الخيار يسجل صعود الراكب في التوقيت الحالي باسم المشرف العام.
+            {t("bookings.actions.override.boardedHint")}
           </p>
 
           <label className="block text-sm pt-2">
-            <span className="mb-1 block font-medium text-[#1a1a1a]">حالة النزول (Drop-off Status)</span>
+            <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.dropStatusLabel")}</span>
             <select
               value={dropStatus}
               onChange={(e) => setDropStatus(e.target.value as DropStatus | "")}
               className="select-field w-full"
             >
-              <option value="">بدون تحديد</option>
-              <option value="DROPPED_OFF">تم النزول بنجاح (DROPPED_OFF)</option>
-              <option value="NOT_DROPPED_OFF">لم ينزل / تخلف عن النزول (NOT_DROPPED_OFF)</option>
+              <option value="">{t("bookings.actions.override.noDropStatus")}</option>
+              <option value="DROPPED_OFF">{t("bookings.actions.override.droppedOff")}</option>
+              <option value="NOT_DROPPED_OFF">{t("bookings.actions.override.notDroppedOff")}</option>
             </select>
           </label>
 
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[#1a1a1a]">معرف محطة النزول (اختياري)</span>
+            <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.dropStationLabel")}</span>
             <Input
-              placeholder="مثال: st-auc-gate4"
+              placeholder={t("bookings.actions.placeholders.dropStation")}
               value={dropStationId}
               onChange={(e) => setDropStationId(e.target.value)}
               dir="ltr"
@@ -712,9 +713,9 @@ export function OperationalOverrideDialog({
           </label>
 
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-[#1a1a1a]">ملاحظة النزول (اختياري)</span>
+            <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.dropNoteLabel")}</span>
             <Input
-              placeholder="ملاحظة حول مكان أو حالة نزول الراكب"
+              placeholder={t("bookings.actions.placeholders.dropNote")}
               value={dropReason}
               onChange={(e) => setDropReason(e.target.value)}
             />
@@ -722,12 +723,12 @@ export function OperationalOverrideDialog({
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">التبرير الإداري للتعديل *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.justificationLabel")}</span>
           <textarea
             rows={2}
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
-            placeholder="مثال: تعطل هاتف السائق ونفاد البطارية أثناء خط السير وتم التأكد من صعود الراكب هاتفياً"
+            placeholder={t("bookings.actions.placeholders.overrideJustification")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
           />
@@ -735,11 +736,11 @@ export function OperationalOverrideDialog({
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            إلغاء
+            {t("common.actions.cancel")}
           </Button>
           <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
-            {loading ? "جاري الحفظ…" : "حفظ التعديل التشغيلي"}
+            {loading ? t("common.loading.saving") : t("bookings.actions.override.submit")}
           </Button>
         </div>
       </form>
@@ -773,7 +774,7 @@ export function ResolveReportDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!resolutionNote.trim() || resolutionNote.trim().length < 5) {
-      setError("ملاحظات الحل يجب ألا تقل عن 5 أحرف");
+      setError(t("bookings.actions.report.errors.notesTooShort"));
       return;
     }
 
@@ -787,7 +788,7 @@ export function ResolveReportDialog({
 
     if (res.ok) {
       onOpenChange(false);
-      onSuccess(status === "RESOLVED" ? "تم حل البلاغ واعتماد الإجراء" : "تم حفظ البلاغ");
+      onSuccess(status === "RESOLVED" ? t("bookings.actions.report.resolvedSuccess") : t("bookings.actions.report.savedSuccess"));
     } else {
       setError(res.message);
     }
@@ -797,8 +798,8 @@ export function ResolveReportDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="معالجة بلاغ السائق حول الراكب"
-      description="مراجعة مذكرة السائق وتسجيل القرار الإداري النهائي."
+      title={t("bookings.actions.report.title")}
+      description={t("bookings.actions.report.description")}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-right">
         {error && (
@@ -811,16 +812,16 @@ export function ResolveReportDialog({
         <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm">
           <div className="flex items-center gap-2 font-bold text-amber-900 mb-1">
             <ShieldAlert className="size-4 text-amber-700" />
-            <span>مذكرة السائق:</span>
+            <span>{t("bookings.detail.fields.driverNote")}</span>
           </div>
           <p className="text-[#1a1a1a] leading-relaxed">{report.note}</p>
           <time className="block text-xs text-[#5e6b78] mt-2" dateTime={report.createdAt}>
-            تاريخ التقديم: {new Date(report.createdAt).toLocaleString("ar-EG")}
+            {t("bookings.detail.reports.submittedAt")} {new Date(report.createdAt).toLocaleString("ar-EG")}
           </time>
         </div>
 
         <div className="space-y-2">
-          <span className="block text-sm font-medium text-[#1a1a1a]">القرار الإداري *</span>
+          <span className="block text-sm font-medium text-[#1a1a1a]">{t("bookings.actions.report.decisionLabel")}</span>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             <label className="flex items-center gap-2 cursor-pointer text-sm">
               <input
@@ -831,7 +832,7 @@ export function ResolveReportDialog({
                 onChange={() => setStatus("RESOLVED")}
                 className="text-[#059ff8]"
               />
-              <span className="font-semibold text-green-800">تم الحل (RESOLVED)</span>
+              <span className="font-semibold text-green-800">{t("bookings.actions.report.resolvedLabel")}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer text-sm">
               <input
@@ -842,18 +843,18 @@ export function ResolveReportDialog({
                 onChange={() => setStatus("DISMISSED")}
                 className="text-slate-600"
               />
-              <span className="font-semibold text-slate-700">حفظ البلاغ (DISMISSED)</span>
+              <span className="font-semibold text-slate-700">{t("bookings.actions.report.dismissedLabel")}</span>
             </label>
           </div>
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">ملاحظات الحل / قرار المشرف *</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.report.notesLabel")}</span>
           <textarea
             rows={3}
             value={resolutionNote}
             onChange={(e) => setResolutionNote(e.target.value)}
-            placeholder="اكتب تفاصيل التواصل مع الراكب أو السائق والإجراء المتخذ (5 أحرف على الأقل)..."
+            placeholder={t("bookings.actions.placeholders.reportNotes")}
             className="w-full rounded-xl border border-[#d8e4ec] bg-white p-3 text-sm text-[#1a1a1a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]"
             required
             autoFocus
@@ -862,11 +863,11 @@ export function ResolveReportDialog({
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            إلغاء
+            {t("common.actions.cancel")}
           </Button>
           <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
-            {loading ? "جاري الحفظ…" : "اعتماد القرار"}
+            {loading ? t("common.loading.saving") : t("bookings.actions.report.submit")}
           </Button>
         </div>
       </form>

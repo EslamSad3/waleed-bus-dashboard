@@ -17,6 +17,7 @@ import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, removeFromCursorList, useDataQuery } from "@/lib/queries";
 import { mapWithConcurrency } from "@/lib/actions/http";
 import { useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -42,7 +43,7 @@ async function fetchAssignedDrivers() {
     const result = await fetchSystemDriversPage(cursor);
     if (!result.ok) throw new Error(result.message);
     result.data.items.forEach((driver: SystemDriverRow) => {
-      if (driver.assignedBus) drivers.set(driver.assignedBus.id, driver.name || driver.nickname || driver.phoneNumber || "غير معيّن");
+      if (driver.assignedBus) drivers.set(driver.assignedBus.id, driver.name || driver.nickname || driver.phoneNumber || t("common.value.unassigned"));
     });
     cursor = result.data.nextCursor;
   } while (cursor);
@@ -77,8 +78,8 @@ async function fetchAggregateTripPage(cursorState: string | null): Promise<TripA
   const items = results.flatMap(({ state, page }) => page.items.map((trip) => ({
     ...trip,
     fleetName: state.fleetName,
-    busName: busesByFleet.get(state.fleetId)?.get(trip.busId) ?? "غير معيّن",
-    driverName: assignedDrivers.get(trip.busId) ?? "غير معيّن",
+    busName: busesByFleet.get(state.fleetId)?.get(trip.busId) ?? t("common.value.unassigned"),
+    driverName: assignedDrivers.get(trip.busId) ?? t("common.value.unassigned"),
   })));
   return {
     items,
@@ -98,7 +99,7 @@ export default function TripsPage() {
   );
 
   async function removeTrip(trip: TripRow) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح الرحلة «${trip.origin} → ${trip.destination}»؟ لو الرحلة عليها حجوزات هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.list.deleteConfirm.description", { tripOrigin: trip.origin, tripDestination: trip.destination }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteTrip(trip.fleetId, trip.id);
     if (!result.ok) return;
     removeFromCursorList<TripRow>(queryClient, qk.trips(null), trip.id);
@@ -115,23 +116,23 @@ export default function TripsPage() {
     (!to || trip.departAt.slice(0, 10) <= to);
 
   const columns: CommunityColumnDef<TripRow>[] = [
-    { field: "origin", headerName: "البداية", filter: "agTextColumnFilter" },
-    { field: "destination", headerName: "الوجهة", filter: "agTextColumnFilter" },
-    { field: "fleetName", headerName: "اسم الأسطول", filter: "agTextColumnFilter" },
-    { field: "busName", headerName: "العربية", filter: "agTextColumnFilter" },
-    { field: "driverName", headerName: "السواق", filter: "agTextColumnFilter" },
-    { field: "departAt", headerName: "موعد الرحلة", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
-    { field: "status", headerName: "الحالة", filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
+    { field: "origin", headerName: t("common.fields.origin"), filter: "agTextColumnFilter" },
+    { field: "destination", headerName: t("common.fields.destination"), filter: "agTextColumnFilter" },
+    { field: "fleetName", headerName: t("common.fields.fleetName"), filter: "agTextColumnFilter" },
+    { field: "busName", headerName: t("common.fields.bus"), filter: "agTextColumnFilter" },
+    { field: "driverName", headerName: t("common.fields.driver"), filter: "agTextColumnFilter" },
+    { field: "departAt", headerName: t("trips.columns.departAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+    { field: "status", headerName: t("common.fields.status"), filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
   ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">الرحلات</h1>
-          <p className="page-description">كل الرحلات في الأساطيل المسجلة، مع الخط والميعاد وحالة التشغيل.</p>
+          <h1 className="page-title">{t("trips.title")}</h1>
+          <p className="page-description">{t("trips.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>رحلة جديدة</Button>
+        <Button onClick={() => setCreateOpen(true)}>{t("trips.newTrip")}</Button>
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
@@ -145,20 +146,20 @@ export default function TripsPage() {
           columnDefs={columns}
           filterBar={
             <div className="contents">
-              <Input aria-label="بحث بالمنشأ أو الوجهة أو الأسطول" placeholder="من / إلى / الأسطول" value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="w-full bg-white md:min-w-0 md:w-auto md:max-w-52 md:flex-1" />
-              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-auto"><option value="all">كل الحالات</option><option value="SCHEDULED">مجدولة</option><option value="DEPARTED">شغالة</option><option value="COMPLETED">خلصت</option><option value="CANCELLED">ملغية</option></select>
-              <Input aria-label="من تاريخ" type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
-              <Input aria-label="إلى تاريخ" type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
+              <Input aria-label={t("trips.filters.searchAria")} placeholder={t("trips.filters.searchPlaceholder")} value={listFilters.q ?? ""} onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))} className="w-full bg-white md:min-w-0 md:w-auto md:max-w-52 md:flex-1" />
+              <select aria-label={t("common.fields.status")} value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-auto"><option value="all">{t("trips.filters.allStatuses")}</option><option value="SCHEDULED">{t("enums.tripStatus.scheduled")}</option><option value="DEPARTED">{t("enums.tripStatus.running")}</option><option value="COMPLETED">{t("enums.tripStatus.completed")}</option><option value="CANCELLED">{t("enums.tripStatus.cancelled")}</option></select>
+              <Input aria-label={t("bookings.filters.fromDate")} type="date" value={from} onChange={(event) => setListFilters((current) => ({ ...current, from: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
+              <Input aria-label={t("bookings.filters.toDate")} type="date" value={to} onChange={(event) => setListFilters((current) => ({ ...current, to: event.target.value }))} className="w-full bg-white md:w-auto md:max-w-44" />
             </div>
           }
-          emptyMessage="لا توجد رحلات مسجلة في الأساطيل."
+          emptyMessage={t("trips.empty")}
           renderItem={(trip) => (
             <RowActionsMenu
-              label={`إجراءات رحلة ${trip.origin} → ${trip.destination}`}
+              label={t("trips.list.rowActions", { tripOrigin: trip.origin, tripDestination: trip.destination })}
               actions={[
-                { label: "فتح التفاصيل", href: `/trips/${trip.id}` },
-                { label: "تعديل", onSelect: () => setTripForEdit(trip) },
-                { label: "مسح", danger: true, onSelect: () => void removeTrip(trip) },
+                { label: t("common.actions.openDetails"), href: `/trips/${trip.id}` },
+                { label: t("common.actions.edit"), onSelect: () => setTripForEdit(trip) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeTrip(trip) },
               ]}
             />
           )}

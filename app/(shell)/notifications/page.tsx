@@ -13,11 +13,12 @@ import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { SendNotificationDialog } from "@/components/notifications/send-notification-dialog";
 import { CheckCircle2, RotateCcw, Search, Send, User } from "lucide-react";
 import { qk, useDataQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 const CATEGORY_AR: Record<string, string> = {
-  TEXT: "تنبيه",
-  TRIP: "رحلة",
-  DISCOUNT_CODE: "كود خصم",
+  TEXT: t("enums.notificationCategory.alert"),
+  TRIP: t("enums.notificationCategory.trip"),
+  DISCOUNT_CODE: t("enums.notificationCategory.discountCode"),
 };
 
 function matchesQuery(text: string | null | undefined, query: string): boolean {
@@ -116,7 +117,7 @@ export default function NotificationsOpsPage() {
   const columns: CommunityColumnDef<OpsNotification>[] = [
     {
       field: "category",
-      headerName: "الفئة",
+      headerName: t("notifications.columns.category"),
       width: 120,
       cellRenderer: (params: { data?: OpsNotification }) =>
         params.data ? (
@@ -125,10 +126,10 @@ export default function NotificationsOpsPage() {
           </span>
         ) : null,
     },
-    { field: "title", headerName: "العنوان", flex: 1.5 },
+    { field: "title", headerName: t("common.fields.title"), flex: 1.5 },
     {
       field: "body",
-      headerName: "المحتوى",
+      headerName: t("notifications.columns.body"),
       flex: 2,
       cellRenderer: (params: { data?: OpsNotification }) =>
         params.data?.body ? (
@@ -138,7 +139,7 @@ export default function NotificationsOpsPage() {
         ),
     },
     {
-      headerName: "المستلم",
+      headerName: t("notifications.columns.recipient"),
       flex: 1.5,
       cellRenderer: (params: { data?: OpsNotification }) => {
         if (!params.data) return null;
@@ -146,7 +147,7 @@ export default function NotificationsOpsPage() {
         if (user?.name || user?.phoneNumber) {
           return (
             <div className="flex flex-col text-xs leading-tight py-1">
-              <span className="font-bold text-[#1a1a1a]">{user.name ?? "مستخدم"}</span>
+              <span className="font-bold text-[#1a1a1a]">{user.name ?? t("notifications.fallbackUser")}</span>
               {user.phoneNumber && (
                 <span dir="ltr" className="text-[#5e6b78]">
                   {user.phoneNumber}
@@ -157,25 +158,25 @@ export default function NotificationsOpsPage() {
         }
         return (
           <span className="text-xs text-[#71808d]">
-            {userOptions.find((u) => u.id === params.data?.userId)?.name ?? "مستخدم مسجل"}
+            {userOptions.find((u) => u.id === params.data?.userId)?.name ?? t("notifications.fallbackRegisteredUser")}
           </span>
         );
       },
     },
     {
       field: "isRead",
-      headerName: "الحالة",
+      headerName: t("common.fields.status"),
       width: 120,
       cellRenderer: (params: { data?: OpsNotification }) =>
         params.data ? (
           <span className={params.data.isRead ? "status-pill status-pill-muted" : "status-pill"}>
-            {params.data.isRead ? "مقروء" : "غير مقروء"}
+            {params.data.isRead ? t("notifications.read") : t("notifications.unread")}
           </span>
         ) : null,
     },
     {
       field: "createdAt",
-      headerName: "التاريخ",
+      headerName: t("common.fields.date"),
       width: 170,
       cellRenderer: (params: { data?: OpsNotification }) =>
         params.data ? (
@@ -190,9 +191,9 @@ export default function NotificationsOpsPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">الإشعارات</h1>
+          <h1 className="page-title">{t("notifications.title")}</h1>
           <p className="page-description">
-            عرض تشغيلي لسجل إشعارات المستخدمين وإرسال إشعارات عامة أو فردية مباشرة إلى حساباتهم.
+            {t("notifications.description")}
           </p>
         </div>
         <div className="flex items-center gap-2 max-md:w-full max-md:flex-col max-md:items-stretch">
@@ -201,10 +202,10 @@ export default function NotificationsOpsPage() {
             className="gap-2 bg-[#059ff8] hover:bg-[#00134c]"
           >
             <Send className="size-4" />
-            <span>إرسال إشعار جديد</span>
+            <span>{t("notifications.sendNew")}</span>
           </Button>
           <AsyncButton variant="secondary" onClick={load}>
-            تحديث
+            {t("notifications.refresh")}
           </AsyncButton>
         </div>
       </div>
@@ -229,7 +230,7 @@ export default function NotificationsOpsPage() {
             onKeyDown={(event) => {
               if (event.key === "Enter") void load();
             }}
-            placeholder="بحث بالاسم، رقم الموبايل، أو البريد الإلكتروني…"
+            placeholder={t("notifications.filters.searchPlaceholder")}
             className="text-xs pe-8"
           />
           <Search className="size-4 absolute end-2.5 top-2.5 text-[#5e6b78] pointer-events-none" />
@@ -240,7 +241,7 @@ export default function NotificationsOpsPage() {
           <User className="size-4 text-[#059ff8] shrink-0" />
           {userOptionsLoading && userOptions.length === 0 ? (
             <div role="status" className="min-w-0 flex-1">
-              <span className="sr-only">جاري التحميل…</span>
+              <span className="sr-only">{t("common.loading.more")}</span>
               <Skeleton className="h-9 w-full rounded-xl" />
             </div>
           ) : (
@@ -249,10 +250,10 @@ export default function NotificationsOpsPage() {
               value={selectedUserId}
               onChange={(event) => setSelectedUserId(event.target.value)}
             >
-              <option value="">كل المستخدمين (المستلم)</option>
+              <option value="">{t("notifications.filters.allRecipients")}</option>
               {userOptions.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name || "مستخدم"} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
+                  {u.name || t("notifications.fallbackUser")} {u.phoneNumber ? `(${u.phoneNumber})` : ""}{" "}
                   {u.email ? `— ${u.email}` : ""}
                 </option>
               ))}
@@ -266,16 +267,16 @@ export default function NotificationsOpsPage() {
           value={category}
           onChange={(event) => setCategory(event.target.value)}
         >
-          <option value="">كل الفئات</option>
-          <option value="TEXT">تنبيه عام</option>
-          <option value="TRIP">رحلة</option>
-          <option value="DISCOUNT_CODE">كود خصم</option>
+          <option value="">{t("notifications.filters.allCategories")}</option>
+          <option value="TEXT">{t("notifications.filters.categoryGeneral")}</option>
+          <option value="TRIP">{t("enums.notificationCategory.trip")}</option>
+          <option value="DISCOUNT_CODE">{t("enums.notificationCategory.discountCode")}</option>
         </select>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <AsyncButton size="sm" onClick={load}>
-            بحث
+            {t("common.actions.search")}
           </AsyncButton>
           {isFiltered && (
             <Button
@@ -283,10 +284,10 @@ export default function NotificationsOpsPage() {
               variant="secondary"
               onClick={handleReset}
               className="gap-1 border border-slate-200 text-xs"
-              title="إعادة ضبط الفلاتر"
+              title={t("common.actions.resetFilters")}
             >
               <RotateCcw className="size-3.5" />
-              <span>إعادة ضبط</span>
+              <span>{t("common.actions.resetFiltersShort")}</span>
             </Button>
           )}
         </div>
@@ -312,8 +313,8 @@ export default function NotificationsOpsPage() {
           withActions={false}
           emptyMessage={
             isFiltered
-              ? "لا توجد إشعارات مطابقة لمعايير البحث المحددة."
-              : "لا توجد إشعارات مسجلة حتى الآن."
+              ? t("notifications.emptyFiltered")
+              : t("notifications.empty")
           }
         />
       )}

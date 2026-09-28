@@ -16,28 +16,29 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n/t";
 
 const NAV = [
-  { href: "/", label: "نظرة عامة", icon: LayoutDashboard },
-  { href: "/fleet-owners", label: "أصحاب العربيات", icon: UserRoundCog },
-  { href: "/fleets", label: "الأساطيل", icon: Building2 },
-  { href: "/drivers", label: "السواقين", icon: Users },
-  { href: "/buses", label: "العربيات", icon: Bus },
-  { href: "/brands", label: "ماركات العربيات", icon: Bus },
-  { href: "/vip-tiers", label: "مستويات VIP", icon: Bus },
-  { href: "/markaz", label: "المراكز", icon: MapPin },
-  { href: "/localities", label: "المدن والقرى", icon: MapPin },
-  { href: "/stops", label: "نقاط التوقف", icon: MapPin },
-  { href: "/trip-lines", label: "خطوط الرحلات", icon: Route },
-  { href: "/trips", label: "الرحلات", icon: Route },
-  { href: "/bookings", label: "الحجوزات", icon: Ticket },
-  { href: "/promotions", label: "أكواد الخصم", icon: Ticket },
-  { href: "/notifications", label: "الإشعارات", icon: Ticket },
-  { href: "/service-config", label: "خدمة العملاء والإعلانات", icon: Ticket },
-  { href: "/users", label: "مستخدمو الإدارة", icon: Users },
-  { href: "/reports", label: "التقارير", icon: ChartNoAxesCombined },
-  { href: "/roles", label: "مستويات الوصول", icon: UserRoundCog },
-  { href: "/permissions", label: "دليل المهام", icon: KeyRound },
+  { href: "/", label: t("common.nav.overview"), icon: LayoutDashboard },
+  { href: "/fleet-owners", label: t("common.nav.fleetOwners"), icon: UserRoundCog },
+  { href: "/fleets", label: t("common.nav.fleets"), icon: Building2 },
+  { href: "/drivers", label: t("common.nav.drivers"), icon: Users },
+  { href: "/buses", label: t("common.nav.buses"), icon: Bus },
+  { href: "/brands", label: t("common.nav.brands"), icon: Bus },
+  { href: "/vip-tiers", label: t("common.nav.vipTiers"), icon: Bus },
+  { href: "/markaz", label: t("common.nav.markaz"), icon: MapPin },
+  { href: "/localities", label: t("common.nav.localities"), icon: MapPin },
+  { href: "/stops", label: t("common.nav.stops"), icon: MapPin },
+  { href: "/trip-lines", label: t("common.nav.tripLines"), icon: Route },
+  { href: "/trips", label: t("common.nav.trips"), icon: Route },
+  { href: "/bookings", label: t("common.nav.bookings"), icon: Ticket },
+  { href: "/promotions", label: t("common.nav.promotions"), icon: Ticket },
+  { href: "/notifications", label: t("common.nav.notifications"), icon: Ticket },
+  { href: "/service-config", label: t("common.nav.serviceConfig"), icon: Ticket },
+  { href: "/users", label: t("common.nav.adminUsers"), icon: Users },
+  { href: "/reports", label: t("common.nav.reports"), icon: ChartNoAxesCombined },
+  { href: "/roles", label: t("common.nav.roles"), icon: UserRoundCog },
+  { href: "/permissions", label: t("common.nav.permissions"), icon: KeyRound },
 ] as const;
 
 /** Shared nav links used by the desktop aside and the mobile off-canvas drawer. */
@@ -77,18 +78,18 @@ export function SidebarLinks() {
 export function Sidebar() {
   return (
     <aside
-      aria-label="التنقل الرئيسي"
+      aria-label={t("shell.nav.mainAria")}
       className="sticky top-24 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-[1.75rem] border border-white/80 bg-white/75 p-3 shadow-[0_18px_55px_rgba(29,64,89,.08)] backdrop-blur-xl md:flex"
     >
       <div className="mb-3 flex items-center gap-2 rounded-2xl bg-[#00134c] px-4 py-3 text-white">
         <Sparkles className="size-4 text-[#9ed0f0]" aria-hidden="true" />
-        <span className="text-xs font-bold">مساحة الإدارة</span>
+        <span className="text-xs font-bold">{t("shell.nav.adminArea")}</span>
       </div>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
         <SidebarLinks />
       </nav>
       <div className="mt-3 rounded-2xl bg-[#fff7e3] p-3 text-xs leading-6 text-[#5e6b78]">
-        إدارة الملاك والسواقين والعربيات من مكان واحد.
+        {t("shell.nav.tagline")}
       </div>
     </aside>
   );

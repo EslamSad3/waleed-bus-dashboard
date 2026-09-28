@@ -14,6 +14,7 @@ import { qk, useApiQuery } from "@/lib/queries";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { DetailPageSkeleton, InlineBlockSkeleton } from "@/components/ui/skeletons";
 import { Trash2 } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -73,24 +74,24 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     if (!fleetId) return;
     const iso = departAt ? new Date(departAt).toISOString() : undefined;
     const r = await updateTrip(fleetId, id, { origin, destination, departAt: iso });
-    done(r.ok, r.ok ? "اتحفظ بنجاح" : r.message, r.ok ? r.data : undefined);
+    done(r.ok, r.ok ? t("common.toast.saved") : r.message, r.ok ? r.data : undefined);
   }
 
   async function move(next: Trip["status"]) {
     if (!fleetId) return;
     const r = await updateTrip(fleetId, id, { status: next });
     if (r.ok) setStatus(r.data.status);
-    done(r.ok, r.ok ? "اتحفظ بنجاح" : r.message, r.ok ? r.data : undefined);
+    done(r.ok, r.ok ? t("common.toast.saved") : r.message, r.ok ? r.data : undefined);
   }
 
   async function cancel() {
-    if (!(await confirm({ title: "تأكيد الإلغاء", description: "هتلغي الرحلة دي؟", confirmLabel: "إلغاء الرحلة", destructive: true }))) return;
+    if (!(await confirm({ title: t("trips.detail.cancelConfirm.title"), description: t("trips.detail.cancelConfirm.description"), confirmLabel: t("trips.detail.cancelConfirm.confirmLabel"), destructive: true }))) return;
     await move("CANCELLED");
   }
 
   async function remove() {
     if (!fleetId) return;
-    if (!(await confirm({ title: "تأكيد المسح", description: "الإجراء ده مينفعش يتراجع — تمسح الرحلة؟", confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const r = await deleteTrip(fleetId, id);
     if (!r.ok) {
       done(false, r.message);
@@ -102,11 +103,11 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
   async function assignTripDriver() {
     if (!fleetId || !trip || !driverId) {
-      setError("اختار السواق الأول");
+      setError(t("trips.detail.errors.pickDriver"));
       return;
     }
     const result = await assignDriver(fleetId, trip.busId, { driverUserId: driverId });
-    done(result.ok, result.ok ? "اتعين السواق على عربية الرحلة" : result.message);
+    done(result.ok, result.ok ? t("trips.detail.toast.driverAssigned") : result.message);
     if (result.ok) {
       const refreshed = await apiGet<{ items: DriverRow[] }>("/api/fleet/drivers?limit=100", fleetId);
       if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
@@ -119,10 +120,10 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div className="min-w-0 flex-1"><h1 className="page-title">{trip.origin} ← {trip.destination}</h1><p className="page-description">تفاصيل الخط والميعاد وحالة الرحلة.</p></div>
+        <div className="min-w-0 flex-1"><h1 className="page-title">{trip.origin} ← {trip.destination}</h1><p className="page-description">{t("trips.detail.description")}</p></div>
         <div className="flex flex-wrap items-center gap-3 max-md:w-full">
           <span className={trip.status === "CANCELLED" ? "status-pill status-pill-muted" : "status-pill"}>{TRIP_STATUS_AR[trip.status]}</span>
-          <AsyncButton type="button" variant="destructive" className="max-md:w-full" onClick={remove}><Trash2 className="size-4" /> مسح الرحلة</AsyncButton>
+          <AsyncButton type="button" variant="destructive" className="max-md:w-full" onClick={remove}><Trash2 className="size-4" /> {t("trips.detail.deleteTrip")}</AsyncButton>
         </div>
       </div>
 
@@ -131,43 +132,43 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel-card p-5 sm:p-6">
-          <h2 className="section-title">الخط والميعاد</h2>
+          <h2 className="section-title">{t("trips.detail.sections.schedule")}</h2>
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium">من</span>
+                <span className="mb-1 block font-medium">{t("trips.detail.from")}</span>
                 <Input value={origin} onChange={(e) => setOrigin(e.target.value)} />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium">إلى</span>
+                <span className="mb-1 block font-medium">{t("trips.detail.to")}</span>
                 <Input value={destination} onChange={(e) => setDestination(e.target.value)} />
               </label>
             </div>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">ميعاد المغادرة</span>
+              <span className="mb-1 block font-medium">{t("trips.detail.departureAt")}</span>
               <Input dir="ltr" type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} />
             </label>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
-              <span className="block text-[#606060]">عربية الرحلة</span>
+              <span className="block text-[#606060]">{t("trips.detail.bus")}</span>
               {bus ? <strong>{bus.registrationNumber}</strong> : <InlineBlockSkeleton className="h-5 w-36" />}
               {bus?.plateNumber ? <span className="ms-2 text-[#606060]" dir="ltr">{bus.plateNumber}</span> : null}
-              <span className="ms-2 text-[#606060]">· السعة {bus?.capacity ?? "—"}</span>
+              <span className="ms-2 text-[#606060]">{t("trips.detail.fields.capacityInline")} {bus?.capacity ?? "—"}</span>
               <label className="mt-3 block text-sm">
-                <span className="mb-1 block font-medium">تعيين سواق من نفس الأسطول</span>
-                <select aria-label="تعيين سواق الرحلة" value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus}>
-                  <option value="">اختار السواق</option>
-                  {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || "سواق بدون اسم"}</option>)}
+                <span className="mb-1 block font-medium">{t("trips.detail.assignSameFleetDriver")}</span>
+                <select aria-label={t("trips.detail.assignDriverAria")} value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus}>
+                  <option value="">{t("trips.detail.pickDriver")}</option>
+                  {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || t("trips.detail.unnamedDriver")}</option>)}
                 </select>
               </label>
-              <AsyncButton type="button" className="mt-2" onClick={assignTripDriver} disabled={!driverId}>تعيين السواق</AsyncButton>
+              <AsyncButton type="button" className="mt-2" onClick={assignTripDriver} disabled={!driverId}>{t("trips.detail.assignDriver")}</AsyncButton>
             </div>
             <div className="flex gap-2">
-              <AsyncButton type="button" onClick={save}>حفظ</AsyncButton>
+              <AsyncButton type="button" onClick={save}>{t("common.actions.save")}</AsyncButton>
             </div>
           </div>
         </div>
         <div className="panel-card p-5 sm:p-6">
-          <h2 className="section-title">الحالة</h2>
+          <h2 className="section-title">{t("trips.detail.sections.status")}</h2>
           <div className="flex flex-wrap gap-2">
             {(["SCHEDULED", "DEPARTED", "COMPLETED"] as const).map((s) => (
               <AsyncButton
@@ -181,11 +182,11 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
               </AsyncButton>
             ))}
             <AsyncButton type="button" variant="destructive" onClick={cancel} disabled={status === "CANCELLED"}>
-              إلغاء الرحلة
+              {t("trips.detail.cancelTrip")}
             </AsyncButton>
           </div>
           <Button asChild variant="secondary" className="mt-4">
-            <Link href={`/bookings?tripId=${encodeURIComponent(trip.id)}`}>كشف حجوزات الرحلة</Link>
+            <Link href={`/bookings?tripId=${encodeURIComponent(trip.id)}`}>{t("trips.detail.viewBookings")}</Link>
           </Button>
         </div>
       </div>

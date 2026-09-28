@@ -1,7 +1,8 @@
 import { toast } from "sonner";
 import type { ActionResult } from "@/lib/actions/http";
+import { t } from "@/lib/i18n/t";
 
-const ERROR_TITLE = "حصلت مشكلة";
+const ERROR_TITLE = t("common.error.somethingWentWrong");
 
 export type NotifyOptions = { notify?: boolean };
 

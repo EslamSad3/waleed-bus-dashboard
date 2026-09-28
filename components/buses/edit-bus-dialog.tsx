@@ -9,6 +9,7 @@ import { discardBusImage, fetchBrands, fetchBus, stageBusImage, updateBus, type 
 import type { StagedUpload } from "@/lib/actions/http";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type BusRow = Bus & { fleetName?: string };
 
@@ -69,20 +70,20 @@ export function EditBusDialog({
     setError(null);
     const seats = Number(capacity);
     if (!plateNumber.trim()) {
-      setError("اكتب رقم اللوحة.");
+      setError(t("buses.editDialog.errors.plateRequired"));
       return;
     }
     if (!color) {
-      setError("اختار اللون.");
+      setError(t("buses.editDialog.errors.colorRequired"));
       return;
     }
     if (!Number.isInteger(seats) || seats < 1 || seats > 300) {
-      setError("السعة لازم تكون رقم من 1 لـ 300.");
+      setError(t("buses.editDialog.errors.capacityRange"));
       return;
     }
     const year = modelYear.trim() === "" ? undefined : Number(modelYear);
     if (year !== undefined && (!Number.isInteger(year) || year < 1980 || year > 2100)) {
-      setError("سنة الموديل لازم تكون بين 1980 و 2100.");
+      setError(t("buses.editDialog.errors.modelYearRange"));
       return;
     }
     setSaving(true);
@@ -125,16 +126,16 @@ export function EditBusDialog({
   }
 
   return (
-    <Dialog open={open && Boolean(bus)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title="تعديل عربية" description={bus ? `رقم التسجيل ${bus.registrationNumber} — بيانات التشغيل بس هي اللي بتتعدل.` : undefined} size="sm">
+    <Dialog open={open && Boolean(bus)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.editDialog.title")} description={bus ? t("buses.editDialog.description", { busRegistrationNumber: bus.registrationNumber }) : undefined} size="sm">
       <div className="space-y-4">
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">رقم اللوحة</span>
-          <Input dir="ltr" value={plateNumber} onChange={(event) => setPlateNumber(event.target.value)} placeholder="أ ب ج 1234" />
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.plateNumber")}</span>
+          <Input dir="ltr" value={plateNumber} onChange={(event) => setPlateNumber(event.target.value)} placeholder={t("buses.placeholders.plateNumber")} />
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">اللون</span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.color")}</span>
           <select value={color} onChange={(event) => setColor(event.target.value)} className="select-field w-full">
-            <option value="">اختار اللون…</option>
+            <option value="">{t("buses.detail.pickColor")}</option>
             {BUS_COLORS.map((option) => (
               <option key={option.name} value={option.name}>{option.name}</option>
             ))}
@@ -147,37 +148,37 @@ export function EditBusDialog({
           </div>
         ) : null}
         <ImagePicker
-          label="صورة العربية (اختياري)"
+          label={t("buses.editDialog.imageLabel")}
           file={imageFile}
           onChange={setImageFile}
           uploading={uploading}
-          hint="لو رفعت صورة جديدة هتتبعت مكان القديمة."
+          hint={t("buses.editDialog.imageHint")}
         />
         <label className="block text-sm">
-          <span className="mb-1.5 block font-bold text-[#334454]">الماركة <span className="font-normal text-slate-400">(اختياري)</span></span>
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.brand")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
           <select value={brandId} onChange={(event) => setBrandId(event.target.value)} className="select-field w-full">
-            <option value="">بدون ماركة…</option>
+            <option value="">{t("buses.detail.noBrand")}</option>
             {(brands ?? []).filter((brand) => brand.isActive).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
           </select>
         </label>
         <div className="grid grid-cols-2 gap-4">
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">سنة الموديل <span className="font-normal text-slate-400">(اختياري)</span></span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.modelYear")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
             <Input dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(event) => setModelYear(event.target.value)} />
           </label>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">السعة (1–300)</span>
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("buses.detail.capacityRange")}</span>
             <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(event) => setCapacity(event.target.value)} />
           </label>
         </div>
         <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm">
           <input type="checkbox" checked={isAirConditioned} onChange={(event) => setIsAirConditioned(event.target.checked)} className="size-4 accent-[#059ff8]" />
-          مكيّف
+          {t("common.fields.ac")}
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2 border-t border-[#e4ecf2] pt-4">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>إلغاء</Button>
-          <Button type="button" variant="success" onClick={() => void submit()} loading={saving || uploading}>{saving ? "جاري الحفظ…" : "حفظ التعديلات"}</Button>
+          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+          <Button type="button" variant="success" onClick={() => void submit()} loading={saving || uploading}>{saving ? t("common.loading.saving") : t("common.actions.saveChanges")}</Button>
         </div>
       </div>
     </Dialog>

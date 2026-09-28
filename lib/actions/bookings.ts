@@ -10,6 +10,7 @@ import type {
   AdminResolveReportInput,
 } from "@/lib/schemas/admin-bookings";
 import type { CreateBookingInput } from "@/lib/schemas/p1";
+import { t } from "@/lib/i18n/t";
 
 export type BookingStatus = "CONFIRMED" | "CANCELLED" | "COMPLETED";
 
@@ -27,38 +28,38 @@ export type DropStatus = "DROPPED_OFF" | "NOT_DROPPED_OFF";
 export type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
 
 export const BOOKING_STATUS_AR: Record<string, string> = {
-  CONFIRMED: "مؤكد",
-  CANCELLED: "ملغي",
-  COMPLETED: "مكتمل",
+  CONFIRMED: t("enums.bookingStatus.confirmed"),
+  CANCELLED: t("enums.bookingStatus.cancelled"),
+  COMPLETED: t("enums.bookingStatus.completed"),
 };
 
 export const PAYMENT_STATUS_AR: Record<string, string> = {
-  PENDING: "في انتظار الدفع",
-  PAID: "تم الدفع",
-  REFUND_PENDING: "بانتظار الاسترداد",
-  PARTIALLY_REFUNDED: "مسترد جزئياً",
-  REFUNDED: "مسترد بالكامل",
-  FAILED: "فشل الدفع",
-  CANCELLED: "ملغي",
+  PENDING: t("enums.paymentStatus.pending"),
+  PAID: t("enums.paymentStatus.paid"),
+  REFUND_PENDING: t("enums.paymentStatus.refundPending"),
+  PARTIALLY_REFUNDED: t("enums.paymentStatus.partiallyRefunded"),
+  REFUNDED: t("enums.paymentStatus.refunded"),
+  FAILED: t("enums.paymentStatus.failed"),
+  CANCELLED: t("enums.paymentStatus.cancelled"),
 };
 
 export const PAYMENT_METHOD_AR: Record<string, string> = {
-  CASH: "كاش (نقدي)",
-  VODAFONE_CASH: "فودافون كاش",
-  INSTAPAY: "إنستاباي",
-  WALLET: "محفظة إلكترونية",
-  CARD: "بطاقة بنكية",
+  CASH: t("enums.paymentMethod.cashAlt"),
+  VODAFONE_CASH: t("enums.paymentMethod.vodafoneCash"),
+  INSTAPAY: t("enums.paymentMethod.instapay"),
+  WALLET: t("enums.paymentMethod.wallet"),
+  CARD: t("enums.paymentMethod.bankCard"),
 };
 
 export const DROP_STATUS_AR: Record<string, string> = {
-  DROPPED_OFF: "تم النزول",
-  NOT_DROPPED_OFF: "لم يتم النزول",
+  DROPPED_OFF: t("enums.dropStatus.droppedOff"),
+  NOT_DROPPED_OFF: t("enums.dropStatus.notDroppedOff"),
 };
 
 export const REPORT_STATUS_AR: Record<string, string> = {
-  PENDING: "قيد المراجعة",
-  RESOLVED: "تم الحل",
-  DISMISSED: "تم الحفظ",
+  PENDING: t("enums.reportStatus.pending"),
+  RESOLVED: t("enums.reportStatus.resolved"),
+  DISMISSED: t("enums.reportStatus.dismissed"),
 };
 
 export type AdminBookingListItem = {
@@ -246,7 +247,7 @@ export function verifyBookingPayment(
   input: AdminVerifyPaymentInput,
 ): Promise<ActionResult<{ bookingId: string; paymentStatus: string; paymentReference: string; paidAt: string }>> {
   return notifyResult(
-    "تم تأكيد الدفعة بنجاح",
+    t("bookings.toast.paymentVerified"),
     apiSend(`/api/admin/bookings/${id}/payment/verify`, "POST", input),
   );
 }
@@ -256,7 +257,7 @@ export function failBookingPayment(
   input: AdminFailPaymentInput,
 ): Promise<ActionResult<{ bookingId: string; paymentStatus: string; updatedAt: string }>> {
   return notifyResult(
-    "تم تسجيل فشل الدفع",
+    t("bookings.toast.paymentFailed"),
     apiSend(`/api/admin/bookings/${id}/payment/fail`, "POST", input),
   );
 }
@@ -276,7 +277,7 @@ export function refundBookingPayment(
   }>
 > {
   return notifyResult(
-    "تم تنفيذ الاسترداد بنجاح",
+    t("bookings.toast.refunded"),
     apiSend(`/api/admin/bookings/${id}/payment/refund`, "POST", input),
   );
 }
@@ -295,7 +296,7 @@ export function forceCancelBooking(
   }>
 > {
   return notifyResult(
-    "تم إلغاء الحجز",
+    t("bookings.toast.cancelled"),
     apiSend(`/api/admin/bookings/${id}/cancel`, "POST", input),
   );
 }
@@ -305,7 +306,7 @@ export function reinstateBooking(
   input: AdminReinstateInput,
 ): Promise<ActionResult<{ id: string; status: string; reinstatedAt: string }>> {
   return notifyResult(
-    "تم إعادة تنشيط الحجز",
+    t("bookings.toast.reinstated"),
     apiSend(`/api/admin/bookings/${id}/reinstate`, "POST", input),
   );
 }
@@ -323,7 +324,7 @@ export function overrideBookingOperational(
   }>
 > {
   return notifyResult(
-    "تم حفظ حالة الصعود والنزول",
+    t("bookings.toast.boardingUpdated"),
     apiSend(`/api/admin/bookings/${id}/operational`, "PATCH", input),
   );
 }
@@ -334,7 +335,7 @@ export function resolveIncidentReport(
   input: AdminResolveReportInput,
 ): Promise<ActionResult<IncidentReport>> {
   return notifyResult(
-    "تم إغلاق البلاغ بنجاح",
+    t("bookings.toast.reportClosed"),
     apiSend(`/api/admin/bookings/${bookingId}/reports/${reportId}`, "PATCH", input),
   );
 }
@@ -359,7 +360,7 @@ export function createBooking(
   input: CreateBookingInput,
 ): Promise<ActionResult<AdminBookingListItem>> {
   return notifyResult(
-    "اتضاف الحجز بنجاح",
+    t("bookings.toast.created"),
     apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings`, "POST", input),
   );
 }
@@ -370,11 +371,11 @@ export function updateBooking(
   input: { passengerName?: string; passengerPhone?: string; status?: BookingStatus },
 ): Promise<ActionResult<AdminBookingListItem>> {
   return notifyResult(
-    "اتحفظت بيانات الحجز",
+    t("bookings.toast.saved"),
     apiSend<AdminBookingListItem>(`/api/fleets/${fleetId}/bookings/${id}`, "PATCH", input),
   );
 }
 
 export function deleteBooking(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult("اتمسح الحجز", apiSend<null>(`/api/fleets/${fleetId}/bookings/${id}`, "DELETE"));
+  return notifyResult(t("bookings.toast.deleted"), apiSend<null>(`/api/fleets/${fleetId}/bookings/${id}`, "DELETE"));
 }

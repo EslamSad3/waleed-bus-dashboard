@@ -1,56 +1,57 @@
 import { z } from "zod";
+import { t } from "@/lib/i18n/t";
 
 export const adminVerifyPaymentSchema = z.object({
   reference: z
     .string()
-    .min(1, "رقم المعاملة مطلوب")
-    .max(100, "رقم المعاملة بحد أقصى 100 حرف"),
+    .min(1, t("validation.transactionRefRequired"))
+    .max(100, t("validation.transactionRefMax")),
   amount: z
     .number()
-    .positive("المبلغ يجب أن يكون رقماً موجباً"),
+    .positive(t("validation.amountPositive")),
   paymentMethod: z
     .string()
-    .max(20, "طريقة الدفع بحد أقصى 20 حرف")
+    .max(20, t("validation.paymentMethodMax"))
     .optional(),
   notes: z
     .string()
-    .max(500, "الملاحظات بحد أقصى 500 حرف")
+    .max(500, t("validation.notesMax"))
     .optional(),
 });
 
 export const adminFailPaymentSchema = z.object({
   reason: z
     .string()
-    .min(1, "سبب فشل الدفع إلزامي")
-    .max(500, "السبب بحد أقصى 500 حرف"),
+    .min(1, t("validation.failureReasonRequired"))
+    .max(500, t("validation.failureReasonMax")),
   notes: z
     .string()
-    .max(500, "الملاحظات بحد أقصى 500 حرف")
+    .max(500, t("validation.notesMax"))
     .optional(),
 });
 
 export const adminRefundPaymentSchema = z.object({
   refundReference: z
     .string()
-    .min(1, "رقم إشعار أو مرجع الاسترداد مطلوب")
-    .max(100, "رقم المرجع بحد أقصى 100 حرف"),
+    .min(1, t("validation.refundRefRequired"))
+    .max(100, t("validation.refundRefMax")),
   refundAmount: z
     .number()
-    .positive("مبلغ الاسترداد يجب أن يكون رقماً موجباً"),
+    .positive(t("validation.refundAmountPositive")),
   reason: z
     .string()
-    .min(1, "سبب الاسترداد إلزامي")
-    .max(500, "السبب بحد أقصى 500 حرف"),
+    .min(1, t("validation.refundReasonRequired"))
+    .max(500, t("validation.refundReasonMax")),
   notes: z
     .string()
-    .max(500, "الملاحظات بحد أقصى 500 حرف")
+    .max(500, t("validation.notesMax"))
     .optional(),
 });
 
 export const adminForceCancelSchema = z.object({
   reason: z
     .string()
-    .min(1, "سبب إلغاء الحجز إلزامي"),
+    .min(1, t("validation.forceCancelReasonRequired")),
   releaseSeats: z
     .boolean()
     .optional()
@@ -60,7 +61,7 @@ export const adminForceCancelSchema = z.object({
 export const adminReinstateSchema = z.object({
   reason: z
     .string()
-    .min(1, "سبب استرجاع الحجز إلزامي"),
+    .min(1, t("validation.reinstateReasonRequired")),
 });
 
 export const adminOperationalOverrideSchema = z.object({
@@ -70,15 +71,15 @@ export const adminOperationalOverrideSchema = z.object({
   dropReason: z.string().optional(),
   justification: z
     .string()
-    .min(1, "تبرير التعديل التشغيلي إلزامي"),
+    .min(1, t("validation.overrideJustificationRequired")),
 });
 
 export const adminResolveReportSchema = z.object({
   status: z.enum(["RESOLVED", "DISMISSED"]),
   resolutionNote: z
     .string()
-    .min(5, "ملاحظات الحل يجب ألا تقل عن 5 أحرف")
-    .max(2000, "ملاحظات الحل بحد أقصى 2000 حرف"),
+    .min(5, t("validation.reportNotesMin"))
+    .max(2000, t("validation.reportNotesMax")),
 });
 
 export type AdminVerifyPaymentInput = z.infer<typeof adminVerifyPaymentSchema>;

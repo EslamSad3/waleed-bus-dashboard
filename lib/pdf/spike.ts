@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import { textBidi, type PdfKitDocLike } from "bidi-shaper/pdfkit";
 import fs from "node:fs";
 import path from "node:path";
+import { t } from "@/lib/i18n/t";
 
 /**
  * P0 spike: prove Arabic glyph shaping in pdfkit (PRD §7 blocking risk).
@@ -37,24 +38,24 @@ export function buildSpikePdf(): Promise<Buffer> {
       textBidi(doc as unknown as PdfKitDocLike, text, options);
 
     doc.fontSize(22);
-    rtl("تقرير تجريبي — إثبات تشكيل الحروف العربية", {
+    rtl(t("pdf.spike.title"), {
       align: "right",
       bidi: { direction: "rtl" },
     });
     doc.moveDown();
 
     doc.fontSize(14);
-    rtl("مرحبا بالعالم: السعر 123.45 جنيه ورقم الرحلة AB-42", {
+    rtl(t("pdf.spike.sample"), {
       align: "right",
       bidi: { direction: "rtl" },
     });
     doc.moveDown();
 
-    rtl("الاسم | رقم الموبايل | الحالة", {
+    rtl(t("pdf.spike.tableHeader"), {
       align: "right",
       bidi: { direction: "rtl" },
     });
-    rtl("أحمد محمد | 01012345678 | مؤكد", {
+    rtl(t("pdf.spike.tableRow"), {
       align: "right",
       bidi: { direction: "rtl" },
     });

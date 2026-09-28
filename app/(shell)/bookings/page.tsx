@@ -24,6 +24,7 @@ import { RowActionsMenu } from "@/components/ui/row-actions-menu";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type FleetOption = { id: string; name: string };
 
@@ -106,7 +107,7 @@ export default function BookingsPage() {
   const error = fetchError ? fetchError.message : null;
 
   async function removeBooking(booking: AdminBookingListItem) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح حجز «${booking.passengerName || booking.passengerPhone}»؟ الإجراء ده مينفعش يتراجع.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || booking.passengerPhone }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBooking(booking.fleetId, booking.id);
     if (!result.ok) return;
     removeFromCursorList<AdminBookingListItem>(queryClient, qk.adminBookingsParams(filterParams), booking.id);
@@ -128,59 +129,59 @@ export default function BookingsPage() {
 
   const hasActiveFilters = Boolean(searchTerm || tripId || fleetId || hasReports || fromDate || toDate) || status !== "all" || paymentStatus !== "all" || paymentMethod !== "all";
   const columns: CommunityColumnDef<AdminBookingListItem>[] = [
-    { field: "passengerName", headerName: "الراكب", filter: "agTextColumnFilter" },
-    { field: "passengerPhone", headerName: "الموبايل", filter: "agTextColumnFilter" },
-    { field: "fleetName", headerName: "الأسطول", filter: "agTextColumnFilter" },
-    { field: "originName", headerName: "البداية" },
-    { field: "destinationName", headerName: "الوجهة" },
-    { field: "seats", headerName: "المقاعد", filter: "agNumberColumnFilter" },
-    { field: "status", headerName: "حالة الحجز", valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
-    { field: "paymentStatus", headerName: "حالة الدفع", valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
-    { field: "paymentMethod", headerName: "طريقة الدفع", valueFormatter: (params) => PAYMENT_METHOD_AR[params.value as keyof typeof PAYMENT_METHOD_AR] ?? params.value },
-    { field: "totalAmount", headerName: "الإجمالي", filter: "agNumberColumnFilter" },
-    { field: "hasReports", headerName: "بلاغات", valueFormatter: (params) => params.value ? "نعم" : "لا" },
-    { field: "createdAt", headerName: "تاريخ الحجز", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
+    { field: "passengerName", headerName: t("bookings.columns.passengerName"), filter: "agTextColumnFilter" },
+    { field: "passengerPhone", headerName: t("common.fields.phone"), filter: "agTextColumnFilter" },
+    { field: "fleetName", headerName: t("common.fields.fleet"), filter: "agTextColumnFilter" },
+    { field: "originName", headerName: t("common.fields.origin") },
+    { field: "destinationName", headerName: t("common.fields.destination") },
+    { field: "seats", headerName: t("common.fields.seats"), filter: "agNumberColumnFilter" },
+    { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
+    { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
+    { field: "paymentMethod", headerName: t("common.fields.paymentMethod"), valueFormatter: (params) => PAYMENT_METHOD_AR[params.value as keyof typeof PAYMENT_METHOD_AR] ?? params.value },
+    { field: "totalAmount", headerName: t("common.fields.total"), filter: "agNumberColumnFilter" },
+    { field: "hasReports", headerName: t("bookings.columns.hasReports"), valueFormatter: (params) => params.value ? t("common.value.yes") : t("common.value.no") },
+    { field: "createdAt", headerName: t("bookings.columns.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
 ];
 
   return (
     <div className="dashboard-page space-y-6">
       <div className="page-heading">
         <div className="min-w-0">
-          <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d6eeff] text-[#00134c]"><Ticket className="size-5" /></span><h1 className="page-title min-w-0">مراجعة وإدارة الحجوزات</h1></div>
-          <p className="page-description">رؤية مركزية شاملة لجميع الحجوزات عبر كل الأساطيل، فحص العمليات، وتدقيق المدفوعات والاسترداد.</p>
+          <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d6eeff] text-[#00134c]"><Ticket className="size-5" /></span><h1 className="page-title min-w-0">{t("bookings.list.badge")}</h1></div>
+          <p className="page-description">{t("bookings.list.description")}</p>
         </div>
-        <Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="size-4" /> حجز جديد</Button>
+        <Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("bookings.list.newBooking")}</Button>
       </div>
 
       {tripId ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d6eeff] bg-[#f3f8fc] p-4 shadow-sm">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#00134c]">حجوزات رحلة محددة</p>
+            <p className="text-sm font-bold text-[#00134c]">{t("bookings.list.tripBookingsTitle")}</p>
             <p className="text-xs text-[#606060]">{activeTripLabel ? <span dir="auto">{activeTripLabel}</span> : <InlineBlockSkeleton className="h-3.5 w-44" />}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>تفاصيل الرحلة</Link></Button>
-            <Button size="sm" variant="outline" onClick={() => router.replace("/bookings")}>عرض كل الحجوزات</Button>
+            <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>{t("bookings.list.tripDetails")}</Link></Button>
+            <Button size="sm" variant="outline" onClick={() => router.replace("/bookings")}>{t("bookings.list.showAllBookings")}</Button>
           </div>
         </div>
       ) : null}
 
       <div className="rounded-2xl border border-[#d6eeff] bg-white p-4 shadow-sm space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Input aria-label="بحث باسم الراكب أو رقم الموبايل" placeholder="اسم الراكب أو رقم الموبايل…" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-white" />
-          <select aria-label="تصفية حسب الأسطول" value={fleetId} onChange={(event) => setFleetId(event.target.value)} className="select-field w-full"><option value="">كل الأساطيل ({fleets.length})</option>{fleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}</select>
-          <select aria-label="حالة الحجز" value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full"><option value="all">كل حالات الحجز</option><option value="CONFIRMED">مؤكد</option><option value="CANCELLED">ملغي</option><option value="COMPLETED">مكتمل</option></select>
-          <select aria-label="حالة الدفع" value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="select-field w-full"><option value="all">كل حالات الدفع</option><option value="PENDING">في انتظار الدفع</option><option value="PAID">تم الدفع</option><option value="REFUNDED">مسترد بالكامل</option><option value="FAILED">فشل الدفع</option></select>
+          <Input aria-label={t("bookings.filters.searchAria")} placeholder={t("bookings.filters.searchPlaceholder")} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-white" />
+          <select aria-label={t("bookings.filters.fleet")} value={fleetId} onChange={(event) => setFleetId(event.target.value)} className="select-field w-full"><option value="">{t("bookings.filters.allFleetsPrefix")}{fleets.length})</option>{fleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}</select>
+          <select aria-label={t("common.fields.bookingStatus")} value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allStatuses")}</option><option value="CONFIRMED">{t("enums.bookingStatus.confirmed")}</option><option value="CANCELLED">{t("enums.bookingStatus.cancelled")}</option><option value="COMPLETED">{t("enums.bookingStatus.completed")}</option></select>
+          <select aria-label={t("common.fields.paymentStatus")} value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allPaymentStatuses")}</option><option value="PENDING">{t("enums.paymentStatus.pending")}</option><option value="PAID">{t("enums.paymentStatus.paid")}</option><option value="REFUNDED">{t("enums.paymentStatus.refunded")}</option><option value="FAILED">{t("enums.paymentStatus.failed")}</option></select>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e4ecf2] pt-2">
           <div className="flex flex-wrap items-center gap-3">
-            <select aria-label="طريقة الدفع" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="select-field text-xs sm:text-sm"><option value="all">كل طرق الدفع</option><option value="VODAFONE_CASH">فودافون كاش</option><option value="INSTAPAY">إنستاباي</option><option value="WALLET">محفظة إلكترونية</option><option value="CASH">نقدي</option><option value="CARD">بطاقة بنكية</option></select>
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d8e4ec] bg-[#f8fbfd] px-3 py-1.5 text-xs sm:text-sm"><input type="checkbox" checked={hasReports} onChange={(event) => setHasReports(event.target.checked)} className="size-4" /><span className="flex items-center gap-1 font-semibold text-red-700"><AlertTriangle className="size-3.5" /> حجوزات بها بلاغات</span></label>
-            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="flex items-center gap-1 text-xs font-semibold text-[#059ff8] hover:underline sm:text-sm"><Filter className="size-3.5" /> {showAdvanced ? "إخفاء تصفية التاريخ" : "تصفية بالتواريخ"}</button>
+            <select aria-label={t("common.fields.paymentMethod")} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="select-field text-xs sm:text-sm"><option value="all">{t("bookings.filters.allPaymentMethods")}</option><option value="VODAFONE_CASH">{t("enums.paymentMethod.vodafoneCash")}</option><option value="INSTAPAY">{t("enums.paymentMethod.instapay")}</option><option value="WALLET">{t("enums.paymentMethod.wallet")}</option><option value="CASH">{t("enums.paymentMethod.cash")}</option><option value="CARD">{t("enums.paymentMethod.bankCard")}</option></select>
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d8e4ec] bg-[#f8fbfd] px-3 py-1.5 text-xs sm:text-sm"><input type="checkbox" checked={hasReports} onChange={(event) => setHasReports(event.target.checked)} className="size-4" /><span className="flex items-center gap-1 font-semibold text-red-700"><AlertTriangle className="size-3.5" /> {t("bookings.filters.withReports")}</span></label>
+            <button type="button" onClick={() => setShowAdvanced((value) => !value)} className="flex items-center gap-1 text-xs font-semibold text-[#059ff8] hover:underline sm:text-sm"><Filter className="size-3.5" /> {showAdvanced ? t("bookings.filters.hideDateFilter") : t("bookings.filters.showDateFilter")}</button>
           </div>
-          {hasActiveFilters ? <button type="button" onClick={resetFilters} className="flex items-center gap-1 text-xs font-medium text-[#606060] hover:text-red-700 sm:text-sm"><RotateCcw className="size-3.5" /> إعادة ضبط الفلاتر</button> : null}
+          {hasActiveFilters ? <button type="button" onClick={resetFilters} className="flex items-center gap-1 text-xs font-medium text-[#606060] hover:text-red-700 sm:text-sm"><RotateCcw className="size-3.5" /> {t("common.actions.resetFilters")}</button> : null}
         </div>
-        {showAdvanced ? <div className="grid gap-3 border-t border-[#e4ecf2] pt-3 sm:grid-cols-3"><select aria-label="نوع التاريخ" value={dateType} onChange={(event) => setDateType(event.target.value as "created" | "departure")} className="select-field w-full"><option value="departure">موعد إقلاع الرحلة</option><option value="created">تاريخ إنشاء الحجز</option></select><Input type="date" aria-label="من تاريخ" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="bg-white" /><Input type="date" aria-label="إلى تاريخ" value={toDate} onChange={(event) => setToDate(event.target.value)} className="bg-white" /></div> : null}
+        {showAdvanced ? <div className="grid gap-3 border-t border-[#e4ecf2] pt-3 sm:grid-cols-3"><select aria-label={t("bookings.filters.dateType")} value={dateType} onChange={(event) => setDateType(event.target.value as "created" | "departure")} className="select-field w-full"><option value="departure">{t("bookings.filters.dateTypeDeparture")}</option><option value="created">{t("bookings.filters.dateTypeCreated")}</option></select><Input type="date" aria-label={t("bookings.filters.fromDate")} value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="bg-white" /><Input type="date" aria-label={t("bookings.filters.toDate")} value={toDate} onChange={(event) => setToDate(event.target.value)} className="bg-white" /></div> : null}
       </div>
 
       {error ? <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
@@ -199,13 +200,13 @@ export default function BookingsPage() {
           }}
           keyOf={(booking) => booking.id}
           columnDefs={columns}
-          emptyMessage="لا توجد حجوزات مطابقة لمعايير البحث الحالية."
+          emptyMessage={t("bookings.list.empty")}
           renderItem={(booking) => (
             <RowActionsMenu
-              label={`إجراءات حجز ${booking.passengerName || booking.passengerPhone || ""}`}
+              label={t("bookings.list.rowActions", { value: booking.passengerName || booking.passengerPhone || "" })}
               actions={[
-                { label: "فتح التفاصيل", href: `/bookings/${booking.id}` },
-                { label: "مسح", danger: true, onSelect: () => void removeBooking(booking) },
+                { label: t("common.actions.openDetails"), href: `/bookings/${booking.id}` },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBooking(booking) },
               ]}
             />
           )}

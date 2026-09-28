@@ -1,23 +1,27 @@
+import { t } from "@/lib/i18n/t";
+
 /**
- * Arabic ordinal labels for rank/sort-order columns (issue: "الترتيب" shows
- * "الأول في القائمه", "الثاني في القائمه" … instead of numbers).
+ * Arabic ordinal labels for rank/sort-order columns (copy lives in
+ * lib/i18n/ar.json under `ordinals.*`).
  */
+
+
 const ORDINALS = [
-  "الأول في القائمه",
-  "الثاني في القائمه",
-  "الثالث في القائمه",
-  "الرابع في القائمه",
-  "الخامس في القائمه",
-  "السادس في القائمه",
-  "السابع في القائمه",
-  "الثامن في القائمه",
-  "التاسع في القائمه",
-  "العاشر في القائمه",
+  t("ordinals.1"),
+  t("ordinals.2"),
+  t("ordinals.3"),
+  t("ordinals.4"),
+  t("ordinals.5"),
+  t("ordinals.6"),
+  t("ordinals.7"),
+  t("ordinals.8"),
+  t("ordinals.9"),
+  t("ordinals.10"),
 ] as const;
 
 export function rankOrdinalAr(rank: number | null | undefined): string {
   if (rank == null || !Number.isFinite(rank)) return "—";
   const n = Math.trunc(rank);
   if (n >= 1 && n <= ORDINALS.length) return ORDINALS[n - 1];
-  return `رقم ${n} في القائمه`;
+  return t("ordinals.fallback", { n: n });
 }

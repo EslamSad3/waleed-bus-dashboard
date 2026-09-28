@@ -37,6 +37,7 @@ import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2, UserPlus, Route as RouteIcon } from "lucide-react";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { t as tr } from "@/lib/i18n/t";
 
 export default function BusDetailPage({
   params,
@@ -175,7 +176,7 @@ export default function BusDetailPage({
       capacity: capacity === "" ? undefined : Number(capacity),
     });
     if (!r.ok && staged) await discardBusImage(fleetId, staged);
-    note(r.ok, r.ok ? "اتحفظ بنجاح" : r.message, r.ok ? r.data : undefined);
+    note(r.ok, r.ok ? tr("common.toast.saved") : r.message, r.ok ? r.data : undefined);
     if (r.ok) {
       setImageFile(null);
       setEditOpen(false);
@@ -186,9 +187,9 @@ export default function BusDetailPage({
     if (!fleetId) return;
     if (
       !(await confirm({
-        title: "تأكيد المسح",
-        description: "الإجراء ده مينفعش يتراجع — تمسح العربية؟",
-        confirmLabel: "مسح",
+        title: tr("common.actions.deleteConfirmTitle"),
+        description: tr("buses.detail.deleteConfirm.description"),
+        confirmLabel: tr("common.actions.delete"),
         destructive: true,
       }))
     ) {
@@ -206,22 +207,22 @@ export default function BusDetailPage({
   async function disable() {
     if (!fleetId) return;
     const r = await disableBus(fleetId, id);
-    note(r.ok, r.ok ? "اتوقفت العربية" : r.message, r.ok ? r.data : undefined);
+    note(r.ok, r.ok ? tr("buses.detail.toast.disabled") : r.message, r.ok ? r.data : undefined);
   }
 
   async function reactivate() {
     if (!fleetId) return;
     const r = await reactivateBus(fleetId, id);
-    note(r.ok, r.ok ? "اشتغلت العربية" : r.message, r.ok ? r.data : undefined);
+    note(r.ok, r.ok ? tr("buses.detail.toast.enabled") : r.message, r.ok ? r.data : undefined);
   }
 
   async function assign() {
     if (!fleetId || !driverId) {
-      setError("اختار السواق الأول");
+      setError(tr("buses.detail.errors.pickDriver"));
       return;
     }
     const r = await assignDriver(fleetId, id, { driverUserId: driverId });
-    note(r.ok, r.ok ? "اتعين السواق" : r.message);
+    note(r.ok, r.ok ? tr("buses.detail.toast.driverAssigned") : r.message);
     if (r.ok) {
       setAssignOpen(false);
       setDriverId("");
@@ -234,16 +235,16 @@ export default function BusDetailPage({
     if (!fleetId) return;
     if (
       !(await confirm({
-        title: "تأكيد إلغاء التعيين",
-        description: "هتلغي تعيين السواق الحالي من العربية؟",
-        confirmLabel: "إلغاء التعيين",
+        title: tr("buses.detail.unassignConfirm.title"),
+        description: tr("buses.detail.unassignConfirm.description"),
+        confirmLabel: tr("buses.detail.unassignConfirm.confirmLabel"),
         destructive: true,
       }))
     ) {
       return;
     }
     const r = await unassignDriver(fleetId, id);
-    note(r.ok, r.ok ? "اتلغى التعيين" : r.message);
+    note(r.ok, r.ok ? tr("buses.detail.toast.driverUnassigned") : r.message);
     if (r.ok) {
       const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId);
       if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
@@ -251,25 +252,25 @@ export default function BusDetailPage({
   }
 
   async function assignLine() {
-    if (!fleetId || !tripLineId) { setError("اختار خط الرحلة الأول"); return; }
+    if (!fleetId || !tripLineId) { setError(tr("buses.detail.errors.pickLine")); return; }
     const r = await assignTripLine(fleetId, id, tripLineId);
     if (!r.ok) { setError(r.message); return; }
     patchDetail(queryClient, qk.bus(fleetId, id), r.data);
-    setLineOpen(false); setTripLineId(""); setStatus("اتعيّن خط الرحلة للعربية");
+    setLineOpen(false); setTripLineId(""); setStatus(tr("buses.detail.toast.lineAssigned"));
   }
   async function clearLine() {
     if (!fleetId) return;
     const r = await unassignTripLine(fleetId, id);
     if (!r.ok) { setError(r.message); return; }
     if (bus) patchDetail(queryClient, qk.bus(fleetId, id), { ...bus, lineId: null, line: null });
-    setStatus("اتشال خط الرحلة من العربية");
+    setStatus(tr("buses.detail.toast.lineCleared"));
   }
 
   if (!fleetId) {
     return (
       <div className="flex flex-col gap-2">
-        <h1 className="title-grad text-2xl font-extrabold">العربية</h1>
-        <p className="empty-state">مفيش أسطول محدد لعرض العربية — ارجع لقايمة العربيات وافتحها من هناك.</p>
+        <h1 className="title-grad text-2xl font-extrabold">{tr("buses.detail.fallbackTitle")}</h1>
+        <p className="empty-state">{tr("buses.detail.noFleetSelected")}</p>
       </div>
     );
   }
@@ -288,17 +289,17 @@ export default function BusDetailPage({
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div className="min-w-0 flex-1"><h1 className="page-title break-words"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">بيانات العربية والحالة والسواق المعيّن وسجل الرحلات.</p></div>
+        <div className="min-w-0 flex-1"><h1 className="page-title break-words"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">{tr("buses.detail.description")}</p></div>
         <div className="flex flex-wrap items-center gap-3 max-md:w-full">
           <span className={bus.isActive ? "shrink-0 rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "shrink-0 rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
-            {bus.isActive ? "نشط" : "موقوف"}
+            {bus.isActive ? tr("common.status.active") : tr("common.status.inactive")}
           </span>
-          <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> مسح العربية</AsyncButton>
+          <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> {tr("buses.detail.deleteBus")}</AsyncButton>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-      <nav aria-label="تبويبات العربية" className="flex gap-2 overflow-x-auto pb-1">
+      <nav aria-label={tr("buses.detail.tabsAria")} className="flex gap-2 overflow-x-auto pb-1">
         {(["overview", "trips"] as const).map((t) => (
           <button
             key={t}
@@ -307,12 +308,12 @@ export default function BusDetailPage({
             aria-current={tab === t ? "page" : undefined}
             className={`rounded-xl px-4 py-2 text-sm font-medium ${tab === t ? "bg-[#059ff8] text-white" : "bg-white text-[#1a1a1a] hover:bg-[#d6eeff]"}`}
           >
-            {t === "overview" ? "نظرة عامة" : "رحلات العربية"}
+            {t === "overview" ? tr("buses.detail.tabOverview") : tr("buses.detail.tabTrips")}
           </button>
         ))}
       </nav>
         <Button type="button" className="max-md:w-full" onClick={() => setCreateTripOpen(true)}>
-          <RouteIcon className="size-4" aria-hidden="true" /> رحلة جديدة
+          <RouteIcon className="size-4" aria-hidden="true" /> {tr("common.actions.newTrip")}
         </Button>
       </div>
 
@@ -324,45 +325,45 @@ export default function BusDetailPage({
           <div className="panel-card p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <h2 className="section-title">البيانات</h2>
-                {bus.imageUrl ? <img src={bus.imageUrl} alt={`صورة العربية ${bus.registrationNumber}`} className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
+                <h2 className="section-title">{tr("buses.detail.sections.details")}</h2>
+                {bus.imageUrl ? <img src={bus.imageUrl} alt={tr("buses.detail.imageAlt", { busRegistrationNumber: bus.registrationNumber })} className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
                 <dl className="space-y-2 text-sm">
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">رقم اللوحة</dt><dd dir="ltr" className="min-w-0 flex-1 truncate font-semibold">{bus.plateNumber ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">اللون</dt><dd className="flex min-w-0 flex-1 items-center gap-2 font-semibold">{bus.color ? <span className="inline-block size-4 shrink-0 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}<span className="truncate">{bus.color ?? "—"}</span></dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">الماركة</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.brand?.name ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">مكيّف</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? "نعم" : "لا"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">سنة الموديل</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.modelYear ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">السعة</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.capacity} مقعد</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.plateNumber")}</dt><dd dir="ltr" className="min-w-0 flex-1 truncate font-semibold">{bus.plateNumber ?? "—"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.color")}</dt><dd className="flex min-w-0 flex-1 items-center gap-2 font-semibold">{bus.color ? <span className="inline-block size-4 shrink-0 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}<span className="truncate">{bus.color ?? "—"}</span></dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.brand")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.brand?.name ?? "—"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.ac")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? tr("common.value.yes") : tr("common.value.no")}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.modelYear")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.modelYear ?? "—"}</dd></div>
+                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.capacity")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.capacity} {tr("buses.detail.seatsUnit")}</dd></div>
                 </dl>
               </div>
               <Button type="button" variant="secondary" className="max-md:w-full" onClick={() => setEditOpen(true)}>
-                <Pencil className="size-4" aria-hidden="true" /> تعديل
+                <Pencil className="size-4" aria-hidden="true" /> {tr("common.actions.edit")}
               </Button>
             </div>
           </div>
           <div className="panel-card p-5 sm:p-6">
-            <h2 className="section-title">الحالة والسواق</h2>
+            <h2 className="section-title">{tr("buses.detail.sections.statusAndDriver")}</h2>
             <div className="flex flex-col gap-3">
               <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
-                <span className="block text-[#606060]">السواق الحالي</span>
-                <strong>{currentDriver?.name ?? "لا يوجد سواق معين"}</strong>
+                <span className="block text-[#606060]">{tr("buses.detail.currentDriver")}</span>
+                <strong>{currentDriver?.name ?? tr("buses.detail.noDriver")}</strong>
                 {currentDriver?.phoneNumber ? <span className="ms-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span> : null}
               </div>
               <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
-                <span className="block text-[#606060]">خط الرحلة الحالي</span>
-                <strong>{bus.line ? bus.line.name : "لا يوجد خط معيّن"}</strong>
+                <span className="block text-[#606060]">{tr("buses.detail.currentLine")}</span>
+                <strong>{bus.line ? bus.line.name : tr("buses.detail.noLine")}</strong>
                 {bus.line ? <span dir="ltr" className="ms-2 text-[#606060]">{bus.line.code}</span> : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>إيقاف</AsyncButton>
-                <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>إعادة تشغيل</AsyncButton>
+                <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>{tr("common.actions.disable")}</AsyncButton>
+                <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>{tr("buses.detail.actions.reactivate")}</AsyncButton>
               </div>
               <Button type="button" onClick={() => setAssignOpen(true)}>
-                <UserPlus className="size-4" aria-hidden="true" /> تعيين سواق
+                <UserPlus className="size-4" aria-hidden="true" /> {tr("buses.detail.actions.assignDriver")}
               </Button>
-              <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>إلغاء التعيين</AsyncButton>
-              <Button type="button" variant="secondary" onClick={() => setLineOpen(true)}>تعيين خط رحلة</Button>
-              <AsyncButton type="button" variant="secondary" onClick={clearLine} disabled={!bus.lineId}>إلغاء خط الرحلة</AsyncButton>
+              <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>{tr("buses.detail.actions.unassignDriver")}</AsyncButton>
+              <Button type="button" variant="secondary" onClick={() => setLineOpen(true)}>{tr("buses.detail.actions.assignLine")}</Button>
+              <AsyncButton type="button" variant="secondary" onClick={clearLine} disabled={!bus.lineId}>{tr("buses.detail.actions.clearLine")}</AsyncButton>
             </div>
           </div>
         </div>
@@ -383,7 +384,7 @@ export default function BusDetailPage({
               })
             }
             keyOf={(t) => t.id}
-            emptyMessage="لا توجد رحلات على العربية دي"
+            emptyMessage={tr("buses.detail.tripsEmpty")}
             renderItem={(t) => (
               <div className="list-card">
                 <span className="min-w-0 truncate font-semibold">{t.origin} ← {t.destination}</span>
@@ -394,16 +395,16 @@ export default function BusDetailPage({
         )
       )}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen} title="تعديل العربية" description={`تحديث بيانات ${bus.registrationNumber}.`} size="sm">
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title={tr("buses.detail.editDialog.title")} description={tr("buses.detail.editDialog.description", { busRegistrationNumber: bus.registrationNumber })} size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">رقم اللوحة</span>
+            <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.plateNumber")}</span>
             <Input dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value)} />
           </label>
           <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">اللون</span>
+            <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.color")}</span>
             <select value={color} onChange={(e) => setColor(e.target.value)} className="select-field w-full">
-              <option value="">اختار اللون…</option>
+              <option value="">{tr("buses.detail.pickColor")}</option>
               {colorPresets.map((preset) => (
                 <option key={preset.name} value={preset.name}>{preset.name}</option>
               ))}
@@ -417,62 +418,62 @@ export default function BusDetailPage({
             </div>
           ) : null}
           <ImagePicker
-            label="صورة العربية"
+            label={tr("buses.detail.imageLabel")}
             file={imageFile}
             onChange={(file) => void onImageFile(file)}
             existingUrl={imageUrl}
             uploading={uploading}
-            hint="الصورة بتترفع كملف (FormData) للتخزين السحابي تلقائيًا."
+            hint={tr("buses.detail.imageHint")}
           />
           <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">الماركة</span>
+            <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.brand")}</span>
             {brandsPending ? (
               <Skeleton className="h-[2.75rem] w-full" />
             ) : (
               <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
-                <option value="">بدون ماركة…</option>
-                {(brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : " (موقوفة)"}</option>)}
+                <option value="">{tr("buses.detail.noBrand")}</option>
+                {(brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : tr("common.status.inactiveSuffix")}</option>)}
                 {bus?.brand && !(brands ?? []).some((b) => b.id === bus.brand!.id) ? (
-                  <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} (موقوفة)</option>
+                  <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} {tr("buses.detail.brandInactiveSuffix")}</option>
                 ) : null}
               </select>
             )}
           </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm">
-              <span className="mb-2 block font-bold text-[#334454]">سنة الموديل</span>
+              <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.modelYear")}</span>
               <Input dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(e) => setModelYear(e.target.value)} placeholder="2022" />
             </label>
             <label className="block text-sm">
-              <span className="mb-2 block font-bold text-[#334454]">السعة (1–300)</span>
+              <span className="mb-2 block font-bold text-[#334454]">{tr("buses.detail.capacityRange")}</span>
               <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
             </label>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             <input type="checkbox" checked={isAirConditioned} onChange={(e) => setIsAirConditioned(e.target.checked)} className="size-4" />
-            مكيّف
+            {tr("common.fields.ac")}
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={() => setEditOpen(false)}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={save}>حفظ التعديلات</AsyncButton>
+            <Button type="button" variant="danger" onClick={() => setEditOpen(false)}>{tr("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>{tr("common.actions.saveChanges")}</AsyncButton>
           </div>
         </div>
       </Dialog>
 
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen} title="تعيين سواق" description="اختار السواق لتشغيل العربية. لو هو معيّن على عربية أخرى، هيتنقل هنا تلقائيًا." size="sm">
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen} title={tr("buses.detail.assignDialog.title")} description={tr("buses.detail.assignDialog.description")} size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">السواق</span>
+            <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.driver")}</span>
             {driversLoaded ? (
-              <select aria-label="اختار السواق" value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
-                <option value="">اختار السواق</option>
+              <select aria-label={tr("buses.detail.pickDriver")} value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
+                <option value="">{tr("buses.detail.pickDriverOption")}</option>
                 {eligibleDrivers.map((d) => {
                   const assignment = d.assignments?.find((item) => item.status === "ACTIVE");
                   const assignedElsewhere = assignment && assignment.busId !== id;
                   return (
                     <option key={d.id} value={d.userId ?? d.id}>
-                      {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? ` · معيّن حاليًا على ${assignment.registrationNumber}` : ""}
+                      {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? tr("buses.detail.assignedElsewhereSuffix", { assignmentRegistrationNumber: assignment.registrationNumber }) : ""}
                     </option>
                   );
                 })}
@@ -482,10 +483,10 @@ export default function BusDetailPage({
             )}
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {driversLoaded && eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">لا يوجد سواقون نشطون في هذا الأسطول بعد. أضف سواقًا من صفحة السواقين أولًا.</p>}
+          {driversLoaded && eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{tr("buses.detail.noEligibleDrivers")}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={() => setAssignOpen(false)}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={assign} disabled={!driverId}>تأكيد التعيين</AsyncButton>
+            <Button type="button" variant="danger" onClick={() => setAssignOpen(false)}>{tr("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={assign} disabled={!driverId}>{tr("common.actions.confirmAssignment")}</AsyncButton>
           </div>
         </div>
       </Dialog>
@@ -495,24 +496,24 @@ export default function BusDetailPage({
         lockedBusId={id}
         onCreated={() => {
           setTripsReloadKey((key) => key + 1);
-          setStatus("اتضافت الرحلة على العربية دي بنجاح");
+          setStatus(tr("buses.detail.toast.tripCreated"));
         }}
         onClose={() => setCreateTripOpen(false)}
       />
-      <Dialog open={lineOpen} onOpenChange={setLineOpen} title="تعيين خط رحلة" description="الخطوط من الكتالوج المركزي ومتاحة لكل الأساطيل." size="sm">
+      <Dialog open={lineOpen} onOpenChange={setLineOpen} title={tr("buses.detail.lineDialog.title")} description={tr("buses.detail.lineDialog.description")} size="sm">
         <div className="space-y-4">
           {tripLinesPending ? (
             <Skeleton className="h-[2.75rem] w-full" />
           ) : (
             <select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full">
-              <option value="">اختار خط الرحلة</option>
+              <option value="">{tr("buses.detail.pickLine")}</option>
               {(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}
             </select>
           )}
           {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={() => setLineOpen(false)}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={assignLine}>تأكيد التعيين</AsyncButton>
+            <Button type="button" variant="danger" onClick={() => setLineOpen(false)}>{tr("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={assignLine}>{tr("common.actions.confirmAssignment")}</AsyncButton>
           </div>
         </div>
       </Dialog>

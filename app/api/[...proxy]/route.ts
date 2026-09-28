@@ -3,6 +3,7 @@ import { busFetch } from "@/lib/api";
 import { originAllowed } from "@/lib/config";
 import { toArabicError } from "@/lib/errors";
 import { findRegistryEntry } from "@/lib/schemas/p1";
+import { t } from "@/lib/i18n/t";
 
 type Ctx = { params: Promise<{ proxy: string[] }> };
 
@@ -21,7 +22,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
 
   if (method !== "GET" && !originAllowed(req)) {
     return NextResponse.json(
-      { statusCode: 403, code: "FORBIDDEN", message: "ممنوع" },
+      { statusCode: 403, code: "FORBIDDEN", message: t("common.error.forbidden") },
       { status: 403 },
     );
   }

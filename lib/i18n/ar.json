@@ -1,0 +1,2014 @@
+{
+  "common": {
+    "error": {
+      "network": "مشكلة في الاتصال بالسيرفر",
+      "somethingWentWrong": "حصلت مشكلة",
+      "forbidden": "ممنوع",
+      "unknown": "حصلت مشكلة، حاول تاني",
+      "uploadFailed": "رفع الصورة فشل، حاول تاني",
+      "uploadTimeout": "رفع الصورة أخد وقت أطول من اللازم — حاول تاني"
+    },
+    "listSeparator": "،",
+    "fields": {
+      "email": "البريد الإلكتروني",
+      "password": "كلمة السر",
+      "route": "خط السير:",
+      "phone": "الموبايل",
+      "fleet": "الشركة",
+      "origin": "البداية",
+      "destination": "الوجهة",
+      "seats": "المقاعد",
+      "bookingStatus": "حالة الحجز",
+      "paymentStatus": "حالة الدفع",
+      "paymentMethod": "طريقة الدفع",
+      "total": "الإجمالي",
+      "brand": "الماركة",
+      "order": "الترتيب",
+      "name": "الاسم",
+      "plateNumber": "رقم اللوحة",
+      "color": "اللون",
+      "ac": "مكيّف",
+      "modelYear": "سنة الموديل",
+      "capacity": "السعة",
+      "driver": "السواق",
+      "registrationNumber": "رقم التسجيل",
+      "fleetName": "اسم الشركة",
+      "status": "الحالة",
+      "createdAt": "تاريخ الإنشاء",
+      "nickname": "اسم الشهرة",
+      "role": "الدور",
+      "fullName": "الاسم بالكامل",
+      "phoneNumber": "رقم الموبايل",
+      "nationalIdOptional": "الرقم القومي (اختياري)",
+      "passwordConfirm": "تأكيد كلمة السر",
+      "fleetOwner": "صاحب العربيات",
+      "nationalId": "الرقم القومي",
+      "fleets": "الشركات",
+      "firstFleet": "الشركة الأولى",
+      "owner": "المالك",
+      "updatedAt": "آخر تحديث",
+      "type": "النوع",
+      "markaz": "المركز",
+      "governorate": "المحافظة",
+      "code": "الكود",
+      "title": "العنوان",
+      "date": "التاريخ",
+      "address": "العنوان",
+      "bus": "العربية",
+      "maxBookingSeats": "الحد الأقصى لمقاعد الحجز",
+      "passenger": "الراكب",
+      "user": "المستخدم"
+    },
+    "value": {
+      "system": "نظام",
+      "notRegistered": "غير مسجل",
+      "idPrefix": "معرف: {value}…",
+      "unavailable": "غير متوفر",
+      "unspecified": "غير محدد",
+      "yes": "نعم",
+      "no": "لا",
+      "all": "الكل",
+      "withoutName": "بدون اسم",
+      "noFleet": "بدون شركة",
+      "unknown": "غير معروف",
+      "optional": "(اختياري)",
+      "unassigned": "غير معيّن",
+      "ownerWithoutName": "صاحب شركة بدون اسم"
+    },
+    "notFound": {
+      "booking": "الحجز غير موجود",
+      "inFleet": "العنصر مش موجود في الشركة دي"
+    },
+    "actions": {
+      "deleteConfirmTitle": "تأكيد المسح",
+      "delete": "مسح",
+      "resetFilters": "إعادة ضبط الفلاتر",
+      "openDetails": "فتح التفاصيل",
+      "edit": "تعديل",
+      "disable": "إيقاف",
+      "enable": "تفعيل",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "newTrip": "رحلة جديدة",
+      "saveChanges": "حفظ التعديلات",
+      "confirmAssignment": "تأكيد التعيين",
+      "add": "إضافة",
+      "search": "بحث",
+      "resetFiltersShort": "إعادة ضبط",
+      "addOwner": "إضافة مالك",
+      "addDriver": "إضافة سواق",
+      "addBus": "إضافة عربية",
+      "addFleet": "إضافة شركة",
+      "viewAll": "عرض الكل",
+      "confirmAction": "تأكيد الإجراء",
+      "confirm": "تأكيد",
+      "change": "تغيير",
+      "select": "اختيار"
+    },
+    "status": {
+      "activeF": "نشطة",
+      "inactiveF": "موقوفة",
+      "active": "نشط",
+      "inactive": "موقوف",
+      "inactiveSuffix": "(موقوفة)",
+      "inactiveSuffixShort": "(موقوف)"
+    },
+    "toast": {
+      "saved": "اتحفظ بنجاح"
+    },
+    "validation": {
+      "passwordsMismatch": "كلمتا السر غير متطابقتين",
+      "required": "أكمل البيانات المطلوبة.",
+      "reviewInput": "راجع البيانات المدخلة",
+      "nationalIdDigits": "الرقم القومي لازم يكون 14 رقم",
+      "seatLimit": "الحد الأقصى لمقاعد الحجز لازم يكون رقم صحيح أكبر من صفر.",
+      "imageType": "الصورة لازم تكون JPEG أو PNG أو WebP",
+      "imageSize": "حجم الصورة لازم يكون 5 ميجا أو أقل",
+      "imageEmpty": "ملف الصورة فاضي"
+    },
+    "image": {
+      "hintUploadFile": "بتترفع كملف للتخزين السحابي — من غير روابط.",
+      "hintUploadFormData": "بتترفع كملف (FormData) للتخزين السحابي — من غير روابط."
+    },
+    "loading": {
+      "creating": "جاري الإنشاء…",
+      "saving": "جاري الحفظ…",
+      "adding": "جاري الإضافة…",
+      "more": "جاري التحميل…",
+      "page": "جاري التحميل",
+      "confirming": "جاري التأكيد…",
+      "submitting": "جاري التسجيل…",
+      "executing": "جاري التنفيذ…",
+      "cancelling": "جاري الإلغاء…",
+      "reinstating": "جاري الاسترجاع…",
+      "searching": "جاري البحث…",
+      "sending": "جاري الإرسال…",
+      "signingOut": "جاري الخروج…"
+    },
+    "tab": {
+      "overview": "نظرة عامة",
+      "buses": "العربيات",
+      "members": "الأعضاء",
+      "trips": "الرحلات",
+      "bookings": "الحجوزات",
+      "reports": "التقارير"
+    },
+    "app": {
+      "documentTitle": "منصة العربيات — لوحة تحكم المشرف العام",
+      "metadataTitle": "منصة العربيات | لوحة تحكم المشرف",
+      "metadataDescription": "لوحة تحكم المشرف العام لمنصة العربيات"
+    },
+    "nav": {
+      "fleetOwners": "أصحاب العربيات",
+      "drivers": "السواقين",
+      "buses": "العربيات",
+      "fleets": "الشركات",
+      "trips": "الرحلات",
+      "bookings": "الحجوزات",
+      "tripLines": "خطوط الرحلات",
+      "stops": "نقاط التوقف",
+      "adminUsers": "مستخدمو الإدارة",
+      "overview": "نظرة عامة",
+      "brands": "ماركات العربيات",
+      "vipTiers": "مستويات VIP",
+      "markaz": "المراكز",
+      "localities": "المدن والقرى",
+      "promotions": "أكواد الخصم",
+      "notifications": "الإشعارات",
+      "serviceConfig": "خدمة العملاء والإعلانات",
+      "reports": "التقارير",
+      "roles": "مستويات الوصول",
+      "permissions": "دليل المهام"
+    },
+    "unit": {
+      "egpSuffix": "ج.م)"
+    },
+    "confirm": {
+      "revokeSessions": "الإجراء ده هيقفل جلسات المستخدم فورا — متأكد؟"
+    }
+  },
+  "auth": {
+    "login": {
+      "invalidCredentials": "بيانات الدخول غير صحيحة",
+      "platformName": "منصة وليد باص",
+      "tagline": "إدارة الشركات والسائقين من مكان واحد.",
+      "subtitle": "لوحة واضحة وسريعة لمتابعة الملاك والشركات والعربيات وتوزيع السائقين.",
+      "secureNote": "دخول آمن ومخصص للمشرفين المعتمدين.",
+      "brand": "وليد باص",
+      "panelTitle": "لوحة الإدارة",
+      "welcome": "مرحبًا بعودتك",
+      "welcomeHint": "سجّل الدخول للوصول إلى لوحة تحكم المشرف العام.",
+      "hidePassword": "إخفاء كلمة السر",
+      "showPassword": "إظهار كلمة السر",
+      "rememberMe": "تذكرني",
+      "rememberMeHint": "احتفظ بتسجيل الدخول على هذا الجهاز لمدة 7 أيام.",
+      "submitting": "جاري الدخول…",
+      "submit": "دخول",
+      "authorizedOnly": "هذا النظام مخصص للمستخدمين المصرّح لهم فقط."
+    }
+  },
+  "bookings": {
+    "audit": {
+      "columns": {
+        "date": "التاريخ والتوقيت",
+        "action": "العملية الإدارية",
+        "actor": "المشرف / الفاعل",
+        "metadata": "التفاصيل والبيانات الوصفية"
+      }
+    },
+    "detail": {
+      "backToList": "العودة لقائمة الحجوزات",
+      "loadFailed": "تعذر تحميل بيانات الحجز",
+      "backToBookings": "العودة للحجوزات",
+      "bookingLabel": "حجز:",
+      "unnamedPassenger": "راكب غير مسمى",
+      "bookingNumberLabel": "رقم الحجز:",
+      "seatsCountLabel": "· عدد المقاعد:",
+      "bookedAtLabel": "· تاريخ الحجز:",
+      "adminActions": "إجراءات المشرف:",
+      "actions": {
+        "verifyPayment": "تأكيد الدفع (Verify)",
+        "recordPaymentFailure": "تسجيل فشل الدفع",
+        "refund": "استرداد مالي (Refund)",
+        "override": "تعديل تشغيلي (Override)",
+        "reinstate": "استرجاع الحجز (Reinstate)",
+        "forceCancel": "إلغاء إداري (Force Cancel)"
+      },
+      "sections": {
+        "passenger": "بيانات الراكب المسافر",
+        "trip": "تفاصيل الرحلة والمركبة والسائق",
+        "payments": "المعاملات المالية والتسوية",
+        "boarding": "الحالة التشغيلية والصعود",
+        "ratings": "تقييمات الرحلة المتبادلة",
+        "driverReportsCount": "بلاغات السائق ضد الراكب (",
+        "audit": "سجل التدقيق الإداري للعمليات (Audit Trail)"
+      },
+      "fields": {
+        "passengerName": "اسم الراكب:",
+        "passengerPhone": "رقم الموبايل:",
+        "nationalIdInline": "الرقم القومي:",
+        "userId": "معرف المستخدم (User ID):",
+        "savedName": "الاسم المحفوظ:",
+        "savedPhone": "الموبايل المحفوظ:",
+        "note": "ملاحظة:",
+        "promoCode": "كود الخصم:",
+        "boardingStation": "محطة الركوب:",
+        "landingStation": "محطة النزول:",
+        "departureAt": "موعد الإقلاع:",
+        "seatPriceTotal": "سعر المقعد / الإجمالي:",
+        "busVehicle": "العربية / المركبة:",
+        "registrationNumberInline": "رقم التسجيل:",
+        "capacityInline": "· السعة:",
+        "availableSeats": "المقاعد المتاحة حالياً بالرحلة:",
+        "assignedDriver": "السائق المسؤول:",
+        "paymentMethodInline": "طريقة الدفع:",
+        "bookingTotal": "إجمالي قيمة الحجز:",
+        "refundedTotal": "المبلغ المسترد تراكمياً:",
+        "refundableBalance": "الرصيد المتبقي القابل للاسترداد:",
+        "transferReference": "المرجع الخارجي للتحويل:",
+        "verificationNotes": "ملاحظات التحقق:",
+        "paymentRecordedAt": "توقيت توثيق الدفع:",
+        "adminCancelReason": "سبب الإلغاء الإداري:",
+        "cancelledAt": "أُلغي بتاريخ:",
+        "boardingStatus": "حالة الصعود للعربية:",
+        "boardingAt": "توقيت الصعود:",
+        "dropStatus": "حالة النزول بالمحطة:",
+        "dropStation": "محطة النزول:",
+        "dropNote": "ملاحظة النزول:",
+        "driverNote": "مذكرة السائق:",
+        "adminDecision": "قرار الإدارة:",
+        "resolvedAt": "تاريخ الحل:"
+      },
+      "passengerPhoneVerifiedTitle": "الموبايل موثق",
+      "verified": "موثق",
+      "notVerified": "غير موثق",
+      "snapshotIntro": "بيانات الحجز المحفوظة تاريخيًا +",
+      "forOtherPassenger": "لراكب آخر",
+      "forSelf": "لنفسه",
+      "promoDiscountPrefix": "(خصم",
+      "promoDiscountSuffix": "جنيه)",
+      "boardingStationFallback": "نقطة الانطلاق",
+      "landingStationFallback": "نقطة الوصول",
+      "perSeatUnit": "EGP / مقعد",
+      "seatsUnitPlural": "كراسي",
+      "noBusAssigned": "لم يتم تعيين حافلة",
+      "seatsUnit": "مقعد",
+      "noDriverAssigned": "لم يتم تعيين سائق",
+      "boardingSucceeded": "تم الصعود بنجاح",
+      "boardingPending": "لم يسجل الصعود بعد",
+      "ratings": {
+        "bus": "تقييم العربية",
+        "driver": "تقييم السائق",
+        "passenger": "تقييم الراكب",
+        "noDriverReports": "لا توجد أي بلاغات مسجلة من السائق حول هذا الراكب."
+      },
+      "reports": {
+        "resolve": "معالجة البلاغ",
+        "submittedAt": "تاريخ التقديم:"
+      },
+      "audit": {
+        "empty": "لا توجد عمليات تدقيق مسجلة حتى الآن."
+      }
+    },
+    "list": {
+      "deleteConfirm": {
+        "description": "تمسح حجز «{value}»؟ الإجراء ده مينفعش يتراجع."
+      },
+      "badge": "مراجعة وإدارة الحجوزات",
+      "description": "رؤية مركزية شاملة لجميع الحجوزات عبر كل الشركات، فحص العمليات، وتدقيق المدفوعات والاسترداد.",
+      "newBooking": "حجز جديد",
+      "tripBookingsTitle": "حجوزات رحلة محددة",
+      "tripDetails": "تفاصيل الرحلة",
+      "showAllBookings": "عرض كل الحجوزات",
+      "empty": "لا توجد حجوزات مطابقة لمعايير البحث الحالية.",
+      "rowActions": "إجراءات حجز {value}"
+    },
+    "columns": {
+      "passengerName": "الراكب",
+      "hasReports": "بلاغات",
+      "createdAt": "تاريخ الحجز"
+    },
+    "filters": {
+      "searchAria": "بحث باسم الراكب أو رقم الموبايل",
+      "searchPlaceholder": "اسم الراكب أو رقم الموبايل…",
+      "fleet": "تصفية حسب الشركة",
+      "allFleetsPrefix": "كل الشركات (",
+      "allStatuses": "كل حالات الحجز",
+      "allPaymentStatuses": "كل حالات الدفع",
+      "allPaymentMethods": "كل طرق الدفع",
+      "withReports": "حجوزات بها بلاغات",
+      "hideDateFilter": "إخفاء تصفية التاريخ",
+      "showDateFilter": "تصفية بالتواريخ",
+      "dateType": "نوع التاريخ",
+      "dateTypeDeparture": "موعد إقلاع الرحلة",
+      "dateTypeCreated": "تاريخ إنشاء الحجز",
+      "fromDate": "من تاريخ",
+      "toDate": "إلى تاريخ"
+    },
+    "actions": {
+      "errors": {
+        "referenceRequired": "رقم المعاملة الخارجية مطلوب",
+        "amountPositive": "المبلغ لازم يكون رقماً موجباً",
+        "amountMismatch": "المبلغ المدخل ({amount}) غير مطابق لقيمة الحجز بالظبط ({bookingTotalAmount} ج.م)"
+      },
+      "verify": {
+        "success": "تم تأكيد وتوثيق استلام الدفع بنجاح",
+        "title": "تأكيد وتسوية الدفع الإلكتروني / المحفظة",
+        "description": "توثيق استلام المبلغ للحجز #{value} للمسافر {value2}",
+        "totalLabel": "قيمة الحجز الإجمالية:",
+        "exactMatchWarning": "تنبيه: يتطلب النظام مطابقة المبلغ المسدد بالكامل مع إجمالي الحجز (Exact Match).",
+        "referenceLabel": "رقم المعاملة / المرجع الخارجي *",
+        "amountLabel": "المبلغ المستلم المؤكد (ج.م) *",
+        "amountMismatchWarning": "تنبيه: المبلغ المدخل لا يطابق قيمة الحجز (",
+        "notesLabel": "ملاحظات التسوية (اختياري)",
+        "submit": "تأكيد واستلام الدفع"
+      },
+      "placeholders": {
+        "verifyReference": "مثال: VF-9021849 أو رقم إيصال إنستاباي",
+        "verifyNotes": "مثلاً: تم التأكد من كشف حساب محفظة التاجر بتاريخ اليوم",
+        "failureReason": "مثال: لم يتم العثور على رقم العملية في كشف الحساب بعد انقضاء المهلة",
+        "failureNotes": "تفاصيل المحادثة مع العميل أو تتبع كشف الحساب",
+        "refundReference": "مثال: REF-VF-10928",
+        "refundReason": "مثال: إلغاء رحلة / إلغاء مقعد بناء على طلب العميل",
+        "refundAccount": "بيانات الحساب أو المحفظة المحول إليها",
+        "forceCancelReason": "اكتب التبرير أو سبب الإلغاء بالتفصيل (مطلوب لأغراض سجل التدقيق)...",
+        "reinstateReason": "مثال: الإلغاء تم بالخطأ من العميل وأكد رغبته في السفر...",
+        "dropStation": "مثال: st-auc-gate4",
+        "dropNote": "ملاحظة حول مكان أو حالة نزول الراكب",
+        "overrideJustification": "مثال: تعطل هاتف السائق ونفاد البطارية أثناء خط السير وتم التأكد من صعود الراكب هاتفياً",
+        "reportNotes": "اكتب تفاصيل التواصل مع الراكب أو السائق والإجراء المتخذ (5 أحرف على الأقل)..."
+      },
+      "failure": {
+        "errors": {
+          "reasonRequired": "سبب تسجيل فشل الدفع إلزامي"
+        },
+        "success": "تم تسجيل العملية كفاشلة وتحديث حالة الدفع إلى FAILED",
+        "title": "تسجيل فشل الدفع / إلغاء المعاملة",
+        "description": "استخدم هذا الإجراء في حال عدم العثور على التحويل، أو تقديم بيانات وهمية أو انتهاء مهلة السداد.",
+        "reasonLabel": "سبب الفشل / الرفض *",
+        "extraNotesLabel": "ملاحظات إضافية (اختياري)",
+        "submit": "تسجيل فشل الدفع"
+      },
+      "refund": {
+        "errors": {
+          "referenceRequired": "رقم إشعار أو مرجع الاسترداد مطلوب",
+          "amountPositive": "مبلغ الاسترداد لازم يكون رقماً موجباً",
+          "exceedsBalance": "مبلغ الاسترداد ({enteredAmount}) يتجاوز الرصيد المتبقي القابل للاسترداد ({value} ج.م)",
+          "reasonRequired": "سبب الاسترداد إلزامي"
+        },
+        "success": "تم تسجيل استرداد مبلغ {enteredAmount} ج.م بنجاح",
+        "title": "استرداد مالي (كلي أو جزئي)",
+        "description": "تسجيل عملية تحويل استرداد المبلغ للمسافر وتحديث رصيد الحجز.",
+        "totalLabel": "إجمالي الحجز:",
+        "refundedLabel": "المسترد سابقاً:",
+        "remainingLabel": "الرصيد المتبقي:",
+        "referenceLabel": "رقم إشعار التحويل / المرجع البنكي *",
+        "amountLabel": "المبلغ المطلوب استرداده (ج.م) *",
+        "exceedsWarning": "المبلغ يتجاوز الرصيد المتبقي (",
+        "reasonLabel": "سبب الاسترداد *",
+        "submit": "تنفيذ الاسترداد"
+      },
+      "forceCancel": {
+        "errors": {
+          "reasonRequired": "سبب الإلغاء الإداري إلزامي"
+        },
+        "seatsRestoredNote": "(وتم تحرير المقاعد للرحلة)",
+        "title": "إلغاء الحجز إدارياً (Force Cancel)",
+        "description": "إلغاء فوري للحجز من صلاحيات الإدارة العليا مع التحكم في تحرير المقاعد لركاب آخرين.",
+        "reasonLabel": "سبب الإلغاء الإداري *",
+        "restoreSeats": "إرجاع المقاعد لسعة الرحلة المتاحة",
+        "yesLabel": "تراجع",
+        "submit": "تأكيد إلغاء الحجز",
+        "success": "تم إلغاء الحجز إدارياً {seatsNote}"
+      },
+      "reinstate": {
+        "seatsWarningPrefix": "إذا كانت الرحلة مجدولة ولم تتحرك بعد، سيتم زيادة المقاعد المتاحة فوراً بمقدار (",
+        "seatsWarningSuffix": ") مقعد.",
+        "errors": {
+          "reasonRequired": "سبب استرجاع الحجز إلزامي"
+        },
+        "success": "تم استرجاع الحجز وتأكيده بنجاح",
+        "title": "استرجاع وتأكيد الحجز الملغي",
+        "description": "إعادة تفعيل الحجز المحذوف أو الملغي عن طريق الخطأ بعد التحقق من توفر المقاعد.",
+        "capacityCheck": "فحص سعة العربية الفورية:",
+        "seatsRequested": "المقاعد المطلوبة للحجز:",
+        "seatsWarning": "مقعد. سيتحقق السيرفر تلقائياً من توفر السعة في الرحلة، وسيتم رفض العملية إذا كانت الرحلة ممتلئة بالكامل.",
+        "reasonLabel": "سبب وتبرير الاسترجاع *",
+        "submit": "استرجاع الحجز"
+      },
+      "override": {
+        "errors": {
+          "justificationRequired": "مبرر التعديل التشغيلي إلزامي لأغراض الرقابة وسجل التدقيق"
+        },
+        "success": "تم تحديث الحالة التشغيلية للراكب بنجاح",
+        "title": "تعديل الحالة التشغيلية للمسافر (تجاوز إداري)",
+        "description": "تصحيح بيانات الصعود والنزول في حالات انقطاع اتصال تطبيق السائق أو عطل جهازه.",
+        "boardedLabel": "صعود الراكب (Boarded)",
+        "boardedHint": "تحديد هذا الخيار يسجل صعود الراكب في التوقيت الحالي باسم المشرف العام.",
+        "dropStatusLabel": "حالة النزول (Drop-off Status)",
+        "noDropStatus": "بدون تحديد",
+        "droppedOff": "تم النزول بنجاح (DROPPED_OFF)",
+        "notDroppedOff": "لم ينزل / تخلف عن النزول (NOT_DROPPED_OFF)",
+        "dropStationLabel": "معرف محطة النزول (اختياري)",
+        "dropNoteLabel": "ملاحظة النزول (اختياري)",
+        "justificationLabel": "التبرير الإداري للتعديل *",
+        "submit": "حفظ التعديل التشغيلي"
+      },
+      "report": {
+        "errors": {
+          "notesTooShort": "ملاحظات الحل يجب ألا تقل عن 5 أحرف"
+        },
+        "resolvedSuccess": "تم حل البلاغ واعتماد الإجراء",
+        "savedSuccess": "تم حفظ البلاغ",
+        "title": "معالجة بلاغ السائق حول الراكب",
+        "description": "مراجعة مذكرة السائق وتسجيل القرار الإداري النهائي.",
+        "decisionLabel": "القرار الإداري *",
+        "resolvedLabel": "تم الحل (RESOLVED)",
+        "dismissedLabel": "حفظ البلاغ (DISMISSED)",
+        "notesLabel": "ملاحظات الحل / قرار المشرف *",
+        "submit": "اعتماد القرار"
+      }
+    },
+    "createDialog": {
+      "errors": {
+        "pickFleet": "اختار الشركة الأولى قبل إضافة الحجز."
+      },
+      "title": "حجز جديد",
+      "description": "سجّل بيانات الراكب واربط الحجز بالرحلة المطلوبة.",
+      "tripLabel": "الرحلة (من نفس الشركة)",
+      "pickTrip": "اختار الرحلة",
+      "pickTripOption": "اختار الرحلة",
+      "passengerNameLabel": "اسم الراكب",
+      "passengerNamePlaceholder": "اسم الراكب",
+      "passengerPhoneLabel": "موبايل الراكب",
+      "submit": "إضافة الحجز"
+    },
+    "toast": {
+      "paymentVerified": "تم تأكيد الدفعة بنجاح",
+      "paymentFailed": "تم تسجيل فشل الدفع",
+      "refunded": "تم تنفيذ الاسترداد بنجاح",
+      "cancelled": "تم إلغاء الحجز",
+      "reinstated": "تم إعادة تنشيط الحجز",
+      "boardingUpdated": "تم حفظ حالة الصعود والنزول",
+      "reportClosed": "تم إغلاق البلاغ بنجاح",
+      "created": "اتضاف الحجز بنجاح",
+      "saved": "اتحفظت بيانات الحجز",
+      "deleted": "اتمسح الحجز"
+    }
+  },
+  "enums": {
+    "bookingStatus": {
+      "confirmed": "مؤكد",
+      "cancelled": "ملغي",
+      "completed": "مكتمل",
+      "confirmedChart": "مؤكدة",
+      "completedChart": "مكتملة",
+      "cancelledChart": "ملغية"
+    },
+    "paymentStatus": {
+      "pending": "في انتظار الدفع",
+      "paid": "تم الدفع",
+      "refunded": "مسترد بالكامل",
+      "failed": "فشل الدفع",
+      "refundPending": "بانتظار الاسترداد",
+      "partiallyRefunded": "مسترد جزئياً",
+      "cancelled": "ملغي"
+    },
+    "paymentMethod": {
+      "vodafoneCash": "فودافون كاش",
+      "instapay": "إنستاباي",
+      "wallet": "محفظة إلكترونية",
+      "cash": "نقدي",
+      "bankCard": "بطاقة بنكية",
+      "vodafoneCashLong": "فودافون كاش (Vodafone Cash)",
+      "instapayLong": "إنستاباي (InstaPay)",
+      "walletLong": "محفظة إلكترونية أخرى",
+      "cashLong": "نقدي (كاش)",
+      "bankCardLong": "بطاقة بنكية",
+      "cashAlt": "كاش (نقدي)"
+    },
+    "localityType": {
+      "city": "مدينة",
+      "village": "قرية"
+    },
+    "notificationCategory": {
+      "alert": "تنبيه",
+      "trip": "رحلة",
+      "discountCode": "كود خصم"
+    },
+    "serviceConfigType": {
+      "phone": "هاتف",
+      "whatsapp": "واتساب",
+      "website": "موقع"
+    },
+    "direction": {
+      "outbound": "اتجاه الذهاب",
+      "return": "اتجاه العودة"
+    },
+    "stopUse": {
+      "both": "ركوب ونزول",
+      "boarding": "ركوب فقط",
+      "landing": "نزول فقط",
+      "bothLegacy": "ركوب ونزول (قديم)"
+    },
+    "tripStatus": {
+      "scheduled": "مجدولة",
+      "running": "شغالة",
+      "completed": "خلصت",
+      "cancelled": "ملغية"
+    },
+    "dropStatus": {
+      "droppedOff": "تم النزول",
+      "notDroppedOff": "لم يتم النزول"
+    },
+    "reportStatus": {
+      "pending": "قيد المراجعة",
+      "resolved": "تم الحل",
+      "dismissed": "تم الحفظ"
+    },
+    "memberStatus": {
+      "active": "نشط",
+      "suspended": "موقوف",
+      "revoked": "ملغي الصلاحية"
+    }
+  },
+  "brands": {
+    "errors": {
+      "nameRequired": "أدخل اسم الماركة."
+    },
+    "deleteConfirm": {
+      "description": "تمسح ماركة «{brandName}»؟ لو فيها عربيات مسجلة هتترفض العملية."
+    },
+    "title": "ماركات العربيات",
+    "description": "قاموس الماركات المتاحة عند تسجيل العربيات.",
+    "newBrand": "ماركة جديدة",
+    "empty": "لا توجد ماركات بعد — ابدأ بإضافة أول ماركة.",
+    "rowActions": "إجراءات ماركة {brandName}",
+    "dialog": {
+      "editTitle": "تعديل الماركة",
+      "createTitle": "ماركة جديدة",
+      "description": "اسم فريد للماركة وترتيب ظهورها في القوائم."
+    },
+    "toast": {
+      "created": "اتضافت الماركة بنجاح",
+      "saved": "اتحفظت بيانات الماركة",
+      "activated": "تم تنشيط الماركة",
+      "deactivated": "تم إيقاف الماركة",
+      "deleted": "اتمسحت الماركة"
+    }
+  },
+  "buses": {
+    "detail": {
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح العربية؟"
+      },
+      "toast": {
+        "disabled": "اتوقفت العربية",
+        "enabled": "اشتغلت العربية",
+        "driverAssigned": "اتعين السواق",
+        "driverUnassigned": "اتلغى التعيين",
+        "lineAssigned": "اتعيّن خط الرحلة للعربية",
+        "lineCleared": "اتشال خط الرحلة من العربية",
+        "tripCreated": "اتضافت الرحلة على العربية دي بنجاح"
+      },
+      "errors": {
+        "pickDriver": "اختار السواق الأول",
+        "pickLine": "اختار خط الرحلة الأول"
+      },
+      "unassignConfirm": {
+        "title": "تأكيد إلغاء التعيين",
+        "description": "هتلغي تعيين السواق الحالي من العربية؟",
+        "confirmLabel": "إلغاء التعيين"
+      },
+      "fallbackTitle": "العربية",
+      "noFleetSelected": "مفيش شركة محددة لعرض العربية — ارجع لقايمة العربيات وافتحها من هناك.",
+      "description": "بيانات العربية والحالة والسواق المعيّن وسجل الرحلات.",
+      "deleteBus": "مسح العربية",
+      "tabsAria": "تبويبات العربية",
+      "tabOverview": "نظرة عامة",
+      "tabTrips": "رحلات العربية",
+      "sections": {
+        "details": "البيانات",
+        "statusAndDriver": "الحالة والسواق"
+      },
+      "imageAlt": "صورة العربية {busRegistrationNumber}",
+      "seatsUnit": "مقعد",
+      "currentDriver": "السواق الحالي",
+      "noDriver": "لا يوجد سواق معين",
+      "currentLine": "خط الرحلة الحالي",
+      "noLine": "لا يوجد خط معيّن",
+      "actions": {
+        "reactivate": "إعادة تشغيل",
+        "assignDriver": "تعيين سواق",
+        "unassignDriver": "إلغاء التعيين",
+        "assignLine": "تعيين خط رحلة",
+        "clearLine": "إلغاء خط الرحلة"
+      },
+      "tripsEmpty": "لا توجد رحلات على العربية دي",
+      "editDialog": {
+        "title": "تعديل العربية",
+        "description": "تحديث بيانات {busRegistrationNumber}."
+      },
+      "pickColor": "اختار اللون…",
+      "imageLabel": "صورة العربية",
+      "imageHint": "الصورة بتترفع كملف (FormData) للتخزين السحابي تلقائيًا.",
+      "noBrand": "بدون ماركة…",
+      "brandInactiveSuffix": "(موقوفة)",
+      "capacityRange": "السعة (1–300)",
+      "assignDialog": {
+        "title": "تعيين سواق",
+        "description": "اختار السواق لتشغيل العربية. لو هو معيّن على عربية أخرى، هيتنقل هنا تلقائيًا."
+      },
+      "pickDriver": "اختار السواق",
+      "pickDriverOption": "اختار السواق",
+      "assignedElsewhereSuffix": " · معيّن حاليًا على {assignmentRegistrationNumber}",
+      "noEligibleDrivers": "لا يوجد سواقون نشطون في هذه الشركة بعد. أضف سواقًا من صفحة السواقين أولًا.",
+      "lineDialog": {
+        "title": "تعيين خط رحلة",
+        "description": "الخطوط من الكتالوج المركزي ومتاحة لكل الشركات."
+      },
+      "pickLine": "اختار خط الرحلة"
+    },
+    "list": {
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح العربية «{value}»؟ لازم تكون من غير رحلات أو تعيينات سواق."
+      },
+      "rowActions": "إجراءات عربية {value}"
+    },
+    "title": "العربيات",
+    "description": "كل العربيات في الشركات المسجلة، مع حالتها وبيانات تشغيلها.",
+    "newBus": "عربية جديدة",
+    "filters": {
+      "searchAria": "بحث برقم التسجيل أو اللوحة أو الشركة",
+      "searchPlaceholder": "رقم التسجيل أو اللوحة أو الشركة"
+    },
+    "empty": "لا توجد عربيات مسجلة في أي شركة.",
+    "createDialog": {
+      "errors": {
+        "pickFleet": "اختار الشركة الأولى قبل إضافة العربية.",
+        "imageRequired": "صورة العربية مطلوبة."
+      },
+      "title": "عربية جديدة",
+      "description": "سجّل العربية داخل شركةها: اللوحة واللون والصورة مطلوبين — رقم التسجيل بيتولد تلقائيًا.",
+      "submit": "إضافة العربية"
+    },
+    "placeholders": {
+      "plateNumber": "أ ب ج 1234"
+    },
+    "editDialog": {
+      "errors": {
+        "plateRequired": "اكتب رقم اللوحة.",
+        "colorRequired": "اختار اللون.",
+        "capacityRange": "السعة لازم تكون رقم من 1 لـ 300.",
+        "modelYearRange": "سنة الموديل لازم تكون بين 1980 و 2100."
+      },
+      "title": "تعديل عربية",
+      "description": "رقم التسجيل {busRegistrationNumber} — بيانات التشغيل بس هي اللي بتتعدل.",
+      "imageLabel": "صورة العربية (اختياري)",
+      "imageHint": "لو رفعت صورة جديدة هتتبعت مكان القديمة."
+    },
+    "toast": {
+      "created": "اتضافت العربية بنجاح",
+      "saved": "اتحفظت بيانات العربية",
+      "imageUploaded": "اترفعت صورة العربية",
+      "deleted": "اتمسحت العربية",
+      "disabled": "تم إيقاف العربية",
+      "enabled": "تم إعادة تشغيل العربية",
+      "driverAssigned": "تم تعيين السواق على العربية",
+      "driverUnassigned": "تم إلغاء تعيين السواق",
+      "lineAssigned": "تم ربط العربية بالخط",
+      "lineUnassigned": "تم إلغاء ربط العربية بالخط"
+    }
+  },
+  "drivers": {
+    "detail": {
+      "deleteConfirm": {
+        "description": "الإجراء ده هيقفل جلسات المستخدم فورا — تمسح السواق (بينهي العضوية والتعيين النشط)؟"
+      },
+      "manageTitle": "إدارة السواق",
+      "pickFleetDescription": "اختار الشركة اللي السواق بيتبعها عشان تشوف بياناته وإدارتها.",
+      "pickFleet": "اختار الشركة",
+      "description": "بيانات الحساب وعضوية الشركة وسجل تعيينات العربيات.",
+      "deleteDriver": "حذف السواق",
+      "sections": {
+        "membership": "العضوية",
+        "assignments": "سجل التعيينات"
+      },
+      "fields": {
+        "nationalId": "الرقم القومي"
+      },
+      "assignmentsEmpty": "لا توجد تعيينات مسجلة"
+    },
+    "errors": {
+      "pickOwnerAndFleet": "اختار صاحب العربيات ثم الشركة المطلوبة"
+    },
+    "createDialog": {
+      "title": "إضافة سواق",
+      "description": "اختار صاحب العربيات الأول. تعيين العربية بيتعمل لاحقًا من صفحة العربية.",
+      "imageLabel": "صورة السواق (اختياري)",
+      "submit": "إنشاء حساب السواق"
+    },
+    "placeholders": {
+      "fullName": "كريم علي",
+      "nickname": "كريم",
+      "nationalIdDigits": "14 رقم",
+      "keepPasswordEmpty": "اتركها فاضية من غير تغيير"
+    },
+    "list": {
+      "rowLabel": "السواق ده",
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح السواق «{label}» من شركة «{value}»؟"
+      },
+      "notAssigned": "غير معيّنة",
+      "rowActions": "إجراءات السواق {value}"
+    },
+    "columns": {
+      "assignedBus": "العربية المعيّنة"
+    },
+    "title": "السواقين",
+    "description": "كل حسابات السواقين في النظام، مع الشركة وصاحب العربيات والعربية المعيّنة حاليًا.",
+    "newDriver": "إضافة سواق",
+    "empty": "لا يوجد سواقون مطابقون للبحث.",
+    "editDialog": {
+      "errors": {
+        "nameRequired": "الاسم مطلوب.",
+        "passwordMin": "كلمة السر لازم تبقى 8 حروف على الأقل."
+      },
+      "title": "تعديل بيانات السواق",
+      "description": "حدّث بيانات الحساب كاملة — تغيير كلمة السر هيقفل جلساته الحالية.",
+      "imageLabel": "صورة السواق",
+      "newPasswordLabel": "كلمة مرور جديدة",
+      "membershipStatus": "حالة العضوية",
+      "membershipStatusAria": "حالة السواق"
+    }
+  },
+  "fleetOwners": {
+    "detail": {
+      "toast": {
+        "saved": "اتحفظت بيانات صاحب العربية"
+      },
+      "sections": {
+        "account": "بيانات الحساب"
+      },
+      "imageAlt": "صورة {ownerName}",
+      "addFleet": "إضافة شركة",
+      "editDialog": {
+        "title": "تعديل صاحب العربية",
+        "description": "حدّث بيانات الحساب وحالته. إيقاف الحساب يقفل جلساته الحالية.",
+        "activeAccountShort": "الحساب نشط"
+      }
+    },
+    "editDialog": {
+      "imageLabel": "صورة المالك (اختياري)",
+      "title": "تعديل بيانات صاحب عربية",
+      "description": "بتعدّل حساب {value}.",
+      "activeAccount": "الحساب نشط ويمكنه تسجيل الدخول"
+    },
+    "createDialog": {
+      "title": "إضافة صاحب عربية",
+      "description": "هننشئ الحساب والشركات الأولى وعضوية المالك في خطوة واحدة.",
+      "imageLabel": "صورة المالك (اختياري)",
+      "submit": "إنشاء المالك والشركات"
+    },
+    "placeholders": {
+      "fullName": "أحمد حسن",
+      "nickname": "أحمد",
+      "nationalIdDigits": "14 رقم",
+      "fleetName": "نقل أحمد",
+      "fleetGiza": "شركة الجيزة"
+    },
+    "errors": {
+      "nameRequired": "اكتب الاسم بالكامل.",
+      "fleetNameRequired": "اكتب اسم الشركة."
+    },
+    "addFleetDialog": {
+      "title": "إضافة شركة لصاحب عربية",
+      "description": "هنضيف شركة جديدة ملكه {ownerName} — الدور الابتدائي ثابت fleet-owner.",
+      "submit": "إضافة الشركة"
+    },
+    "deleteConfirm": {
+      "ownsNote": " وملك {value}",
+      "description": "الإجراء ده مينفعش يتراجع — تمسح حساب «{value}»{fleetsNote}؟"
+    },
+    "title": "أصحاب العربيات",
+    "description": "حساب المالك والشركات الأولى بيتعملوا مع بعض بأمان.",
+    "newOwner": "إضافة مالك",
+    "filters": {
+      "searchAria": "بحث في أصحاب العربيات",
+      "searchPlaceholder": "الاسم، الموبايل أو الشركة"
+    },
+    "empty": "لا يوجد أصحاب عربيات بعد",
+    "list": {
+      "rowActions": "إجراءات {value}"
+    },
+    "actions": {
+      "addFleet": "إضافة شركة"
+    },
+    "toast": {
+      "created": "اتضاف مالك العربية بنجاح",
+      "saved": "اتحفظت بيانات صاحب العربية",
+      "deleted": "اتمسح صاحب العربية",
+      "imageUploaded": "اترفعت صورة مالك العربية"
+    },
+    "count": {
+      "one": "شركة واحدة",
+      "two": "شركتين",
+      "few": "{count} شركات",
+      "many": "{count} شركة"
+    }
+  },
+  "fleets": {
+    "detail": {
+      "errors": {
+        "pickOwner": "اختار صاحب العربية الأول."
+      },
+      "addOwnerDialog": {
+        "title": "إضافة صاحب عربية للشركة",
+        "description": "اختار المالك من القايمة — هيتضاف كعضو بدور fleet-owner. اللي متضاف بالفعل مش بيظهر في القايمة.",
+        "pickOwner": "اختار صاحب العربية",
+        "pickOwnerOption": "اختار صاحب العربية…",
+        "noOwners": "مفيش أصحاب عربيات متاحين",
+        "allAdded": "كل أصحاب العربيات متضافين بالفعل للشركة ده."
+      },
+      "fields": {
+        "fleetOwnerInline": "صاحب العربية"
+      },
+      "toast": {
+        "vipSaved": "اتحفظ مستوى VIP بنجاح"
+      },
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح الشركة؟"
+      },
+      "description": "إدارة العربيات والرحلات والحجوزات والتشغيل المرتبط بالشركة.",
+      "deleteFleet": "مسح الشركة",
+      "tabsAria": "تبويبات الشركة",
+      "addOwner": "إضافة صاحب عربية",
+      "vipTier": "مستوى VIP",
+      "noVipTier": "بدون مستوى",
+      "vipTierAria": "مستوى VIP",
+      "noVipTierOption": "بدون مستوى…",
+      "vipTierInactiveSuffix": "(موقوف)",
+      "editDialog": {
+        "title": "تعديل الشركة",
+        "description": "حدّث الاسم أو حالة تشغيل الشركة."
+      },
+      "activeFleetLabel": "الشركة نشطة",
+      "tabs": {
+        "busesTitle": "عربيات الشركة",
+        "busesEmpty": "لا توجد عربيات مسجلة في هذه الشركة",
+        "busRowActions": "إجراءات عربية {busRegistrationNumber}",
+        "tripDeleteConfirm": "تمسح الرحلة «{tripOrigin} → {tripDestination}»؟ لو عليها حجوزات هتترفض العملية.",
+        "tripsSchedule": "الميعاد",
+        "tripsTitle": "رحلات الشركة",
+        "addTrip": "إضافة رحلة",
+        "tripsEmpty": "لا توجد رحلات مسجلة في هذه الشركة",
+        "tripRowActions": "إجراءات الرحلة",
+        "bookingDeleteConfirm": "تمسح حجز «{bookingPassengerName}»؟ الإجراء ده مينفعش يتراجع.",
+        "paymentColumn": "الدفع",
+        "bookingsTitle": "حجوزات الشركة",
+        "addBooking": "إضافة حجز",
+        "bookingsEmpty": "لا توجد حجوزات مسجلة في هذه الشركة",
+        "bookingRowActions": "إجراءات الحجز",
+        "reportNote": "ملاحظة البلاغ",
+        "reportsTitle": "تقارير ومراجعات الشركة",
+        "avgBusRating": "متوسط تقييم العربية",
+        "avgDriverRating": "متوسط تقييم السائق",
+        "ratedBookings": "الحجوزات المُقيّمة",
+        "reportsEmpty": "لا توجد بلاغات ركاب لهذه الشركة"
+      }
+    },
+    "errors": {
+      "nameAndOwner": "أكمل اسم الشركة واختار المالك.",
+      "nameRequired": "اكتب اسم الشركة."
+    },
+    "createDialog": {
+      "title": "شركة جديدة",
+      "description": "أضف شركة جديدة واربطها بالمالك المسؤول.",
+      "pickOwner": "اختار المالك",
+      "pickOwnerOption": "اختار المالك",
+      "submit": "إضافة الشركة"
+    },
+    "placeholders": {
+      "cairo": "شركة القاهرة"
+    },
+    "editDialog": {
+      "title": "تعديل شركة",
+      "description": "بتعدّل بيانات «{fleetName}».",
+      "activeLabel": "الشركة نشطة وبتشغّل عربيات"
+    },
+    "list": {
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح شركة «{fleetName}»؟ امسح عربياته ورحلاته الأول لو لسه فيها بيانات."
+      },
+      "rowActions": "إجراءات شركة {fleetName}"
+    },
+    "title": "الشركات",
+    "description": "كل الشركات المسجلة وحالة تشغيل كل شركة.",
+    "newFleet": "شركة جديدة",
+    "filters": {
+      "searchAria": "دور باسم الشركة أو المالك",
+      "searchPlaceholder": "دور باسم الشركة أو المالك"
+    },
+    "empty": "لا توجد شركات بعد — ابدأ بإضافة شركة",
+    "toast": {
+      "created": "اتضاف الشركة بنجاح",
+      "saved": "اتحفظت بيانات الشركة",
+      "activated": "تم تنشيط الشركة",
+      "deactivated": "تم إيقاف الشركة",
+      "deleted": "اتمسح الشركة",
+      "vipUpdated": "تم تحديث مستوى VIP للشركة",
+      "vipCleared": "تم إلغاء مستوى VIP للشركة"
+    }
+  },
+  "localities": {
+    "errors": {
+      "nameRequired": "أكمل الاسم بالعربي والإنجليزي.",
+      "hierarchyRequired": "أكمل المحافظة والمركز والاسم بالعربي والإنجليزي."
+    },
+    "deleteConfirm": {
+      "description": "تمسح «{localityNameAr}»؟ لو عليها مواقف مسجلة هتترفض العملية."
+    },
+    "title": "المدن والقرى",
+    "description": "المدينة/القرية تحت المركز — فلتر بالمحافظة أو بالمركز أو بالاتنين مع بعض.",
+    "newLocality": "منطقة جديدة",
+    "filters": {
+      "governorate": "فلتر المحافظة",
+      "allGovernorates": "كل المحافظات",
+      "markaz": "فلتر المركز",
+      "allMarkaz": "كل المراكز",
+      "pickGovernorateFirst": "اختار محافظة الأول…"
+    },
+    "empty": "لا توجد مناطق مطابقة — ابدأ بإضافة أول مدينة أو قرية.",
+    "list": {
+      "rowActions": "إجراءات {localityNameAr}"
+    },
+    "dialog": {
+      "editTitle": "تعديل المنطقة",
+      "createTitle": "منطقة جديدة",
+      "description": "المركز ثابت — عدّل الأسماء والنوع فقط.",
+      "hierarchyHint": "اختار المحافظة الأول، بعدها تظهر مراكزها في قايمة المركز.",
+      "pickGovernorate": "اختار المحافظة…",
+      "pickMarkaz": "اختار المركز…",
+      "pickGovernorateFirst": "اختار محافظة الأول…",
+      "nameAr": "الاسم بالعربي",
+      "nameEn": "الاسم بالإنجليزي"
+    },
+    "placeholders": {
+      "nameAr": "بنها"
+    },
+    "toast": {
+      "created": "اتضافت المدينة/القرية بنجاح",
+      "saved": "اتحفظت بيانات المدينة/القرية",
+      "activated": "تم تنشيط المدينة/القرية",
+      "deactivated": "تم إيقاف المدينة/القرية",
+      "deleted": "اتمسحت المدينة/القرية"
+    }
+  },
+  "markaz": {
+    "errors": {
+      "nameRequired": "أكمل الاسم بالعربي والإنجليزي.",
+      "fieldsRequired": "أكمل المحافظة والكود والاسم بالعربي والإنجليزي."
+    },
+    "deleteConfirm": {
+      "description": "تمسح مركز «{markazNameAr}»؟ لو فيه مدن وقرى تحته هتترفض العملية."
+    },
+    "columns": {
+      "nameAr": "الاسم (عربي)",
+      "nameEn": "الاسم (إنجليزي)"
+    },
+    "title": "المراكز",
+    "description": "المركز/الحي تحت المحافظة — فلتر المحافظة متاح من القايمة أو من عمود الجدول، أو الاتنين مع بعض.",
+    "newMarkaz": "مركز جديد",
+    "filters": {
+      "governorate": "فلتر المحافظة"
+    },
+    "empty": "لا توجد مراكز مطابقة — ابدأ بإضافة أول مركز.",
+    "list": {
+      "rowActions": "إجراءات مركز {markazNameAr}"
+    },
+    "dialog": {
+      "editTitle": "تعديل المركز",
+      "createTitle": "مركز جديد",
+      "description": "الكود والمحافظة ثابتين — عدّل الأسماء فقط.",
+      "codeHint": "اختار المحافظة من القايمة، والكود إنجليزي بحروف كبيرة (مثال: BANHA)."
+    },
+    "toast": {
+      "created": "اتضاف المركز بنجاح",
+      "saved": "اتحفظت بيانات المركز",
+      "activated": "تم تنشيط المركز",
+      "deactivated": "تم إيقاف المركز",
+      "deleted": "اتمسح المركز"
+    }
+  },
+  "notifications": {
+    "columns": {
+      "category": "الفئة",
+      "body": "المحتوى",
+      "recipient": "المستلم"
+    },
+    "fallbackUser": "مستخدم",
+    "fallbackRegisteredUser": "مستخدم مسجل",
+    "read": "مقروء",
+    "unread": "غير مقروء",
+    "title": "الإشعارات",
+    "description": "عرض تشغيلي لسجل إشعارات المستخدمين وإرسال إشعارات عامة أو فردية مباشرة إلى حساباتهم.",
+    "sendNew": "إرسال إشعار جديد",
+    "refresh": "تحديث",
+    "filters": {
+      "searchPlaceholder": "بحث بالاسم، رقم الموبايل، أو البريد الإلكتروني…",
+      "allRecipients": "كل المستخدمين (المستلم)",
+      "allCategories": "كل الفئات",
+      "categoryGeneral": "تنبيه عام"
+    },
+    "emptyFiltered": "لا توجد إشعارات مطابقة لمعايير البحث المحددة.",
+    "empty": "لا توجد إشعارات مسجلة حتى الآن.",
+    "send": {
+      "errors": {
+        "titleRequired": "يرجى إدخال عنوان الإشعار",
+        "bodyRequired": "يرجى إدخال محتوى الإشعار",
+        "targetRequired": "يرجى اختيار المستخدم المستهدف من القائمة أو اختيار إرسال عام",
+        "tripRequired": "يرجى اختيار الرحلة من القائمة",
+        "promoRequired": "يرجى اختيار كود الخصم من القائمة"
+      },
+      "successGlobal": "تم إرسال الإشعار العام بنجاح إلى {value} مستخدم",
+      "successDirect": "تم إرسال الإشعار بنجاح إلى المستخدم المحدد",
+      "title": "إرسال إشعار جديد",
+      "description": "إرسال إشعار مباشر يظهر في جدول إشعارات المستخدمين وصناديق وارد تطبيقاتهم",
+      "targetsLabel": "المستهدفون بالإشعار",
+      "audienceAll": "إشعار عام (لكل المستخدمين)",
+      "audienceSpecific": "مستخدم محدد (فردي)",
+      "pickUserLabel": "اختر المستخدم المستهدف *",
+      "userSelected": "تم تحديد المستخدم بنجاح",
+      "noUserMatch": "لا يوجد مستخدم يطابق \"{userSearch}\"",
+      "noUsers": "لا يوجد مستخدمون متاحون حاليًا",
+      "keyboardHint": "اضغط على المستخدم لاختياره أو اضغط Enter لاختيار أول نتيجة ({filteredUsersLength} نتيجة)",
+      "noUserSelectedHint": "اختر المستخدم من القائمة أعلاه ({filteredUsersLength} متاح) أو اكتب للبحث",
+      "typeLabel": "نوع الإشعار",
+      "typeText": "تنبيه عام (نصي فقط)",
+      "typeTrip": "مرتبط برحلة (TRIP)",
+      "typePromo": "مرتبط بكود خصم (DISCOUNT_CODE)",
+      "pickTripLabel": "اختر الرحلة *",
+      "pickTripOption": "-- اختر الرحلة من القائمة --",
+      "noTrips": "لا توجد رحلات مجدولة حاليًا في النظام.",
+      "pickPromoLabel": "اختر كود الخصم *",
+      "pickPromoOption": "-- اختر كود الخصم من القائمة --",
+      "promoDiscountPrefix": "— خصم",
+      "noPromos": "لا توجد أكواد خصم نشطة حاليًا في النظام.",
+      "titleLabel": "عنوان الإشعار *",
+      "bodyLabel": "نص ومحتوى الإشعار *",
+      "submit": "إرسال الإشعار"
+    },
+    "fallbackUserWithoutName": "مستخدم بدون اسم",
+    "placeholders": {
+      "userSearch": "ابحث بالاسم، رقم الموبايل (مثال: 0100...)، أو البريد الإلكتروني…",
+      "title": "مثال: تنبيه هام بخصوص مواعيد الرحلات",
+      "body": "اكتب تفاصيل الإشعار هنا..."
+    },
+    "toast": {
+      "sentGlobal": "اتبعت الإشعار لكل المستخدمين",
+      "sentDirect": "اتبعت الإشعار بنجاح"
+    }
+  },
+  "home": {
+    "modules": {
+      "fleetOwners": {
+        "description": "أنشئ حساب المالك والشركات الأولى والعضوية في خطوة واحدة."
+      },
+      "drivers": {
+        "description": "أنشئ حسابات السواقين وتابع العضوية وسجل التعيينات."
+      },
+      "buses": {
+        "description": "أضف العربيات وغيّر حالتها وعيّن السواق المناسب."
+      },
+      "fleets": {
+        "description": "راجع كل الشركات وبياناتها وأعضائها وتشغيلها."
+      }
+    },
+    "operations": {
+      "trips": "جدولة ومتابعة التشغيل",
+      "bookings": "إدارة الركاب والمقاعد"
+    },
+    "hero": {
+      "badge": "مركز التشغيل جاهز",
+      "title": "كل عمليات النقل في لوحة واحدة واضحة",
+      "description": "أنشئ المالك والسواق، جهّز الشركة والعربية، وبعدها عيّن السواق وابدأ التشغيل.",
+      "ctaCreateOwner": "إنشاء مالك شركة"
+    },
+    "modulesTitle": "إدارة الحسابات والشركات",
+    "modulesDescription": "الوظائف الأساسية المتاحة حاليًا في النظام — الإضافة بتتم من نافذة داخل كل صفحة.",
+    "dailyOpsTitle": "التشغيل اليومي",
+    "dailyOpsDescription": "انتقل مباشرة لإدارة الرحلات والحجوزات.",
+    "insights": {
+      "activeFleets": "الشركات النشطة",
+      "confirmedBookings": "حجوزات مؤكدة",
+      "chartTotal": "إجمالي",
+      "chartOperatingRate": "نسبة التشغيل",
+      "title": "نظرة سريعة على الأرقام",
+      "description": "مؤشرات التشغيل الحالية — كل كارت لينك لصفحته، والأرقام بتتحدث تلقائيًا من الكاش.",
+      "bookingsStatusTitle": "حالة الحجوزات",
+      "fleetsOperatingTitle": "نسبة تشغيل الشركات",
+      "busesPerFleetTitle": "العربيات لكل شركة",
+      "busesSeries": "عربيات"
+    }
+  },
+  "permissions": {
+    "columns": {
+      "action": "المهمة",
+      "description": "الوصف"
+    },
+    "assignable": "متاحة للتعيين",
+    "notAssignable": "غير متاحة حاليًا",
+    "title": "دليل المهام",
+    "description": "شرح للمهام المتاحة داخل المنصة. لتحديد من يستطيع تنفيذها، افتح مستوى الوصول المناسب.",
+    "empty": "لا توجد مهام في هذه المجموعة",
+    "toast": {
+      "created": "اتضافت المهمة بنجاح",
+      "saved": "اتحفظت بيانات المهمة",
+      "activated": "تم تنشيط المهمة",
+      "deactivated": "تم إيقاف المهمة"
+    },
+    "groups": {
+      "accounts": "الحسابات",
+      "operations": "التشغيل",
+      "fleetOperations": "تشغيل الشركة",
+      "systemAdmin": "إدارة النظام",
+      "driverOps": "تشغيل السائق"
+    },
+    "resources": {
+      "users": "حسابات المستخدمين",
+      "fleets": "الشركات",
+      "buses": "العربيات",
+      "trips": "الرحلات",
+      "bookings": "الحجوزات",
+      "members": "أعضاء الشركة",
+      "roles": "أدوار الوصول",
+      "permissions": "دليل الصلاحيات",
+      "audit": "سجل النشاط",
+      "driver": "مهام السائق",
+      "otherGroup": "صلاحيات أخرى",
+      "other": "إعدادات إضافية"
+    },
+    "permissions": {
+      "fleetBuses": "عربيات الشركة",
+      "fleetTrips": "رحلات الشركة",
+      "fleetDrivers": "سائقي الشركة",
+      "fleetReports": "تقارير الشركة"
+    },
+    "actions": {
+      "read": "عرض",
+      "create": "إضافة",
+      "update": "تعديل",
+      "delete": "حذف",
+      "manage": "إدارة",
+      "operate": "تنفيذ المهام التشغيلية",
+      "other": "استخدام"
+    },
+    "descriptionTemplate": "يسمح هذا الدور بـ{action} {resourceName}."
+  },
+  "promotions": {
+    "errors": {
+      "codeRequired": "أدخل كود الخصم.",
+      "valueRequired": "أدخل قيمة صحيحة أكبر من صفر.",
+      "usersRequired": "اختر مستخدمًا واحدًا على الأقل للكود المخصص."
+    },
+    "deleteConfirm": {
+      "description": "تمسح كود «{promoCode}»؟ لو حد استخدمه في حجوزات هتترفض العملية — اقفله بدل كده."
+    },
+    "columns": {
+      "fixedValue": "جنيه (ثابت)",
+      "maxUsesPerUser": "مرات/مستخدم",
+      "scope": "النطاق",
+      "maxTotalUses": "السقف الكلي",
+      "actions": "إجراءات",
+      "discountAmountUnit": "جنيه",
+      "discountUnitPrefix": "جنيه ("
+    },
+    "scopeGlobal": "عام — كل المستخدمين",
+    "scopeSpecific": "مخصص ({value})",
+    "list": {
+      "rowActions": "إجراءات كود {value}"
+    },
+    "actions": {
+      "usages": "الاستخدام"
+    },
+    "title": "أكواد الخصم",
+    "description": "أكواد عامة لكل المستخدمين أو مخصصة لمستخدمين محددين (مرة واحدة لكل مستخدم افتراضيًا) — تُطبق عند الحجز، والمخصص يُشعر مستخدميه تلقائيًا.",
+    "newCode": "كود جديد",
+    "empty": "لا توجد أكواد بعد — ابدأ بإضافة كود عام.",
+    "dialog": {
+      "editTitle": "تعديل {editingCode}",
+      "createTitle": "كود جديد",
+      "immutableHint": "الكود نفسه لا يتغير بعد الإنشاء.",
+      "codeHint": "الكود يتحول لحروف كبيرة تلقائيًا (A-Z 0-9 _ -).",
+      "valueLabel": "القيمة — مبلغ ثابت بالجنيه",
+      "audienceLabel": "الجمهور",
+      "scopeImmutable": "(النطاق لا يتغير بعد الإنشاء)",
+      "searchHint": "البحث يشمل كل حسابات الركاب النشطة. المستخدمون الجدد المضافون يستلمون إشعار كود الخصم تلقائيًا.",
+      "selectedCountLabel": "المحدد:",
+      "maxPerUser": "مرات الاستخدام لكل مستخدم (1 = مرة واحدة)",
+      "maxTotal": "السقف الكلي (فارغ = بلا حد)",
+      "expiresAt": "تاريخ الانتهاء (فارغ = بلا انتهاء)"
+    },
+    "placeholders": {
+      "value": "مثال: 50",
+      "userSearch": "ابحث بالاسم أو الهاتف أو البريد…",
+      "promoGlobal": "كود عام",
+      "promoSpecific": "كود مخصص"
+    },
+    "audience": {
+      "all": "كل المستخدمين",
+      "specific": "مستخدمون محددون"
+    },
+    "usagesDialog": {
+      "title": "استخدام {usagesForCode}",
+      "subtitle": "الاستخدام",
+      "description": "كل صف = حجز استهلك الكود.",
+      "empty": "لم يُستخدم بعد."
+    },
+    "toast": {
+      "created": "اتضاف كود الخصم بنجاح",
+      "saved": "اتحفظت بيانات كود الخصم",
+      "activated": "تم تنشيط كود الخصم",
+      "deactivated": "تم إيقاف كود الخصم",
+      "expired": "تم إنهاء كود الخصم",
+      "deleted": "اتمسح كود الخصم"
+    }
+  },
+  "reports": {
+    "title": "التقارير",
+    "description": "بلاغات الركاب وملخص تقييمات كل شركة.",
+    "pickFleet": "اختار الشركة",
+    "pickFleetHint": "اختار شركة لعرض تقاريرها",
+    "spikeFilename": "تقرير-spike-{date}.pdf"
+  },
+  "roles": {
+    "detail": {
+      "toast": {
+        "saved": "تم حفظ بيانات الدور",
+        "permissionsSaved": "تم تحديث صلاحيات الدور"
+      },
+      "backToList": "كل مستويات الوصول",
+      "description": "حدد المهام التي يستطيع الأشخاص بهذا المستوى القيام بها.",
+      "systemBadge": "إعداد محمي",
+      "systemNotice": "هذا مستوى وصول أساسي للنظام. يمكنك مراجعته، لكن لا يمكن تعديل مهامه أو إيقافه.",
+      "sections": {
+        "about": "عن مستوى الوصول",
+        "permissions": "المهام المسموح بها"
+      },
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف"
+      },
+      "placeholders": {
+        "description": "اشرح لمن يناسب هذا المستوى"
+      },
+      "activeHint": "هذا المستوى متاح للاستخدام",
+      "actions": {
+        "saveInfo": "حفظ المعلومات",
+        "savePermissions": "حفظ المهام"
+      },
+      "permissionsHint": "اختر ما يستطيع هذا الفريق رؤيته أو تغييره داخل المنصة."
+    },
+    "errors": {
+      "systemRole": "مستويات الوصول الأساسية مينفعش تتمسح — قفلها بدل كده من صفحتها.",
+      "nameRequired": "اكتب اسم مستوى الوصول"
+    },
+    "deleteConfirm": {
+      "description": "تمسح مستوى وصول «{roleName}»؟ أي حسابات مرتبطة بيه هتفقد صلاحياته."
+    },
+    "title": "مستويات الوصول",
+    "description": "حدّد ما يستطيع كل فريق القيام به، مثل إدارة الرحلات أو متابعة الحجوزات.",
+    "newRole": "مستوى وصول جديد",
+    "empty": "لا توجد أدوار متاحة",
+    "list": {
+      "rowActions": "إجراءات مستوى {roleName}"
+    },
+    "createDialog": {
+      "title": "مستوى وصول جديد",
+      "description": "اختر اسمًا واضحًا للفريق، ثم حدّد المهام المسموح بها في الخطوة التالية.",
+      "nameLabel": "اسم مستوى الوصول",
+      "whenLabel": "متى يُستخدم؟",
+      "next": "التالي: اختيار المهام"
+    },
+    "placeholders": {
+      "name": "مثال: مسؤول التشغيل",
+      "when": "مثال: للفريق الذي يتابع الرحلات اليومية"
+    },
+    "toast": {
+      "created": "اتضاف مستوى الوصول بنجاح",
+      "saved": "اتحفظت بيانات مستوى الوصول",
+      "activated": "تم تنشيط مستوى الوصول",
+      "deactivated": "تم إيقاف مستوى الوصول",
+      "permissionsUpdated": "تم تحديث مهام مستوى الوصول",
+      "deleted": "اتمسح مستوى الوصول"
+    }
+  },
+  "serviceConfig": {
+    "errors": {
+      "rowRequired": "أكمل النص والقيمة لكل عنصر قبل الحفظ."
+    },
+    "title": "خدمة العملاء والإعلانات",
+    "description": "قائمة مرتبة تظهر في التطبيق — الترتيب هنا هو ترتيب الظهور. الحفظ يرسل القائمة كاملة.",
+    "addItem": "عنصر جديد",
+    "saveList": "حفظ القائمة",
+    "saved": "تم الحفظ بنجاح.",
+    "empty": "القائمة فارغة — أضف أول عنصر.",
+    "visible": "ظاهر",
+    "hidden": "مخفي",
+    "fields": {
+      "text": "النص",
+      "value": "القيمة"
+    },
+    "placeholders": {
+      "text": "تواصل مع خدمة العملاء",
+      "value": "011xxxxxxxx أو https://…"
+    },
+    "visibleInApp": "ظاهر في التطبيق",
+    "toast": {
+      "saved": "اتحفظت إعدادات خدمة العملاء"
+    }
+  },
+  "stops": {
+    "dialog": {
+      "localityLabel": "المدينة / القرية",
+      "pickLocality": "اختار المدينة أو القرية…",
+      "mapsUrlLabel": "رابط موقع Google Maps",
+      "coordsHint": "لا تحتاج إلى إدخال خطوط الطول والعرض يدويًا.",
+      "nameLabel": "اسم النقطة"
+    },
+    "errors": {
+      "required": "أكمل اسم النقطة والمحافظة والمركز والمدينة/القرية ورابط الموقع.",
+      "nameGovernorateMaps": "أدخل اسم النقطة والمحافظة ورابط موقع Google Maps صحيح."
+    },
+    "createDialog": {
+      "title": "نقطة توقف جديدة",
+      "description": "اختار المحافظة ثم المركز ثم المدينة/القرية، والصق رابط الموقع من خرائط Google لقراءة الإحداثيات تلقائيًا.",
+      "submit": "حفظ نقطة التوقف"
+    },
+    "placeholders": {
+      "name": "مثل: كوبري بنها",
+      "address": "ميدان رمسيس، القاهرة"
+    },
+    "deleteConfirm": {
+      "description": "الإجراء ده مينفعش يتراجع — تمسح نقطة التوقف «{stopName}»؟"
+    },
+    "columns": {
+      "latitude": "خط العرض",
+      "longitude": "خط الطول",
+      "locality": "المدينة / القرية"
+    },
+    "title": "نقاط التوقف",
+    "description": "كل نقاط التوقف في النظام. الإضافة والتعديل بيتموا في نافذة من غير صفحات منفصلة.",
+    "newStop": "نقطة توقف جديدة",
+    "empty": "لا توجد نقاط توقف بعد — ابدأ بتسجيل أول مكان.",
+    "list": {
+      "rowActions": "إجراءات نقطة توقف {stopName}"
+    },
+    "editDialog": {
+      "title": "تعديل نقطة التوقف",
+      "description": "غيّر الاسم أو المحافظة، والصق رابط Google Maps لتحديث الإحداثيات تلقائيًا."
+    },
+    "toast": {
+      "created": "اتضافت نقطة التوقف بنجاح",
+      "saved": "اتحفظت بيانات نقطة التوقف",
+      "deleted": "اتمسحت نقطة التوقف"
+    }
+  },
+  "tripLines": {
+    "incomplete": "غير مكتمل",
+    "detail": {
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح خط الرحلة؟"
+      },
+      "errors": {
+        "minStops": "اختر نقطتي توقف على الأقل.",
+        "legacyBoth": "غيّر نقاط «ركوب ونزول (قديم)» إلى ركوب فقط أو نزول فقط قبل الحفظ."
+      },
+      "description": "خط واحد باتجاهين مستقلين؛ توقفات العودة قابلة للتعديل دون التأثير على الذهاب.",
+      "actions": {
+        "disableLine": "إيقاف الخط",
+        "enable": "تفعيل الخط",
+        "editMeta": "تعديل بيانات الخط",
+        "deleteLine": "حذف الخط"
+      },
+      "routeTitle": "مسار الخط",
+      "routeHint": "اختر اتجاهًا لمراجعة التوقفات أو تعديلها بنفس أدوات الإنشاء.",
+      "stopsEmpty": "لا توجد توقفات لهذا الاتجاه",
+      "routeLabelFallback": "المسار"
+    },
+    "activeBadge": "خط نشط",
+    "inactiveBadge": "خط متوقف",
+    "direction": {
+      "outbound": "ذهاب",
+      "return": "عودة"
+    },
+    "metaDialog": {
+      "title": "تعديل بيانات خط الرحلة",
+      "description": "اسم وكود الخط المشترك بين الاتجاهين.",
+      "nameLabel": "اسم الخط",
+      "codeLabel": "كود الخط"
+    },
+    "stopsDialog": {
+      "description": "أضف أو احذف أو غيّر الترتيب وحدد ما إذا كانت كل نقطة للركوب أو النزول أو الاثنين.",
+      "pickStop": "اختيار نقطة توقف",
+      "pickStopTo": "اختر نقطة لإضافتها إلى",
+      "emptyHint": "أضف توقفات هذا الاتجاه",
+      "stopTypeLabel": "نوع التوقف",
+      "moveUp": "نقل للأعلى",
+      "moveDown": "نقل للأسفل",
+      "removeStop": "حذف النقطة",
+      "summary": "ملخص",
+      "saveHint": "لن تُحفظ التغييرات إلا عند وجود نقطتي توقف على الأقل. الاتجاهات المرتبطة برحلات لا يمكن تغيير توقفاتها للحفاظ على السجل التشغيلي.",
+      "submit": "حفظ التوقفات",
+      "editTitle": "تعديل {direction}"
+    },
+    "deleteConfirm": {
+      "description": "تمسح خط «{lineName}»؟ لو مستخدم في رحلات أو عربيات هتترفض العملية."
+    },
+    "columns": {
+      "name": "اسم الخط",
+      "stops": "نقاط التوقف"
+    },
+    "title": "خطوط الرحلات",
+    "description": "مسارات موحّدة لكل النظام، مبنية من نقاط التوقف المسجلة.",
+    "newLine": "خط رحلة جديد",
+    "empty": "لا توجد خطوط رحلة بعد — أضف نقاط التوقف أولًا.",
+    "list": {
+      "rowActions": "إجراءات خط {lineName}"
+    },
+    "createDialog": {
+      "errors": {
+        "minOutboundStops": "أضف نقطتي توقف على الأقل في اتجاه الذهاب أولًا.",
+        "required": "أدخل الاسم والكود وحدد نقطتي توقف على الأقل في كل اتجاه."
+      },
+      "title": "إنشاء خط رحلة",
+      "description": "أنشئ خطًا واحدًا باتجاهي ذهاب وعودة مستقلين.",
+      "routeTitle": "مسار الخط",
+      "routeHint": "العودة مستقلة ويمكن أن تختلف توقفاتها عن الذهاب.",
+      "copyReverse": "نسخ وعكس الذهاب",
+      "emptyTitle": "أضف توقفات",
+      "emptyHint": "يمكن نسخ وعكس الذهاب كبداية ثم تعديل العودة كما تحتاج.",
+      "submit": "إنشاء خط الرحلة"
+    },
+    "placeholders": {
+      "name": "القاهرة ↔ بني سويف"
+    },
+    "toast": {
+      "created": "اتضاف الخط بنجاح",
+      "saved": "اتحفظت بيانات الخط",
+      "activated": "تم تنشيط الخط",
+      "deactivated": "تم إيقاف الخط",
+      "stopsSaved": "اتحفظت محطات الخط",
+      "deleted": "اتمسح الخط"
+    }
+  },
+  "trips": {
+    "detail": {
+      "cancelConfirm": {
+        "title": "تأكيد الإلغاء",
+        "description": "هتلغي الرحلة دي؟",
+        "confirmLabel": "إلغاء الرحلة"
+      },
+      "deleteConfirm": {
+        "description": "الإجراء ده مينفعش يتراجع — تمسح الرحلة؟"
+      },
+      "errors": {
+        "pickDriver": "اختار السواق الأول"
+      },
+      "toast": {
+        "driverAssigned": "اتعين السواق على عربية الرحلة"
+      },
+      "description": "تفاصيل الخط والميعاد وحالة الرحلة.",
+      "deleteTrip": "مسح الرحلة",
+      "sections": {
+        "schedule": "الخط والميعاد",
+        "status": "الحالة"
+      },
+      "from": "من",
+      "to": "إلى",
+      "departureAt": "ميعاد المغادرة",
+      "bus": "عربية الرحلة",
+      "fields": {
+        "capacityInline": "· السعة"
+      },
+      "assignSameFleetDriver": "تعيين سواق من نفس الشركة",
+      "assignDriverAria": "تعيين سواق الرحلة",
+      "pickDriver": "اختار السواق",
+      "unnamedDriver": "سواق بدون اسم",
+      "assignDriver": "تعيين السواق",
+      "cancelTrip": "إلغاء الرحلة",
+      "viewBookings": "كشف حجوزات الرحلة"
+    },
+    "list": {
+      "deleteConfirm": {
+        "description": "تمسح الرحلة «{tripOrigin} → {tripDestination}»؟ لو الرحلة عليها حجوزات هتترفض العملية."
+      },
+      "rowActions": "إجراءات رحلة {tripOrigin} → {tripDestination}"
+    },
+    "columns": {
+      "departAt": "موعد الرحلة"
+    },
+    "title": "الرحلات",
+    "description": "كل الرحلات في الشركات المسجلة، مع الخط والميعاد وحالة التشغيل.",
+    "newTrip": "رحلة جديدة",
+    "filters": {
+      "searchAria": "بحث بالمنشأ أو الوجهة أو الشركة",
+      "searchPlaceholder": "من / إلى / الشركة",
+      "allStatuses": "كل الحالات"
+    },
+    "empty": "لا توجد رحلات مسجلة في أي شركة.",
+    "createDialog": {
+      "errors": {
+        "pickFleet": "اختار الشركة الأولى قبل إضافة الرحلة.",
+        "pickLine": "عيّن خط رحلة للعربية أولًا من صفحة العربية.",
+        "pickDirection": "اختر اتجاه الرحلة: ذهاب أو عودة.",
+        "sameStop": "نقطة البداية والنهاية لازم تكون مختلفة.",
+        "stopOrder": "نقطة النزول لازم تكون بعد نقطة الركوب في اتجاه الرحلة."
+      },
+      "title": "رحلة جديدة",
+      "description": "اختار العربية وحدد خط الرحلة وميعاد المغادرة.",
+      "busLabel": "العربية (من نفس الشركة)",
+      "pickBus": "اختار العربية",
+      "pickBusOption": "اختار العربية",
+      "busWithoutLine": "العربية دي ملهاش خط رحلة بعد. ارجع لصفحة العربية وعيّن ليها خط أولًا.",
+      "directionLabel": "اتجاه الرحلة",
+      "pickDirection": "اختار اتجاه الرحلة",
+      "pickDirectionOption": "اختار الذهاب أو العودة",
+      "originLabel": "من",
+      "pickOrigin": "اختار نقطة البداية",
+      "pickOriginOption": "اختر نقطة البداية…",
+      "destinationLabel": "إلى",
+      "pickDestination": "اختار نقطة النهاية",
+      "pickDestinationOption": "اختر نقطة النهاية…",
+      "departureAt": "ميعاد المغادرة",
+      "submit": "إضافة الرحلة"
+    },
+    "editDialog": {
+      "errors": {
+        "required": "أكمل البداية والوجهة والميعاد."
+      },
+      "title": "تعديل رحلة",
+      "description": "رحلة {tripOrigin} → {tripDestination} — عربية {tripBusName}."
+    },
+    "toast": {
+      "created": "اتضافت الرحلة بنجاح",
+      "departed": "تم تشغيل الرحلة",
+      "completed": "تم إنهاء الرحلة",
+      "cancelled": "تم إلغاء الرحلة",
+      "saved": "اتحفظت بيانات الرحلة",
+      "deleted": "اتمسحت الرحلة"
+    }
+  },
+  "users": {
+    "errors": {
+      "invalidEmail": "أدخل البريد الإلكتروني الصحيح.",
+      "invalidEmailAndPassword": "أدخل البريد الإلكتروني وكلمة مرور من 8 أحرف على الأقل."
+    },
+    "deleteConfirm": {
+      "description": "الإجراء ده مينفعش يتراجع — تمسح حساب «{value}»؟"
+    },
+    "title": "مستخدمو الإدارة",
+    "description": "حسابات فريق الإدارة وصلاحيات الوصول العامة للنظام.",
+    "newUser": "مستخدم جديد",
+    "empty": "لا توجد حسابات إدارة",
+    "list": {
+      "rowActions": "إجراءات {value}"
+    },
+    "dialog": {
+      "editTitle": "تعديل مستخدم الإدارة",
+      "createTitle": "مستخدم إدارة جديد",
+      "editDescription": "يمكن تعديل الاسم والحالة وكلمة المرور ومستويات الوصول.",
+      "createDescription": "أنشئ حسابًا للفريق وحدد مستويات الوصول المطلوبة.",
+      "newPasswordLabel": "كلمة مرور جديدة (اختياري)",
+      "fields": {
+        "password": "كلمة المرور"
+      },
+      "activeAccount": "الحساب نشط ويمكنه تسجيل الدخول",
+      "emptyUsesDefault": "(فارغ = الافتراضي",
+      "defaultSeatLimit": "الافتراضي {PLATFORM_DEFAULT_MAX_BOOKING_SEATS}",
+      "effectiveLimit": "الحد الفعّال حاليًا:",
+      "seatsUnit": "مقاعد",
+      "roles": "مستويات الوصول",
+      "submit": "حفظ الحساب"
+    },
+    "placeholders": {
+      "name": "مثال: مسؤول التشغيل",
+      "keepPassword": "اتركها كما هي دون تغيير",
+      "passwordMin": "8 أحرف على الأقل"
+    },
+    "toast": {
+      "created": "اتضاف مستخدم الإدارة بنجاح",
+      "saved": "اتحفظت بيانات المستخدم",
+      "activated": "تم تنشيط المستخدم",
+      "deactivated": "تم إيقاف المستخدم",
+      "rolesUpdated": "اتحدثت مستويات وصول المستخدم",
+      "deleted": "اتمسح المستخدم",
+      "imageUploaded": "اترفعت صورة المستخدم"
+    }
+  },
+  "vipTiers": {
+    "errors": {
+      "nameAndRank": "أدخل اسم المستوى والترتيب."
+    },
+    "deleteConfirm": {
+      "description": "تمسح مستوى «{tierName}»؟ لو فيه شركات مرتبطة بيه هتترفض العملية."
+    },
+    "title": "مستويات VIP",
+    "description": "ترتيب ظهور أصحاب العربيات في نتائج البحث — الأقل ترتيبًا يظهر أولًا.",
+    "newTier": "مستوى جديد",
+    "empty": "لا توجد مستويات بعد — ابدأ بإضافة أول مستوى.",
+    "list": {
+      "rowActions": "إجراءات مستوى {tierName}"
+    },
+    "dialog": {
+      "editTitle": "تعديل المستوى",
+      "createTitle": "مستوى جديد",
+      "description": "الترتيب رقم فريد — الأول في القائمه يظهر أولًا."
+    },
+    "placeholders": {
+      "name": "ذهبي"
+    },
+    "toast": {
+      "created": "اتضاف مستوى VIP بنجاح",
+      "saved": "اتحفظت بيانات مستوى VIP",
+      "activated": "تم تنشيط مستوى VIP",
+      "deactivated": "تم إيقاف مستوى VIP",
+      "deleted": "اتمسح مستوى VIP"
+    }
+  },
+  "notFound": {
+    "ariaLabel": "عربية اتوهت في الطريق",
+    "questionMark": "؟",
+    "title": "العربية جت على طريق مغلق!",
+    "description": "الصفحة اللي بتدور عليها مش موجودة — يا اللينك اللي معاك غلط، يا الصفحة اتنقلت من مكانها.\r\n        مفيش مشكلة، خد اللينك ده وارجع تاني.",
+    "backToDashboard": "ارجع للوحة التحكم",
+    "goBack": "ارجع خطوة للوراء"
+  },
+  "fleetOwnerPicker": {
+    "pickOwnerAria": "صاحب العربيات",
+    "pickOwnerOption": "اختار صاحب العربيات",
+    "pickFleetAria": "الشركة",
+    "pickFleetOption": "اختار الشركة",
+    "hint": "سيُنشأ حساب السائق داخل شركة المالك ده فقط. تعيين العربية يتم لاحقًا من صفحة العربية."
+  },
+  "fleetScope": {
+    "activeFleet": "الشركة النشط",
+    "activeFleetAria": "الشركة النشط",
+    "pickFleetOption": "-- اختار الشركة --"
+  },
+  "members": {
+    "errors": {
+      "pickUser": "اختار المستخدم الأول."
+    },
+    "addDialog": {
+      "title": "إضافة عضو",
+      "description": "اختار المستخدم والدور من القايمة — اللي متضاف بالفعل مش بيظهر.",
+      "pickUser": "اختار المستخدم",
+      "pickUserOption": "اختار المستخدم…",
+      "noUsers": "مفيش مستخدمين متاحين",
+      "pickRole": "اختار الدور",
+      "defaultRole": "الدور الافتراضي",
+      "allAdded": "كل المستخدمين متضافين بالفعل للشركة ده."
+    },
+    "deleteConfirm": {
+      "description": "{REVOKE_WARNING} — تمسح العضوية؟"
+    },
+    "columns": {
+      "joinedAt": "تاريخ الانضمام",
+      "addedBy": "تمت الإضافة بواسطة"
+    },
+    "title": "أعضاء الشركة",
+    "addMember": "إضافة عضو",
+    "empty": "لا يوجد أعضاء في الشركة دي — ابدأ بإضافة عضو.",
+    "list": {
+      "rowActions": "إجراءات عضو {value}"
+    },
+    "actions": {
+      "revokeRole": "إلغاء الصلاحية",
+      "removeMembership": "مسح العضوية"
+    },
+    "toast": {
+      "added": "اتضاف العضو للشركة",
+      "activated": "تم تنشيط العضو",
+      "suspended": "تم إيقاف العضو",
+      "revoked": "تم إلغاء صلاحية العضو",
+      "saved": "اتحفظت بيانات العضو",
+      "removed": "اتمسح العضو من الشركة",
+      "inviteSent": "اتبعتت دعوة السواق بنجاح",
+      "driverActivated": "تم تنشيط السواق",
+      "driverSuspended": "تم إيقاف السواق",
+      "driverRevoked": "تم إلغاء صلاحية السواق",
+      "driverSaved": "اتحفظت بيانات السواق",
+      "driverDeleted": "اتمسح السواق"
+    }
+  },
+  "shell": {
+    "nav": {
+      "closeAria": "إغلاق قائمة التنقل",
+      "openAria": "فتح قائمة التنقل",
+      "mainAria": "التنقل الرئيسي",
+      "adminArea": "مساحة الإدارة",
+      "closeMenuAria": "إغلاق القائمة",
+      "tagline": "إدارة الملاك والسواقين والعربيات من مكان واحد."
+    },
+    "signOut": {
+      "aria": "تسجيل الخروج",
+      "label": "خروج"
+    },
+    "topbar": {
+      "brand": "منصة العربيات",
+      "subtitle": "لوحة المشرف العام",
+      "accountAria": "حساب المشرف",
+      "superAdmin": "مشرف عام",
+      "avatarInitial": "م"
+    }
+  },
+  "agGrid": {
+    "ariaLabelColumn": "العمود",
+    "ariaLabelContextMenu": "قائمة الخيارات",
+    "ariaLabelFilterInput": "فلتر العمود",
+    "ariaLabelSelectAll": "اختيار الكل",
+    "ariaLabelToggleVisibility": "تغيير ظهور العمود",
+    "ariaRowToggleSelection": "تحديد الصف",
+    "firstPage": "الصفحة الأولى",
+    "lastPage": "الصفحة الأخيرة",
+    "nextPage": "الصفحة التالية",
+    "previousPage": "الصفحة السابقة",
+    "more": "المزيد",
+    "columns": "الأعمدة",
+    "contains": "يحتوي على",
+    "endsWith": "ينتهي بـ",
+    "equals": "يساوي",
+    "filterOoo": "فلتر...",
+    "greaterThan": "أكبر من",
+    "greaterThanOrEqual": "أكبر من أو يساوي",
+    "lessThan": "أقل من",
+    "lessThanOrEqual": "أقل من أو يساوي",
+    "noMatches": "لا توجد نتائج مطابقة",
+    "notEqual": "لا يساوي",
+    "notContains": "لا يحتوي على",
+    "notBlank": "ليس فارغًا",
+    "page": "صفحة",
+    "pageFirst": "الصفحة الأولى",
+    "pageLast": "الصفحة الأخيرة",
+    "pageNext": "الصفحة التالية",
+    "pagePrevious": "الصفحة السابقة",
+    "pageSizeSelectorLabel": "عدد الصفوف في الصفحة",
+    "selectAll": "اختيار الكل",
+    "startsWith": "يبدأ بـ",
+    "to": "إلى",
+    "of": "من",
+    "noRowsToShow": "لا توجد بيانات لعرضها",
+    "fields": {
+      "id": "المعرف",
+      "name": "الاسم",
+      "nickname": "الاسم المختصر",
+      "picture": "الصورة",
+      "phoneNumber": "الموبايل",
+      "registrationNumber": "رقم التسجيل",
+      "plateNumber": "رقم اللوحة",
+      "capacity": "السعة",
+      "isActive": "الحالة",
+      "status": "الحالة",
+      "roleSlug": "الدور",
+      "fleetId": "معرف الشركة",
+      "fleetName": "الشركة",
+      "ownerName": "المالك",
+      "origin": "البداية",
+      "destination": "الوجهة",
+      "departAt": "موعد الرحلة",
+      "createdAt": "تاريخ الإنشاء",
+      "joinedAt": "تاريخ الانضمام",
+      "passengerName": "الراكب",
+      "passengerPhone": "موبايل الراكب",
+      "seats": "المقاعد",
+      "paymentStatus": "حالة الدفع",
+      "paymentMethod": "طريقة الدفع",
+      "totalAmount": "الإجمالي",
+      "ownerId": "معرف المالك",
+      "updatedAt": "آخر تحديث",
+      "governorateId": "المحافظة",
+      "userId": "معرف المستخدم",
+      "busId": "العربية",
+      "tripId": "الرحلة",
+      "lineId": "خط الرحلة",
+      "driverId": "السواق"
+    }
+  },
+  "agGridTable": {
+    "toolbarAria": "أدوات الجدول",
+    "searchPlaceholder": "بحث في النتائج المحملة",
+    "searchAria": "بحث في النتائج المحملة",
+    "rowsUnit": "صف",
+    "exportAria": "تصدير البيانات إلى ملف CSV",
+    "exportCsv": "تصدير CSV",
+    "loadMore": "عرض المزيد"
+  },
+  "cursorList": {
+    "actionsColumn": "إجراءات",
+    "open": "فتح"
+  },
+  "ui": {
+    "dialog": {
+      "closeLabel": "إغلاق النافذة"
+    },
+    "imagePicker": {
+      "previewAlt": "معاينة الصورة",
+      "empty": "لا صورة",
+      "choose": "اختار صورة",
+      "uploading": "جاري رفع الصورة وضغطها…"
+    }
+  },
+  "colors": {
+    "white": "أبيض",
+    "black": "أسود",
+    "silver": "فضي",
+    "gray": "رمادي",
+    "blue": "أزرق",
+    "skyBlue": "أزرق سماوي",
+    "navy": "أزرق كحلي",
+    "red": "أحمر",
+    "maroon": "نبيتي",
+    "green": "أخضر",
+    "darkGreen": "أخضر غامق",
+    "yellow": "أصفر",
+    "orange": "برتقالي",
+    "beige": "بيج",
+    "brown": "بني",
+    "purple": "بنفسجي"
+  },
+  "errors": {
+    "AUTHENTICATION_FAILED": "بيانات الدخول غير صحيحة",
+    "ACCOUNT_ALREADY_EXISTS": "رقم الموبايل أو الرقم القومي مستخدم قبل كده",
+    "ROLE_CONFIGURATION_INVALID": "إعدادات دور صاحب العربيات غير مكتملة",
+    "BUS_ACTION_NOT_ALLOWED": "العملية مرفوضة: العربية عليه رحلة شغالة (DEPARTED)",
+    "DRIVER_ASSIGNMENT_NOT_ALLOWED": "تعيين السواق مرفوض: مش نشط أو من شركة تانية",
+    "RESOURCE_NOT_OWNED": "العنصر مش موجود في الشركة دي",
+    "BUS_ACCESS_DENIED": "العنصر مش موجود في الشركة دي",
+    "NOT_FOUND": "العنصر غير موجود",
+    "CONFLICTING_ASSIGNMENT": "البيانات متعارضة مع سجل موجود (راجع الحقول)",
+    "CONFLICT": "البيانات متعارضة مع سجل موجود (راجع الحقول)",
+    "VALIDATION_FAILED": "راجع الحقول المطلوبة",
+    "BAD_REQUEST": "راجع الحقول المطلوبة",
+    "FORBIDDEN": "مفيش صلاحية للعملية دي",
+    "BOOKING_NOT_FOUND": "الحجز مش موجود",
+    "BOOKING_ALREADY_CANCELLED": "الحجز ملغي بالفعل",
+    "BOOKING_NOT_CANCELLED": "الحجز غير ملغي، لا يمكن استرجاعه",
+    "SEATS_UNAVAILABLE": "لا توجد مقاعد كافية في الرحلة لاسترجاع الحجز",
+    "BOOKING_SEAT_LIMIT_EXCEEDED": "عدد المقاعد أكبر من الحد المسموح للمستخدم",
+    "INVALID_BOOKING_SEAT_LIMIT": "الحد الأقصى لمقاعد الحجز لازم يكون رقم صحيح أكبر من صفر",
+    "PAYMENT_AMOUNT_MISMATCH": "المبلغ المدخل غير مطابق لقيمة الحجز بالظبط",
+    "PAYMENT_ALREADY_SETTLED": "تم تأكيد أو تسوية الدفع للحجز ده مسبقاً",
+    "REFUND_EXCEEDS_BALANCE": "المبلغ المطلوب استرداده أكبر من الرصيد المتبقي للحجز",
+    "REFUND_NOT_ELIGIBLE": "الحجز غير مؤهل للاسترداد الإلكتروني (حجز نقدي غير مسدد)",
+    "REPORT_NOT_FOUND": "البلاغ مش موجود في الحجز ده",
+    "INVALID_REPORT_STATUS": "حالة البلاغ غير صالحة، لازم تكون محلول أو ملغي",
+    "INVALID_GOVERNORATE": "المحافظة المختارة غير متاحة",
+    "INVALID_MARKAZ": "المركز المختار غير متاح",
+    "INVALID_LOCALITY": "المدينة/القرية المختارة غير متاحة",
+    "INVALID_GEO_HIERARCHY": "المدينة/القرية لا تنتمي إلى المحافظة المختارة",
+    "MARKAZ_IN_USE": "مينفعش تمسح المركز ده — فيه مدن وقرى مسجلة تحته. امسح أو انقل المدن الأول.",
+    "LOCALITY_IN_USE": "مينفعش تمسح المدينة/القرية دي — فيها مواقف مسجلة عليها. امسح أو انقل المواقف الأول.",
+    "STOP_IN_USE": "نقطة التوقف مستخدمة في خط رحلة ومينفعش تتمسح — أوقفها بدلًا من ذلك",
+    "INVALID_BRAND": "ماركة العربية المختارة غير متاحة",
+    "BRAND_IN_USE": "مينفعش تمسح الماركة دي — فيها عربيات مسجلة عليها. اقفلها من زرار تعديل بدل المسح.",
+    "VIP_TIER_IN_USE": "مينفعش تمسح المستوى ده — فيه شركات مرتبطة بيه. عدّله من زرار تعديل بدل المسح.",
+    "OWNER_HAS_FLEETS": "مينفعش تمسح الصاحب العربيه ده — لسه ماسك شركات. امسح شركاته الأول.",
+    "PROMO_IN_USE": "مينفعش تمسح الكود ده — حد استخدمه في حجوزات. اقفله من زرار الإيقاف بدل المسح.",
+    "ROLE_IN_USE": "مينفعش تمسح مستوى الوصول ده — لسه متخصص لحسابات. شيله من الحسابات الأول.",
+    "TRIP_HAS_BOOKINGS": "مينفعش تمسح الرحلة دي — عليها حجوزات مسجلة. امسح أو انقل الحجوزات الأول.",
+    "BUS_HAS_TRIPS": "مينفعش تمسح العربية دي — عليها رحلات مسجلة. وقّفها بدل ما تمسحها.",
+    "BUS_HAS_ASSIGNMENTS": "مينفعش تمسح العربية دي — عليها تعيين سواق. شيل التعيين الأول.",
+    "BUS_IS_FAVORITED": "مينفعش تمسح العربية دي — محفوظة عند ركاب. وقّفها بدل ما تمسحها.",
+    "INVALID_VEHICLE_YEAR": "سنة موديل العربية غير صالحة",
+    "VIP_TIER_NOT_AVAILABLE": "مستوى VIP المختار غير متاح",
+    "INVALID_IMAGE_TYPE": "الصورة لازم تكون JPEG أو PNG أو WebP",
+    "IMAGE_TOO_LARGE": "حجم الصورة لازم يكون 5 ميجا أو أقل",
+    "STORAGE_NOT_CONFIGURED": "رفع الصور غير مفعّل على السيرفر — كلم الدعم الفني",
+    "STORAGE_UPLOAD_FAILED": "رفع الصورة فشل، حاول تاني",
+    "STORAGE_TIMEOUT": "التخزين السحابي أخد وقت أطول من اللازم — حاول تاني",
+    "UPLOAD_SIGN_FAILED": "تجهيز رفع الصورة فشل — اتأكد من النت وحاول تاني",
+    "UPLOAD_CLEANUP_FAILED": "الصورة المؤقتة متنضفتش — هتتمسح تلقائيًا",
+    "IMAGE_PROCESSOR_UNAVAILABLE": "معالجة الصور واقفة على السيرفر دلوقتي — حاول بعد شوية",
+    "UPSTREAM_TIMEOUT": "السيرفر أخد وقت أطول من اللازم — اتأكد من النت وحاول تاني",
+    "UPSTREAM_UNAVAILABLE": "خدمة السيرفر مش متاحة دلوقتي — حاول تاني بعد شوية",
+    "FORBIDDEN_PLATFORM_ACCESS": "مفيش صلاحية، العملية تتطلب صلاحيات المشرف العام",
+    "JUSTIFICATION_REQUIRED": "سبب وتبرير العملية إلزامي",
+    "RATE_LIMITED": "محاولات كتير، حاول بعد شوية",
+    "RATE_LIMITED_429": "محاولات كتير، حاول بعد شوية",
+    "NETWORK_ERROR": "مشكلة في الاتصال بالسيرفر",
+    "UNKNOWN": "حصلت مشكلة، حاول تاني",
+    "REGISTRATION_TAKEN": "رقم التسجيل مستخدم قبل كده",
+    "FLEET_REFERENCED": "الشركة مرتبطة بعربيات أو رحلات أو حجوزات و مينفعش يتمسح",
+    "MEMBER_EXISTS": "المستخدم ده عضو في الشركة دي قبل كده",
+    "OWNER_LINK": "مشكلة في ربط صاحب العربيات، راجع بيانات المالك"
+  },
+  "ordinals": {
+    "1": "الأول في القائمه",
+    "2": "الثاني في القائمه",
+    "3": "الثالث في القائمه",
+    "4": "الرابع في القائمه",
+    "5": "الخامس في القائمه",
+    "6": "السادس في القائمه",
+    "7": "السابع في القائمه",
+    "8": "الثامن في القائمه",
+    "9": "التاسع في القائمه",
+    "10": "العاشر في القائمه",
+    "fallback": "رقم {n} في القائمه"
+  },
+  "pdf": {
+    "spike": {
+      "title": "تقرير تجريبي — إثبات تشكيل الحروف العربية",
+      "sample": "مرحبا بالعالم: السعر 123.45 جنيه ورقم الرحلة AB-42",
+      "tableHeader": "الاسم | رقم الموبايل | الحالة",
+      "tableRow": "أحمد محمد | 01012345678 | مؤكد"
+    }
+  },
+  "validation": {
+    "transactionRefRequired": "رقم المعاملة مطلوب",
+    "transactionRefMax": "رقم المعاملة بحد أقصى 100 حرف",
+    "amountPositive": "المبلغ يجب أن يكون رقماً موجباً",
+    "paymentMethodMax": "طريقة الدفع بحد أقصى 20 حرف",
+    "notesMax": "الملاحظات بحد أقصى 500 حرف",
+    "failureReasonRequired": "سبب فشل الدفع إلزامي",
+    "failureReasonMax": "السبب بحد أقصى 500 حرف",
+    "refundRefRequired": "رقم إشعار أو مرجع الاسترداد مطلوب",
+    "refundRefMax": "رقم المرجع بحد أقصى 100 حرف",
+    "refundAmountPositive": "مبلغ الاسترداد يجب أن يكون رقماً موجباً",
+    "refundReasonRequired": "سبب الاسترداد إلزامي",
+    "refundReasonMax": "السبب بحد أقصى 500 حرف",
+    "forceCancelReasonRequired": "سبب إلغاء الحجز إلزامي",
+    "reinstateReasonRequired": "سبب استرجاع الحجز إلزامي",
+    "overrideJustificationRequired": "تبرير التعديل التشغيلي إلزامي",
+    "reportNotesMin": "ملاحظات الحل يجب ألا تقل عن 5 أحرف",
+    "reportNotesMax": "ملاحظات الحل بحد أقصى 2000 حرف",
+    "email": "اكتب بريد إلكتروني صحيح",
+    "passwordMin": "كلمة السر لازم تبقى 8 حروف على الأقل",
+    "uuid": "معرف غير صحيح",
+    "required": "الحقل ده مطلوب",
+    "phone": "رقم الموبايل لازم يبقى 11 رقم يبدأ بـ 01",
+    "nicknameRequired": "اسم الشهرة مطلوب",
+    "nationalIdDigits": "الرقم القومي لازم يكون 14 رقم",
+    "capacityRange": "السعة من 1 لـ 300",
+    "date": "التاريخ غير صحيح",
+    "ownerRoleSlug": "دور المالك الابتدائي غير صحيح",
+    "httpsUrl": "رابط الصورة لازم يبدأ بـ https://",
+    "modelYear": "سنة الموديل غير صحيحة",
+    "plateRequired": "رقم اللوحة مطلوب",
+    "colorRequired": "اللون مطلوب",
+    "brandNameRequired": "اسم الماركة مطلوب",
+    "tierNameRequired": "اسم المستوى مطلوب",
+    "rankRequired": "الترتيب مطلوب",
+    "roleRequired": "اختار الدور",
+    "nameRequired": "الاسم مطلوب",
+    "latitude": "خط العرض غير صحيح",
+    "longitude": "خط الطول غير صحيح",
+    "markazCodeRequired": "كود المركز مطلوب",
+    "localityType": "نوع المنطقة لازم مدينة أو قرية",
+    "stopType": "نوع التوقف لازم ركوب أو نزول",
+    "lineCodeRequired": "كود الخط مطلوب",
+    "lineOutboundStops": "اختر نقطتي توقف على الأقل في اتجاه الذهاب",
+    "lineReturnStops": "اختر نقطتي توقف على الأقل في اتجاه العودة",
+    "lineStops": "اختر نقطتي توقف على الأقل"
+  }
+}

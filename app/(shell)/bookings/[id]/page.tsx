@@ -50,6 +50,7 @@ import {
   Building2,
   Settings2,
 } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 type AuditLog = AdminBookingDetail["auditTrail"][number];
 
@@ -76,10 +77,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [reloadKey, setReloadKey] = useState(0);
 
   const auditColumns: CommunityColumnDef<AuditLog>[] = [
-    { field: "createdAt", headerName: "التاريخ والتوقيت", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
-    { field: "action", headerName: "العملية الإدارية", filter: "agTextColumnFilter" },
-    { field: "actorUserId", headerName: "المشرف / الفاعل", valueFormatter: (params) => params.value ? `${String(params.value).slice(0, 8)}…` : "نظام" },
-    { field: "metadata", headerName: "التفاصيل والبيانات الوصفية", valueFormatter: (params) => params.value ? JSON.stringify(params.value) : "—" },
+    { field: "createdAt", headerName: t("bookings.audit.columns.date"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+    { field: "action", headerName: t("bookings.audit.columns.action"), filter: "agTextColumnFilter" },
+    { field: "actorUserId", headerName: t("bookings.audit.columns.actor"), valueFormatter: (params) => params.value ? `${String(params.value).slice(0, 8)}…` : t("common.value.system") },
+    { field: "metadata", headerName: t("bookings.audit.columns.metadata"), valueFormatter: (params) => params.value ? JSON.stringify(params.value) : "—" },
   ];
 
   // TanStack cache: تفاصيل الحجز من طبقة الكاش — والتحديثات بتحصل في الخلفية
@@ -120,14 +121,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <Button variant="secondary" asChild className="gap-2">
             <Link href="/bookings">
               <ArrowRight className="size-4" />
-              <span>العودة لقائمة الحجوزات</span>
+              <span>{t("bookings.detail.backToList")}</span>
             </Link>
           </Button>
         </div>
         <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
           <AlertTriangle className="size-8 mx-auto mb-2 text-red-600" />
-          <h2 className="text-lg font-bold">تعذر تحميل بيانات الحجز</h2>
-          <p className="text-sm mt-1">{error ?? fetchFailed ?? "الحجز غير موجود"}</p>
+          <h2 className="text-lg font-bold">{t("bookings.detail.loadFailed")}</h2>
+          <p className="text-sm mt-1">{error ?? fetchFailed ?? t("common.notFound.booking")}</p>
         </div>
       </div>
     );
@@ -150,7 +151,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <Button variant="secondary" asChild className="gap-2 text-xs sm:text-sm">
           <Link href="/bookings">
             <ArrowRight className="size-4" />
-            <span>العودة للحجوزات</span>
+            <span>{t("bookings.detail.backToBookings")}</span>
           </Link>
         </Button>
         <span className="min-w-0 truncate text-xs text-[#5e6b78]" dir="ltr">
@@ -175,7 +176,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <Ticket className="size-5" />
               </span>
               <h1 className="min-w-0 break-words text-xl font-black text-[#00134c] sm:text-2xl">
-                حجز: {booking.passenger?.name ?? "راكب غير مسمى"}
+                {t("bookings.detail.bookingLabel")} {booking.passenger?.name ?? t("bookings.detail.unnamedPassenger")}
               </h1>
               <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-lg bg-[#d6eeff] px-2.5 py-0.5 text-xs font-bold text-[#00134c]">
                 <Building2 className="size-3.5 shrink-0" />
@@ -183,8 +184,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               </span>
             </div>
             <p className="mt-1.5 text-xs sm:text-sm text-[#5e6b78]">
-              رقم الحجز: <span className="font-mono text-[#1a1a1a]" dir="ltr">#{booking.id.slice(0, 12)}</span> · عدد المقاعد:{" "}
-              <strong className="text-[#1a1a1a]">{booking.seats}</strong> · تاريخ الحجز:{" "}
+              {t("bookings.detail.bookingNumberLabel")} <span className="font-mono text-[#1a1a1a]" dir="ltr">#{booking.id.slice(0, 12)}</span> {t("bookings.detail.seatsCountLabel")}{" "}
+              <strong className="text-[#1a1a1a]">{booking.seats}</strong> {t("bookings.detail.bookedAtLabel")}{" "}
               {booking.confirmedAt ? new Date(booking.confirmedAt).toLocaleString("ar-EG") : "—"}
             </p>
           </div>
@@ -225,7 +226,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
         {/* Global Administrative Quick Actions Toolbar */}
         <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#e4ecf2]">
-          <span className="text-xs font-bold text-[#5e6b78] me-1">إجراءات المشرف:</span>
+          <span className="text-xs font-bold text-[#5e6b78] me-1">{t("bookings.detail.adminActions")}</span>
 
           {/* Payment Verification */}
           {!isPaid && !isRefunded && (
@@ -236,7 +237,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               className="gap-1.5 bg-[#059ff8] hover:bg-[#00134c]"
             >
               <CheckCircle2 className="size-4" />
-              <span>تأكيد الدفع (Verify)</span>
+              <span>{t("bookings.detail.actions.verifyPayment")}</span>
             </Button>
           )}
 
@@ -250,7 +251,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               className="gap-1.5"
             >
               <XCircle className="size-4" />
-              <span>تسجيل فشل الدفع</span>
+              <span>{t("bookings.detail.actions.recordPaymentFailure")}</span>
             </Button>
           )}
 
@@ -264,7 +265,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               className="gap-1.5 border border-[#059ff8]/30 text-[#00134c] hover:bg-[#d6eeff]"
             >
               <RotateCcw className="size-4" />
-              <span>استرداد مالي (Refund)</span>
+              <span>{t("bookings.detail.actions.refund")}</span>
             </Button>
           )}
 
@@ -277,7 +278,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             className="gap-1.5 border border-[#d8e4ec]"
           >
             <Settings2 className="size-4" />
-            <span>تعديل تشغيلي (Override)</span>
+            <span>{t("bookings.detail.actions.override")}</span>
           </Button>
 
           {/* Cancel or Reinstate */}
@@ -289,7 +290,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
             >
               <RotateCcw className="size-4" />
-              <span>استرجاع الحجز (Reinstate)</span>
+              <span>{t("bookings.detail.actions.reinstate")}</span>
             </Button>
           ) : (
             <Button
@@ -300,7 +301,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               className="gap-1.5"
             >
               <XCircle className="size-4" />
-              <span>إلغاء إداري (Force Cancel)</span>
+              <span>{t("bookings.detail.actions.forceCancel")}</span>
             </Button>
           )}
         </div>
@@ -312,57 +313,57 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <User className="size-5 text-[#059ff8]" />
-            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">بيانات الراكب المسافر</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.passenger")}</h2>
           </div>
 
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#5e6b78]">اسم الراكب:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.passengerName")}</span>
               <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passenger?.name ?? "—"}</span>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#5e6b78]">رقم الموبايل:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.passengerPhone")}</span>
               <div className="flex min-w-0 items-center gap-1.5 font-semibold text-[#1a1a1a]">
                 <span dir="ltr">{booking.passenger?.phoneNumber ?? "—"}</span>
                 {booking.passenger?.phoneVerifiedAt ? (
-                  <span className="inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.2 text-[10px] font-bold text-green-800" title="الموبايل موثق">
-                    <Check className="size-3" /> موثق
+                  <span className="inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.2 text-[10px] font-bold text-green-800" title={t("bookings.detail.passengerPhoneVerifiedTitle")}>
+                    <Check className="size-3" /> {t("bookings.detail.verified")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-600">
-                    غير موثق
+                    {t("bookings.detail.notVerified")}
                   </span>
                 )}
               </div>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">الرقم القومي:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.nationalIdInline")}</span>
               <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">
-                {booking.passenger?.nationalId ?? "غير مسجل"}
+                {booking.passenger?.nationalId ?? t("common.value.notRegistered")}
               </span>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#5e6b78]">معرف المستخدم (User ID):</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.userId")}</span>
               <span className="min-w-0 break-all font-mono text-xs text-[#5e6b78]" dir="ltr">
                 {booking.passenger?.id ? `${booking.passenger.id.slice(0, 16)}…` : "—"}
               </span>
             </div>
 
             <div className="rounded-xl bg-[#f8fbfd] p-3">
-              <p className="mb-2 text-xs font-bold text-[#71808d]">بيانات الحجز المحفوظة تاريخيًا + <span className={booking.bookingFor === "OTHER" ? "status-pill" : "status-pill status-pill-muted"}>{booking.bookingFor === "OTHER" ? "لراكب آخر" : "لنفسه"}</span></p>
+              <p className="mb-2 text-xs font-bold text-[#71808d]">{t("bookings.detail.snapshotIntro")} <span className={booking.bookingFor === "OTHER" ? "status-pill" : "status-pill status-pill-muted"}>{booking.bookingFor === "OTHER" ? t("bookings.detail.forOtherPassenger") : t("bookings.detail.forSelf")}</span></p>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[#5e6b78]">الاسم المحفوظ:</span>
+                <span className="text-[#5e6b78]">{t("bookings.detail.fields.savedName")}</span>
                 <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passengerName ?? "—"}</span>
               </div>
               <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-[#5e6b78]">الموبايل المحفوظ:</span>
+                <span className="text-[#5e6b78]">{t("bookings.detail.fields.savedPhone")}</span>
                 <span dir="ltr" className="min-w-0 font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
               </div>
-              {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">ملاحظة: {booking.note}</p> : null}
-              {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">كود الخصم: <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> (خصم {booking.discountAmount} جنيه)</span> : null}</p> : null}
+              {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">{t("bookings.detail.fields.note")} {booking.note}</p> : null}
+              {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">{t("bookings.detail.fields.promoCode")} <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> {t("bookings.detail.promoDiscountPrefix")} {booking.discountAmount} {t("bookings.detail.promoDiscountSuffix")}</span> : null}</p> : null}
             </div>
           </div>
         </div>
@@ -371,12 +372,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <Bus className="size-5 text-[#059ff8]" />
-            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">تفاصيل الرحلة والمركبة والسائق</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.trip")}</h2>
           </div>
 
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#5e6b78]">خط السير:</span>
+              <span className="text-[#5e6b78]">{t("common.fields.route")}</span>
               <span className="min-w-0 font-extrabold text-[#1a1a1a]">
                 {booking.trip.originName} ← {booking.trip.destinationName}
               </span>
@@ -385,22 +386,22 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             {(booking.boardingStationName || booking.landingStationName || booking.boardingStationId || booking.landingStationId) && (
               <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-2.5 text-xs space-y-1.5">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[#5e6b78]">محطة الركوب:</span>
+                  <span className="text-[#5e6b78]">{t("bookings.detail.fields.boardingStation")}</span>
                   <span className="min-w-0 font-bold text-[#1a1a1a]">
-                    {booking.boardingStationName ?? (booking.boardingStationId ? `معرف: ${booking.boardingStationId.slice(0, 8)}…` : "نقطة الانطلاق")}
+                    {booking.boardingStationName ?? (booking.boardingStationId ? t("common.value.idPrefix", { value: booking.boardingStationId.slice(0, 8) }) : t("bookings.detail.boardingStationFallback"))}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3 border-t border-[#e4ecf2] pt-1.5">
-                  <span className="text-[#5e6b78]">محطة النزول:</span>
+                  <span className="text-[#5e6b78]">{t("bookings.detail.fields.landingStation")}</span>
                   <span className="min-w-0 font-bold text-[#1a1a1a]">
-                    {booking.landingStationName ?? (booking.landingStationId ? `معرف: ${booking.landingStationId.slice(0, 8)}…` : "نقطة الوصول")}
+                    {booking.landingStationName ?? (booking.landingStationId ? t("common.value.idPrefix", { value: booking.landingStationId.slice(0, 8) }) : t("bookings.detail.landingStationFallback"))}
                   </span>
                 </div>
               </div>
             )}
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">موعد الإقلاع:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.departureAt")}</span>
               <span className="min-w-0 font-semibold text-[#1a1a1a] flex items-center gap-1">
                 <Clock className="size-3.5 text-[#059ff8]" />
                 <time dateTime={booking.trip.departureTime}>
@@ -410,32 +411,32 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">سعر المقعد / الإجمالي:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.seatPriceTotal")}</span>
               <span className="font-bold text-[#00134c]" dir="ltr">
-                {booking.trip.fare} EGP / مقعد
+                {booking.trip.fare} {t("bookings.detail.perSeatUnit")}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">العربية / المركبة:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.busVehicle")}</span>
               <span className="font-semibold text-[#1a1a1a]">
                 {booking.trip.bus ? (
                   <>
-                    رقم التسجيل: <span className="font-bold" dir="ltr">{booking.trip.bus.registrationNumber}</span> · السعة: {booking.trip.bus.capacity} كراسي
+                    {t("bookings.detail.fields.registrationNumberInline")} <span className="font-bold" dir="ltr">{booking.trip.bus.registrationNumber}</span> {t("bookings.detail.fields.capacityInline")} {booking.trip.bus.capacity} {t("bookings.detail.seatsUnitPlural")}
                   </>
                 ) : (
-                  "لم يتم تعيين حافلة"
+                  t("bookings.detail.noBusAssigned")
                 )}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">المقاعد المتاحة حالياً بالرحلة:</span>
-              <span className="font-bold text-blue-700">{booking.trip.availableSeats} مقعد</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.availableSeats")}</span>
+              <span className="font-bold text-blue-700">{booking.trip.availableSeats} {t("bookings.detail.seatsUnit")}</span>
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t border-[#f0f4f8]">
-              <span className="text-[#5e6b78]">السائق المسؤول:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.assignedDriver")}</span>
               <span className="font-bold text-[#1a1a1a]">
                 {booking.trip.driver ? (
                   <>
@@ -447,7 +448,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     )}
                   </>
                 ) : (
-                  "لم يتم تعيين سائق"
+                  t("bookings.detail.noDriverAssigned")
                 )}
               </span>
             </div>
@@ -458,66 +459,66 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <CreditCard className="size-5 text-[#059ff8]" />
-            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">المعاملات المالية والتسوية</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.payments")}</h2>
           </div>
 
           <div className="space-y-3 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">طريقة الدفع:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.paymentMethodInline")}</span>
               <span className="font-bold text-[#1a1a1a]">
                 {PAYMENT_METHOD_AR[booking.paymentMethod] ?? booking.paymentMethod}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">إجمالي قيمة الحجز:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.bookingTotal")}</span>
               <span className="font-extrabold text-base text-[#00134c]" dir="ltr">
                 {booking.totalAmount} EGP
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">المبلغ المسترد تراكمياً:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.refundedTotal")}</span>
               <span className="font-bold text-[#e16800]" dir="ltr">
                 {booking.refundedAmount} EGP
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">الرصيد المتبقي القابل للاسترداد:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.refundableBalance")}</span>
               <span className="font-bold text-green-700" dir="ltr">
                 {remaining.toFixed(2)} EGP
               </span>
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t border-[#f0f4f8]">
-              <span className="text-[#5e6b78]">المرجع الخارجي للتحويل:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.transferReference")}</span>
               <span className="min-w-0 font-mono font-bold text-[#00134c]" dir="ltr">
-                {booking.paymentReference ?? "غير متوفر"}
+                {booking.paymentReference ?? t("common.value.unavailable")}
               </span>
             </div>
 
             {booking.paymentNotes && (
               <div className="rounded-xl bg-[#f8fbfd] p-2.5 text-xs text-[#5e6b78]">
-                <strong className="block text-[#1a1a1a] mb-0.5">ملاحظات التحقق:</strong>
+                <strong className="block text-[#1a1a1a] mb-0.5">{t("bookings.detail.fields.verificationNotes")}</strong>
                 {booking.paymentNotes}
               </div>
             )}
 
             {booking.paidAt && (
               <div className="flex justify-between items-center text-xs text-[#5e6b78]">
-                <span>توقيت توثيق الدفع:</span>
+                <span>{t("bookings.detail.fields.paymentRecordedAt")}</span>
                 <time dateTime={booking.paidAt}>{new Date(booking.paidAt).toLocaleString("ar-EG")}</time>
               </div>
             )}
 
             {booking.cancellationReason && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
-                <strong className="block font-bold mb-0.5">سبب الإلغاء الإداري:</strong>
+                <strong className="block font-bold mb-0.5">{t("bookings.detail.fields.adminCancelReason")}</strong>
                 {booking.cancellationReason}
                 {booking.cancelledAt && (
                   <time className="block text-[11px] text-red-600 mt-1" dateTime={booking.cancelledAt}>
-                    أُلغي بتاريخ: {new Date(booking.cancelledAt).toLocaleString("ar-EG")}
+                    {t("bookings.detail.fields.cancelledAt")} {new Date(booking.cancelledAt).toLocaleString("ar-EG")}
                   </time>
                 )}
               </div>
@@ -529,46 +530,46 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <Clock className="size-5 text-[#059ff8]" />
-            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">الحالة التشغيلية والصعود</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.boarding")}</h2>
           </div>
 
           <div className="space-y-3 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-[#5e6b78]">حالة الصعود للعربية:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.boardingStatus")}</span>
               {booking.boardedAt ? (
                 <span className="font-bold text-green-700 flex items-center gap-1">
                   <CheckCircle2 className="size-4" />
-                  <span>تم الصعود بنجاح</span>
+                  <span>{t("bookings.detail.boardingSucceeded")}</span>
                 </span>
               ) : (
-                <span className="text-[#919191] font-medium">لم يسجل الصعود بعد</span>
+                <span className="text-[#919191] font-medium">{t("bookings.detail.boardingPending")}</span>
               )}
             </div>
 
             {booking.boardedAt && (
               <div className="flex justify-between items-center text-xs text-[#5e6b78]">
-                <span>توقيت الصعود:</span>
+                <span>{t("bookings.detail.fields.boardingAt")}</span>
                 <time dateTime={booking.boardedAt}>{new Date(booking.boardedAt).toLocaleString("ar-EG")}</time>
               </div>
             )}
 
             <div className="flex justify-between items-center pt-2 border-t border-[#f0f4f8]">
-              <span className="text-[#5e6b78]">حالة النزول بالمحطة:</span>
+              <span className="text-[#5e6b78]">{t("bookings.detail.fields.dropStatus")}</span>
               <span className="font-bold text-[#1a1a1a]">
-                {booking.dropStatus ? DROP_STATUS_AR[booking.dropStatus] ?? booking.dropStatus : "غير محدد"}
+                {booking.dropStatus ? DROP_STATUS_AR[booking.dropStatus] ?? booking.dropStatus : t("common.value.unspecified")}
               </span>
             </div>
 
             {booking.dropStationId && (
               <div className="flex justify-between items-center text-xs text-[#5e6b78]">
-                <span>محطة النزول:</span>
+                <span>{t("bookings.detail.fields.dropStation")}</span>
                 <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">{booking.dropStationId}</span>
               </div>
             )}
 
             {booking.dropReason && (
               <div className="rounded-xl bg-[#f8fbfd] p-2.5 text-xs text-[#5e6b78]">
-                <strong className="block text-[#1a1a1a] mb-0.5">ملاحظة النزول:</strong>
+                <strong className="block text-[#1a1a1a] mb-0.5">{t("bookings.detail.fields.dropNote")}</strong>
                 {booking.dropReason}
               </div>
             )}
@@ -579,12 +580,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         <div className="panel-card p-5 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
             <Star className="size-5 text-[#059ff8]" />
-            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">تقييمات الرحلة المتبادلة</h2>
+            <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.ratings")}</h2>
           </div>
 
           <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
             <div className="rounded-xl border border-[#e4ecf2] bg-[#f8fbfd] p-3">
-              <span className="text-xs text-[#5e6b78] block mb-1">تقييم العربية</span>
+              <span className="text-xs text-[#5e6b78] block mb-1">{t("bookings.detail.ratings.bus")}</span>
               <div className="flex items-center justify-center gap-1 font-extrabold text-lg text-amber-600">
                 <Star className="size-4 fill-amber-500 text-amber-500" />
                 <span>{booking.ratings?.busRating ?? "—"}</span>
@@ -592,7 +593,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className="rounded-xl border border-[#e4ecf2] bg-[#f8fbfd] p-3">
-              <span className="text-xs text-[#5e6b78] block mb-1">تقييم السائق</span>
+              <span className="text-xs text-[#5e6b78] block mb-1">{t("bookings.detail.ratings.driver")}</span>
               <div className="flex items-center justify-center gap-1 font-extrabold text-lg text-amber-600">
                 <Star className="size-4 fill-amber-500 text-amber-500" />
                 <span>{booking.ratings?.driverRating ?? "—"}</span>
@@ -600,7 +601,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className="rounded-xl border border-[#e4ecf2] bg-[#f8fbfd] p-3">
-              <span className="text-xs text-[#5e6b78] block mb-1">تقييم الراكب</span>
+              <span className="text-xs text-[#5e6b78] block mb-1">{t("bookings.detail.ratings.passenger")}</span>
               <div className="flex items-center justify-center gap-1 font-extrabold text-lg text-amber-600">
                 <Star className="size-4 fill-amber-500 text-amber-500" />
                 <span>{booking.ratings?.passengerRating ?? "—"}</span>
@@ -614,21 +615,21 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between border-b border-[#e4ecf2] pb-3">
             <div className="flex items-center gap-2">
               <ShieldAlert className="size-5 text-red-600" />
-              <h2 className="min-w-0 text-lg font-bold text-[#00134c]">بلاغات السائق ضد الراكب ({booking.reports.length})</h2>
+              <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.driverReportsCount")}{booking.reports.length})</h2>
             </div>
           </div>
 
           {booking.reports.length === 0 ? (
             <div className="text-center py-6 text-sm text-[#5e6b78]">
               <CheckCircle2 className="size-8 mx-auto mb-2 text-emerald-600 opacity-60" />
-              <span>لا توجد أي بلاغات مسجلة من السائق حول هذا الراكب.</span>
+              <span>{t("bookings.detail.ratings.noDriverReports")}</span>
             </div>
           ) : (
             <div className="space-y-3">
               {booking.reports.map((rep) => (
                 <div key={rep.id} className="rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm space-y-2">
                   <div className="flex justify-between items-start">
-                    <span className="font-bold text-red-900">مذكرة السائق:</span>
+                    <span className="font-bold text-red-900">{t("bookings.detail.fields.driverNote")}</span>
                     <span
                       className={
                         rep.status === "RESOLVED"
@@ -645,10 +646,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
 
                   {rep.resolutionNote && (
                     <div className="rounded-lg bg-white p-2.5 text-xs text-[#00134c] border border-blue-100 mt-2">
-                      <strong>قرار الإدارة:</strong> {rep.resolutionNote}
+                      <strong>{t("bookings.detail.fields.adminDecision")}</strong> {rep.resolutionNote}
                       {rep.resolvedAt && (
                         <span className="block text-[11px] text-[#5e6b78] mt-1">
-                          تاريخ الحل: {new Date(rep.resolvedAt).toLocaleString("ar-EG")}
+                          {t("bookings.detail.fields.resolvedAt")} {new Date(rep.resolvedAt).toLocaleString("ar-EG")}
                         </span>
                       )}
                     </div>
@@ -663,7 +664,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                         className="gap-1 bg-red-700 hover:bg-red-800 text-xs"
                       >
                         <ShieldCheck className="size-3.5" />
-                        <span>معالجة البلاغ</span>
+                        <span>{t("bookings.detail.reports.resolve")}</span>
                       </Button>
                     </div>
                   )}
@@ -678,7 +679,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       <div className="panel-card p-5 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
           <History className="size-5 text-[#059ff8]" />
-          <h2 className="min-w-0 text-lg font-bold text-[#00134c]">سجل التدقيق الإداري للعمليات (Audit Trail)</h2>
+          <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.audit")}</h2>
         </div>
 
         <CursorList<AuditLog>
@@ -689,7 +690,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           keyOf={(log) => log.id}
           columnDefs={auditColumns}
           withActions={false}
-          emptyMessage="لا توجد عمليات تدقيق مسجلة حتى الآن."
+          emptyMessage={t("bookings.detail.audit.empty")}
         />
       </div>
 

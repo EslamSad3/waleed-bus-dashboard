@@ -8,6 +8,7 @@ import {
   adminOperationalOverrideSchema,
   adminResolveReportSchema,
 } from "./admin-bookings";
+import { t } from "@/lib/i18n/t";
 
 /**
  * P1 per-resource zod schemas + proxy registry (research R2).
@@ -17,25 +18,25 @@ import {
  * Constraints mirror `docs/openapi.json` DTOs exactly.
  */
 
-const uuid = z.uuid("معرف غير صحيح");
-const name255 = z.string("الحقل ده مطلوب").min(1, "الحقل ده مطلوب").max(255);
+const uuid = z.uuid(t("validation.uuid"));
+const name255 = z.string(t("validation.required")).min(1, t("validation.required")).max(255);
 const egyptPhone = z
   .string()
-  .regex(/^(\+20|0)1[0-9]{9}$/, "رقم الموبايل لازم يبقى 11 رقم يبدأ بـ 01");
-const password = z.string("كلمة السر لازم تبقى 8 حروف على الأقل").min(8, "كلمة السر لازم تبقى 8 حروف على الأقل").max(128);
-const nickname = z.string("اسم الشهرة مطلوب").min(1, "اسم الشهرة مطلوب").max(100);
+  .regex(/^(\+20|0)1[0-9]{9}$/, t("validation.phone"));
+const password = z.string(t("validation.passwordMin")).min(8, t("validation.passwordMin")).max(128);
+const nickname = z.string(t("validation.nicknameRequired")).min(1, t("validation.nicknameRequired")).max(100);
 const nationalId = z
-  .union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")])
+  .union([z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")), z.literal("")])
   .optional()
   .transform((value) => value || undefined);
 const capacity = z
-  .number("السعة من 1 لـ 300")
-  .int("السعة من 1 لـ 300")
-  .min(1, "السعة من 1 لـ 300")
-  .max(300, "السعة من 1 لـ 300");
+  .number(t("validation.capacityRange"))
+  .int(t("validation.capacityRange"))
+  .min(1, t("validation.capacityRange"))
+  .max(300, t("validation.capacityRange"));
 const datetime = z
-  .string("التاريخ غير صحيح")
-  .refine((s) => !Number.isNaN(Date.parse(s)), "التاريخ غير صحيح");
+  .string(t("validation.date"))
+  .refine((s) => !Number.isNaN(Date.parse(s)), t("validation.date"));
 
 const memberStatus = z.enum(["ACTIVE", "SUSPENDED", "REVOKED"]);
 const tripStatus = z.enum(["SCHEDULED", "DEPARTED", "COMPLETED", "CANCELLED"]);
@@ -56,7 +57,7 @@ export const updateFleetOwnerSchema = z.object({
   nickname: nickname.optional(),
   phone: egyptPhone.optional(),
   picture: z.string().max(1024).optional(),
-  nationalId: z.union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")]).optional(),
+  nationalId: z.union([z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")), z.literal("")]).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -64,7 +65,7 @@ export const updateFleetOwnerSchema = z.object({
 export const createFleetSchema = z.object({
   name: name255,
   ownerId: uuid,
-  ownerRoleSlug: z.string("دور المالك الابتدائي غير صحيح").min(1, "دور المالك الابتدائي غير صحيح").max(100).optional(),
+  ownerRoleSlug: z.string(t("validation.ownerRoleSlug")).min(1, t("validation.ownerRoleSlug")).max(100).optional(),
 });
 export const updateFleetSchema = z.object({
   name: name255.optional(),
@@ -72,15 +73,15 @@ export const updateFleetSchema = z.object({
 });
 
 // ---- Buses (platform CRUD) ----
-const httpsUrl = z.url("رابط الصورة لازم يبدأ بـ https://").refine(
+const httpsUrl = z.url(t("validation.httpsUrl")).refine(
   (value) => value.startsWith("https://"),
-  "رابط الصورة لازم يبدأ بـ https://",
+  t("validation.httpsUrl"),
 );
-const modelYear = z.number("سنة الموديل غير صحيحة").int("سنة الموديل غير صحيحة").min(1980, "سنة الموديل غير صحيحة").max(2100, "سنة الموديل غير صحيحة");
+const modelYear = z.number(t("validation.modelYear")).int(t("validation.modelYear")).min(1980, t("validation.modelYear")).max(2100, t("validation.modelYear"));
 export const createBusSchema = z.object({
-  registrationNumber: z.string("الحقل ده مطلوب").max(50).optional(),
-  plateNumber: z.string("رقم اللوحة مطلوب").min(1, "رقم اللوحة مطلوب").max(50),
-  color: z.string("اللون مطلوب").min(1, "اللون مطلوب").max(50),
+  registrationNumber: z.string(t("validation.required")).max(50).optional(),
+  plateNumber: z.string(t("validation.plateRequired")).min(1, t("validation.plateRequired")).max(50),
+  color: z.string(t("validation.colorRequired")).min(1, t("validation.colorRequired")).max(50),
   imageUrl: httpsUrl,
   brandId: uuid.nullable().optional(),
   isAirConditioned: z.boolean().optional(),
@@ -98,22 +99,22 @@ export const updateBusSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export const createBrandSchema = z.object({
-  name: z.string("اسم الماركة مطلوب").min(1, "اسم الماركة مطلوب").max(100),
+  name: z.string(t("validation.brandNameRequired")).min(1, t("validation.brandNameRequired")).max(100),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
 export const updateBrandSchema = z.object({
-  name: z.string().min(1, "اسم الماركة مطلوب").max(100).optional(),
+  name: z.string().min(1, t("validation.brandNameRequired")).max(100).optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
 export const createVipTierSchema = z.object({
-  name: z.string("اسم المستوى مطلوب").min(1, "اسم المستوى مطلوب").max(100),
-  rank: z.number("الترتيب مطلوب").int("الترتيب مطلوب").min(1, "الترتيب مطلوب"),
+  name: z.string(t("validation.tierNameRequired")).min(1, t("validation.tierNameRequired")).max(100),
+  rank: z.number(t("validation.rankRequired")).int(t("validation.rankRequired")).min(1, t("validation.rankRequired")),
   isActive: z.boolean().optional(),
 });
 export const updateVipTierSchema = z.object({
-  name: z.string().min(1, "اسم المستوى مطلوب").max(100).optional(),
+  name: z.string().min(1, t("validation.tierNameRequired")).max(100).optional(),
   rank: z.number().int().min(1).optional(),
   isActive: z.boolean().optional(),
 });
@@ -154,12 +155,12 @@ export const updateBookingSchema = z.object({
 // ---- Fleet members (platform) ----
 export const addMemberSchema = z.object({
   userId: uuid,
-  roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
+  roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
   roleId: uuid.optional(),
   status: memberStatus.optional(),
 });
 export const updateMemberSchema = z.object({
-  roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
+  roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
   status: memberStatus.optional(),
 });
 
@@ -169,37 +170,37 @@ const driverFromUser = z.object({
   name: z.string().max(255).optional(),
   nickname: z.string().max(100).optional(),
   phone: z.string().optional(),
-  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم").optional(),
+  nationalId: z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")).optional(),
   picture: z.string().max(1024).optional(),
   password: z.string().optional(),
-  roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
+  roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
 });
 export const driverFreshSchema = z.object({
   userId: z.undefined().optional(),
-  name: z.string("الحقل ده مطلوب").min(1, "الحقل ده مطلوب").max(255),
+  name: z.string(t("validation.required")).min(1, t("validation.required")).max(255),
   nickname,
   phone: egyptPhone,
   password,
   picture: z.string().max(1024).optional(),
   nationalId,
-  roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
+  roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
 });
 /** Backend: either userId OR phone+name+password (else 422). */
 export const addDriverSchema = z.union([driverFromUser, driverFreshSchema]);
 export const updateDriverSchema = z.object({
-  roleSlug: z.string("اختار الدور").min(1, "اختار الدور").max(100).optional(),
+  roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
   status: memberStatus.optional(),
-  name: z.string("الاسم مطلوب").min(1, "الاسم مطلوب").max(255).optional(),
-  nickname: z.string("اسم الشهرة مطلوب").min(1, "اسم الشهرة مطلوب").max(100).optional(),
+  name: z.string(t("validation.nameRequired")).min(1, t("validation.nameRequired")).max(255).optional(),
+  nickname: z.string(t("validation.nicknameRequired")).min(1, t("validation.nicknameRequired")).max(100).optional(),
   phone: egyptPhone.optional(),
-  nationalId: z.union([z.string().regex(/^\d{14}$/, "الرقم القومي لازم يكون 14 رقم"), z.literal("")]).optional(),
-  password: z.string("كلمة السر لازم تبقى 8 حروف على الأقل").min(8, "كلمة السر لازم تبقى 8 حروف على الأقل").max(128).optional(),
+  nationalId: z.union([z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")), z.literal("")]).optional(),
+  password: z.string(t("validation.passwordMin")).min(8, t("validation.passwordMin")).max(128).optional(),
   picture: z.string().max(1024).optional(),
 });
 
 // ---- Stop points and trip lines (platform) ----
-const latitude = z.number("خط العرض غير صحيح").min(-90, "خط العرض غير صحيح").max(90, "خط العرض غير صحيح");
-const longitude = z.number("خط الطول غير صحيح").min(-180, "خط الطول غير صحيح").max(180, "خط الطول غير صحيح");
+const latitude = z.number(t("validation.latitude")).min(-90, t("validation.latitude")).max(90, t("validation.latitude"));
+const longitude = z.number(t("validation.longitude")).min(-180, t("validation.longitude")).max(180, t("validation.longitude"));
 export const createStopSchema = z.object({
   name: name255,
   address: z.string().min(1).max(500).optional(),
@@ -215,7 +216,7 @@ export const updateStopSchema = z.object({
 });
 export const createMarkazSchema = z.object({
   governorateId: uuid,
-  code: z.string("كود المركز مطلوب").min(1, "كود المركز مطلوب").max(50),
+  code: z.string(t("validation.markazCodeRequired")).min(1, t("validation.markazCodeRequired")).max(50),
   nameAr: name255,
   nameEn: name255,
   isActive: z.boolean().optional(),
@@ -225,7 +226,7 @@ export const updateMarkazSchema = z.object({
 });
 export const createLocalitySchema = z.object({
   markazId: uuid,
-  type: z.enum(["CITY", "VILLAGE"], "نوع المنطقة لازم مدينة أو قرية"),
+  type: z.enum(["CITY", "VILLAGE"], t("validation.localityType")),
   nameAr: name255,
   nameEn: name255,
   isActive: z.boolean().optional(),
@@ -233,19 +234,19 @@ export const createLocalitySchema = z.object({
 export const updateLocalitySchema = z.object({
   nameAr: name255.optional(), nameEn: name255.optional(), isActive: z.boolean().optional(),
 });
-const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], "نوع التوقف لازم ركوب أو نزول"), estimatedStopMinutes: z.number().int().min(0).optional() });
+const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
 export const createTripLineSchema = z.object({
-  name: name255, code: z.string("كود الخط مطلوب").min(1, "كود الخط مطلوب").max(50),
-  outboundStops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل في اتجاه الذهاب"),
-  returnStops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل في اتجاه العودة"),
+  name: name255, code: z.string(t("validation.lineCodeRequired")).min(1, t("validation.lineCodeRequired")).max(50),
+  outboundStops: z.array(tripLineStop).min(2, t("validation.lineOutboundStops")),
+  returnStops: z.array(tripLineStop).min(2, t("validation.lineReturnStops")),
   isActive: z.boolean().optional(),
 });
 export const updateTripLineSchema = z.object({
-  name: name255.optional(), code: z.string().min(1, "كود الخط مطلوب").max(50).optional(),
+  name: name255.optional(), code: z.string().min(1, t("validation.lineCodeRequired")).max(50).optional(),
   isActive: z.boolean().optional(),
 });
 export const updateDirectionStopsSchema = z.object({
-  stops: z.array(tripLineStop).min(2, "اختر نقطتي توقف على الأقل"),
+  stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
 });
 
 // ---- Registry ----

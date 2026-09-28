@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { MoreVertical, Loader2 } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 export type RowAction = {
   label: string;
@@ -24,7 +25,7 @@ type RowActionsMenuProps = {
  * portal anchored to the button, so it never gets clipped by the ag-grid
  * viewport overflow.
  */
-export function RowActionsMenu({ actions, label = "إجراءات" }: RowActionsMenuProps) {
+export function RowActionsMenu({ actions, label = t("cursorList.actionsColumn") }: RowActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);

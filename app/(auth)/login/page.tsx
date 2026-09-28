@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSessionStore } from "@/stores/session";
+import { t } from "@/lib/i18n/t";
 
 type ApiError = {
   code?: string;
@@ -45,7 +46,7 @@ export default function LoginPage() {
         body: JSON.stringify(values),
       });
     } catch {
-      setFormError("مشكلة في الاتصال بالسيرفر");
+      setFormError(t("common.error.network"));
       return;
     }
 
@@ -57,13 +58,13 @@ export default function LoginPage() {
       const fields = payload?.details?.fields;
       if (fields) {
         for (const [key, messages] of Object.entries(fields)) {
-          const msg = Array.isArray(messages) ? messages.join("، ") : messages;
+          const msg = Array.isArray(messages) ? messages.join(t("common.listSeparator")) : messages;
           if (key === "email" || key === "password") {
             form.setError(key as "email" | "password", { message: msg });
           }
         }
       }
-      setFormError(payload?.message ?? "بيانات الدخول غير صحيحة");
+      setFormError(payload?.message ?? t("auth.login.invalidCredentials"));
       return;
     }
 
@@ -83,18 +84,18 @@ export default function LoginPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/20">
               <BusFront className="h-7 w-7" aria-hidden="true" />
             </div>
-            <p className="mt-10 text-sm font-bold tracking-wide text-[#9ed5f8]">منصة وليد باص</p>
+            <p className="mt-10 text-sm font-bold tracking-wide text-[#9ed5f8]">{t("auth.login.platformName")}</p>
             <h2 className="mt-3 max-w-sm text-4xl font-extrabold leading-[1.35]">
-              إدارة الأساطيل والسائقين من مكان واحد.
+              {t("auth.login.tagline")}
             </h2>
             <p className="mt-5 max-w-sm text-sm leading-7 text-white/70">
-              لوحة واضحة وسريعة لمتابعة الملاك والأساطيل والعربيات وتوزيع السائقين.
+              {t("auth.login.subtitle")}
             </p>
           </div>
 
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 text-sm text-white/75">
             <ShieldCheck className="h-5 w-5 shrink-0 text-[#9ed5f8]" aria-hidden="true" />
-            دخول آمن ومخصص للمشرفين المعتمدين.
+            {t("auth.login.secureNote")}
           </div>
         </div>
 
@@ -105,13 +106,13 @@ export default function LoginPage() {
                 <BusFront className="h-6 w-6" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="font-extrabold text-[#00134c]">وليد باص</p>
-                <p className="text-xs text-[#5e6b78]">لوحة الإدارة</p>
+                <p className="font-extrabold text-[#00134c]">{t("auth.login.brand")}</p>
+                <p className="text-xs text-[#5e6b78]">{t("auth.login.panelTitle")}</p>
               </div>
             </div>
 
-            <h1 className="title-grad text-3xl font-extrabold sm:text-4xl">مرحبًا بعودتك</h1>
-            <p className="mt-2 text-sm leading-7 text-[#5e6b78]">سجّل الدخول للوصول إلى لوحة تحكم المشرف العام.</p>
+            <h1 className="title-grad text-3xl font-extrabold sm:text-4xl">{t("auth.login.welcome")}</h1>
+            <p className="mt-2 text-sm leading-7 text-[#5e6b78]">{t("auth.login.welcomeHint")}</p>
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
@@ -120,7 +121,7 @@ export default function LoginPage() {
               name="email"
               render={({ field }) => (
                 <FormItem className="space-y-2.5">
-                  <FormLabel className="text-sm font-bold text-[#334454]">البريد الإلكتروني</FormLabel>
+                  <FormLabel className="text-sm font-bold text-[#334454]">{t("common.fields.email")}</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
@@ -141,7 +142,7 @@ export default function LoginPage() {
               name="password"
               render={({ field }) => (
                 <FormItem className="space-y-2.5">
-                  <FormLabel className="text-sm font-bold text-[#334454]">كلمة السر</FormLabel>
+                  <FormLabel className="text-sm font-bold text-[#334454]">{t("common.fields.password")}</FormLabel>
                   <FormControl>
                     <div className="relative" dir="rtl">
                       <Input
@@ -155,7 +156,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? "إخفاء كلمة السر" : "إظهار كلمة السر"}
+                        aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
                         className="absolute end-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#667786] transition hover:bg-[#eaf6ff] hover:text-[#00134c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]/30"
                       >
                         {showPassword ? (
@@ -188,8 +189,8 @@ export default function LoginPage() {
                       <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-bold text-[#243442]">تذكرني</span>
-                      <span className="mt-0.5 block text-xs leading-5 text-[#6f7e8b]">احتفظ بتسجيل الدخول على هذا الجهاز لمدة 7 أيام.</span>
+                      <span className="block text-sm font-bold text-[#243442]">{t("auth.login.rememberMe")}</span>
+                      <span className="mt-0.5 block text-xs leading-5 text-[#6f7e8b]">{t("auth.login.rememberMeHint")}</span>
                     </span>
                   </label>
                 </div>
@@ -203,13 +204,13 @@ export default function LoginPage() {
             )}
 
             <Button type="submit" className="mt-2 w-full" size="lg" loading={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "جاري الدخول…" : "دخول"}
+              {form.formState.isSubmitting ? t("auth.login.submitting") : t("auth.login.submit")}
             </Button>
               </form>
             </Form>
 
             <p className="mt-8 text-center text-xs leading-6 text-[#8b98a5]">
-              هذا النظام مخصص للمستخدمين المصرّح لهم فقط.
+              {t("auth.login.authorizedOnly")}
             </p>
           </div>
         </div>

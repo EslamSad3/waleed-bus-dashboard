@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarLinks } from "@/components/shell/sidebar";
+import { t } from "@/lib/i18n/t";
 
 /**
  * Phone-only navigation (below md): hamburger toggle in the topbar plus an
@@ -66,7 +67,7 @@ export function MobileNav() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls="mobile-nav-panel"
-        aria-label={open ? "إغلاق قائمة التنقل" : "فتح قائمة التنقل"}
+        aria-label={open ? t("shell.nav.closeAria") : t("shell.nav.openAria")}
         className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dce6ee] bg-white/90 text-[#00134c] shadow-[0_10px_35px_rgba(0,19,76,.07)] transition-colors hover:bg-[#eaf6ff] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#059ff8]/25 md:hidden"
       >
         {open ? (
@@ -92,7 +93,7 @@ export function MobileNav() {
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="التنقل الرئيسي"
+        aria-label={t("shell.nav.mainAria")}
         tabIndex={-1}
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-hidden rounded-e-2xl border border-white/80 bg-white/95 p-3 shadow-[0_18px_55px_rgba(0,19,76,.11)] backdrop-blur-xl outline-none transition-all duration-300 ease-out md:hidden",
@@ -102,12 +103,12 @@ export function MobileNav() {
         <div className="mb-3 flex shrink-0 items-center justify-between gap-2 rounded-2xl bg-[#00134c] px-3 py-3 text-white">
           <span className="flex items-center gap-2 text-xs font-bold">
             <Sparkles className="size-4 text-[#9ed0f0]" aria-hidden="true" />
-            مساحة الإدارة
+            {t("shell.nav.adminArea")}
           </span>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="إغلاق القائمة"
+            aria-label={t("shell.nav.closeMenuAria")}
             className="grid size-8 place-items-center rounded-xl text-white/90 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#059ff8]/25"
           >
             <X aria-hidden="true" className="size-4" />

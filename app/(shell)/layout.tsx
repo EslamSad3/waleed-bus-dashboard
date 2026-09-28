@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { readSession } from "@/lib/auth";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
+import { t } from "@/lib/i18n/t";
 
 /**
  * Authoritative shell guard (Principle I, second layer).
@@ -22,7 +23,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         <main className="min-w-0 flex-1">{children}</main>
       </div>
       <footer className="border-t border-slate-200/70 px-3 py-5 text-center text-xs text-[#5e6b78] sm:px-6 lg:px-8">
-        منصة العربيات — لوحة تحكم المشرف العام
+        {t("common.app.documentTitle")}
       </footer>
     </div>
   );

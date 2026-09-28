@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchUserOptions, type Fleet } from "@/lib/actions/fleets";
 import { apiGet } from "@/lib/actions/http";
+import { t } from "@/lib/i18n/t";
 
 type Owner = { id: string; name?: string | null; phone?: string | null; phoneNumber?: string | null };
 
@@ -47,7 +48,7 @@ export function FleetOwnerFleetPicker({
       const owner = ownersById.get(id);
       return {
         id,
-        label: owner?.name || owner?.phoneNumber || owner?.phone || "مالك أسطول بدون اسم",
+        label: owner?.name || owner?.phoneNumber || owner?.phone || t("common.value.ownerWithoutName"),
       };
     });
   }, [fleets, owners]);
@@ -63,20 +64,20 @@ export function FleetOwnerFleetPicker({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="block text-sm">
-        <span className="mb-2 block font-bold text-[#334454]">صاحب العربيات</span>
+        <span className="mb-2 block font-bold text-[#334454]">{t("common.fields.fleetOwner")}</span>
         {loaded ? (
           <select
-            aria-label="صاحب العربيات"
+            aria-label={t("fleetOwnerPicker.pickOwnerAria")}
             value={ownerId}
             onChange={(event) => chooseOwner(event.target.value)}
             className="select-field w-full"
           >
-            <option value="">اختار صاحب العربيات</option>
+            <option value="">{t("fleetOwnerPicker.pickOwnerOption")}</option>
             {ownerOptions.map((owner) => <option key={owner.id} value={owner.id}>{owner.label}</option>)}
           </select>
         ) : (
           <span role="status" className="block">
-            <span className="sr-only">جاري التحميل…</span>
+            <span className="sr-only">{t("common.loading.more")}</span>
             <Skeleton aria-hidden="true" className="h-11 w-full rounded-xl" />
           </span>
         )}
@@ -84,16 +85,16 @@ export function FleetOwnerFleetPicker({
 
       {ownerId && ownerFleets.length > 1 ? (
         <label className="block text-sm">
-          <span className="mb-2 block font-bold text-[#334454]">الأسطول</span>
-          <select aria-label="الأسطول" value={fleetId} onChange={(event) => onFleetChange(event.target.value)} className="select-field w-full">
-            <option value="">اختار الأسطول</option>
+          <span className="mb-2 block font-bold text-[#334454]">{t("common.fields.fleet")}</span>
+          <select aria-label={t("fleetOwnerPicker.pickFleetAria")} value={fleetId} onChange={(event) => onFleetChange(event.target.value)} className="select-field w-full">
+            <option value="">{t("fleetOwnerPicker.pickFleetOption")}</option>
             {ownerFleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}
           </select>
         </label>
       ) : null}
 
       {error ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">{error}</p> : null}
-      <p className="text-xs leading-5 text-[#606060] sm:col-span-2">سيُنشأ حساب السائق داخل أسطول هذا المالك فقط. تعيين العربية يتم لاحقًا من صفحة العربية.</p>
+      <p className="text-xs leading-5 text-[#606060] sm:col-span-2">{t("fleetOwnerPicker.hint")}</p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildSpikePdf } from "@/lib/pdf/spike";
 import { toArabicError } from "@/lib/errors";
+import { t } from "@/lib/i18n/t";
 
 /**
  * GET /api/reports/spike — one-page pdfkit proof with embedded Cairo font.
@@ -18,7 +19,7 @@ export async function GET() {
   }
 
   const date = new Date().toISOString().slice(0, 10);
-  const filename = `تقرير-spike-${date}.pdf`;
+  const filename = t("reports.spikeFilename", { date: date });
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {

@@ -14,6 +14,7 @@ import { TableSkeleton } from "@/components/ui/skeletons";
 import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/fleets";
 import { rankOrdinalAr } from "@/lib/ordinals";
 import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 export default function VipTiersPage() {
   const queryClient = useQueryClient();
@@ -50,7 +51,7 @@ export default function VipTiersPage() {
 
   async function save() {
     if (!name.trim() || !rank) {
-      setDialogError("أدخل اسم المستوى والترتيب.");
+      setDialogError(t("vipTiers.errors.nameAndRank"));
       return;
     }
     const result = editing
@@ -70,7 +71,7 @@ export default function VipTiersPage() {
   }
 
   async function removeTier(tier: VipTier) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مستوى «${tier.name}»؟ لو فيه أساطيل مرتبطة بيه هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("vipTiers.deleteConfirm.description", { tierName: tier.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteVipTier(tier.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList<VipTier>(queryClient, qk.vipTiers, tier.id);
@@ -81,22 +82,22 @@ export default function VipTiersPage() {
   const columns: CommunityColumnDef<VipTier>[] = [
     {
       field: "rank",
-      headerName: "الترتيب",
+      headerName: t("common.fields.order"),
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => rankOrdinalAr(params.value as number),
-      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
+      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
     },
-    { field: "name", headerName: "الاسم" },
+    { field: "name", headerName: t("common.fields.name") },
   ];
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">مستويات VIP</h1>
-          <p className="page-description">ترتيب ظهور أصحاب العربيات في نتائج البحث — الأقل ترتيبًا يظهر أولًا.</p>
+          <h1 className="page-title">{t("vipTiers.title")}</h1>
+          <p className="page-description">{t("vipTiers.description")}</p>
         </div>
-        <Button onClick={openCreate}><Plus className="size-4" /> مستوى جديد</Button>
+        <Button onClick={openCreate}><Plus className="size-4" /> {t("vipTiers.newTier")}</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
       {isLoading ? <TableSkeleton columns={3} /> : (
@@ -107,27 +108,27 @@ export default function VipTiersPage() {
           loadMore={async () => ({ items: [], nextCursor: null })}
           keyOf={(tier) => tier.id}
           columnDefs={columns}
-          emptyMessage="لا توجد مستويات بعد — ابدأ بإضافة أول مستوى."
+          emptyMessage={t("vipTiers.empty")}
           renderItem={(tier) => (
             <RowActionsMenu
-              label={`إجراءات مستوى ${tier.name}`}
+              label={t("vipTiers.list.rowActions", { tierName: tier.name })}
               actions={[
-                { label: "تعديل", onSelect: () => openEdit(tier) },
-                { label: tier.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(tier) },
-                { label: "مسح", danger: true, onSelect: () => void removeTier(tier) },
+                { label: t("common.actions.edit"), onSelect: () => openEdit(tier) },
+                { label: tier.isActive ? t("common.actions.disable") : t("common.actions.enable"), onSelect: () => void toggleActive(tier) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeTier(tier) },
               ]}
             />
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المستوى" : "مستوى جديد"} description="الترتيب رقم فريد — الأول في القائمه يظهر أولًا." size="sm">
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("vipTiers.dialog.editTitle") : t("vipTiers.dialog.createTitle")} description={t("vipTiers.dialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ذهبي" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الترتيب</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={rank} onChange={(event) => setRank(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.name")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("vipTiers.placeholders.name")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.order")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={rank} onChange={(event) => setRank(event.target.value)} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
+            <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>{t("common.actions.save")}</AsyncButton>
           </div>
         </div>
       </Dialog>

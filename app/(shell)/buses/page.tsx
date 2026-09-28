@@ -14,6 +14,7 @@ import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 type BusRow = Bus & { fleetName: string };
 type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
@@ -58,7 +59,7 @@ export default function BusesPage() {
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string }>({});
 
   async function removeBus(bus: BusRow) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `الإجراء ده مينفعش يتراجع — تمسح العربية «${bus.plateNumber || bus.registrationNumber}»؟ لازم تكون من غير رحلات أو تعيينات سواق.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("buses.list.deleteConfirm.description", { value: bus.plateNumber || bus.registrationNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBus(bus.fleetId, bus.id);
     if (!result.ok) return;
     removeFromCursorList<BusRow>(queryClient, qk.busesAggregate, bus.id);
@@ -71,22 +72,22 @@ export default function BusesPage() {
     (status === "all" || (status === "active" ? bus.isActive : !bus.isActive));
 
   const columns: CommunityColumnDef<BusRow>[] = useMemo(() => [
-    { field: "registrationNumber", headerName: "رقم التسجيل", filter: "agTextColumnFilter" },
-    { field: "plateNumber", headerName: "رقم اللوحة", filter: "agTextColumnFilter" },
-    { field: "fleetName", headerName: "اسم الأسطول", filter: "agTextColumnFilter" },
-    { field: "capacity", headerName: "السعة", filter: "agNumberColumnFilter" },
-    { field: "isActive", headerName: "الحالة", filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? "نشط" : "موقوف" },
-    { field: "createdAt", headerName: "تاريخ الإنشاء", filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
+    { field: "registrationNumber", headerName: t("common.fields.registrationNumber"), filter: "agTextColumnFilter" },
+    { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter" },
+    { field: "fleetName", headerName: t("common.fields.fleetName"), filter: "agTextColumnFilter" },
+    { field: "capacity", headerName: t("common.fields.capacity"), filter: "agNumberColumnFilter" },
+    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? t("common.status.active") : t("common.status.inactive") },
+    { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
   ], []);
 
   return (
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">العربيات</h1>
-          <p className="page-description">كل العربيات في الأساطيل المسجلة، مع حالتها وبيانات تشغيلها.</p>
+          <h1 className="page-title">{t("buses.title")}</h1>
+          <p className="page-description">{t("buses.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>عربية جديدة</Button>
+        <Button onClick={() => setCreateOpen(true)}>{t("buses.newBus")}</Button>
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
@@ -101,27 +102,27 @@ export default function BusesPage() {
           filterBar={
             <div className="contents">
               <Input
-                aria-label="بحث برقم التسجيل أو اللوحة أو الأسطول"
-                placeholder="رقم التسجيل أو اللوحة أو الأسطول"
+                aria-label={t("buses.filters.searchAria")}
+                placeholder={t("buses.filters.searchPlaceholder")}
                 value={listFilters.q ?? ""}
                 onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))}
                 className="w-full bg-white md:w-auto md:min-w-0 md:max-w-72 md:basis-64 md:flex-1"
               />
-              <select aria-label="الحالة" value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-28">
-                <option value="all">الكل</option>
-                <option value="active">نشط</option>
-                <option value="inactive">موقوف</option>
+              <select aria-label={t("common.fields.status")} value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-28">
+                <option value="all">{t("common.value.all")}</option>
+                <option value="active">{t("common.status.active")}</option>
+                <option value="inactive">{t("common.status.inactive")}</option>
               </select>
             </div>
           }
-          emptyMessage="لا توجد عربيات مسجلة في الأساطيل."
+          emptyMessage={t("buses.empty")}
           renderItem={(bus) => (
             <RowActionsMenu
-              label={`إجراءات عربية ${bus.plateNumber || bus.registrationNumber}`}
+              label={t("buses.list.rowActions", { value: bus.plateNumber || bus.registrationNumber })}
               actions={[
-                { label: "فتح التفاصيل", href: `/buses/${bus.id}?fleetId=${bus.fleetId}` },
-                { label: "تعديل", onSelect: () => setBusForEdit(bus) },
-                { label: "مسح", danger: true, onSelect: () => void removeBus(bus) },
+                { label: t("common.actions.openDetails"), href: `/buses/${bus.id}?fleetId=${bus.fleetId}` },
+                { label: t("common.actions.edit"), onSelect: () => setBusForEdit(bus) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeBus(bus) },
               ]}
             />
           )}

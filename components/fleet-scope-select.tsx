@@ -5,6 +5,7 @@ import { useFilterStore } from "@/stores/filters";
 import { FLEET_SCOPE_COOKIE, setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
 import { apiGet } from "@/lib/actions/http";
 import { Building2, ChevronDown } from "lucide-react";
+import { t } from "@/lib/i18n/t";
 
 type FleetOption = { id: string; name: string; isActive?: boolean };
 
@@ -67,17 +68,17 @@ export function FleetScopeSelect() {
           <Building2 className="size-4" />
         </span>
         <div className="flex flex-col text-start">
-          <span className="text-[10px] font-bold text-[#5e6b78]">الأسطول النشط</span>
+          <span className="text-[10px] font-bold text-[#5e6b78]">{t("fleetScope.activeFleet")}</span>
           <div className="relative flex items-center">
             <select
               id="global-fleet-select"
-              aria-label="الأسطول النشط"
+              aria-label={t("fleetScope.activeFleetAria")}
               value={fleetId ?? ""}
               onChange={(e) => handleChange(e.target.value)}
               disabled={!loaded}
               className="appearance-none bg-transparent pe-6 text-xs sm:text-sm font-extrabold text-[#00134c] focus:outline-none cursor-pointer max-w-[160px] sm:max-w-[220px] truncate"
             >
-              <option value="">-- اختار الأسطول --</option>
+              <option value="">{t("fleetScope.pickFleetOption")}</option>
               {fleets.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}

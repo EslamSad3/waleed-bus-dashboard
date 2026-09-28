@@ -21,6 +21,7 @@ import {
   type Markaz,
 } from "@/lib/actions/trip-lines";
 import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { t } from "@/lib/i18n/t";
 
 export default function MarkazPage() {
   const queryClient = useQueryClient();
@@ -68,7 +69,7 @@ export default function MarkazPage() {
   async function save() {
     if (!creating) {
       if (!nameAr.trim() || !nameEn.trim()) {
-        setDialogError("أكمل الاسم بالعربي والإنجليزي.");
+        setDialogError(t("markaz.errors.nameRequired"));
         return;
       }
       const result = await updateMarkaz(editing!.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
@@ -78,7 +79,7 @@ export default function MarkazPage() {
       return;
     }
     if (!code.trim() || !nameAr.trim() || !nameEn.trim() || !dialogGovernorateId) {
-      setDialogError("أكمل المحافظة والكود والاسم بالعربي والإنجليزي.");
+      setDialogError(t("markaz.errors.fieldsRequired"));
       return;
     }
     const result = await createMarkaz({
@@ -99,7 +100,7 @@ export default function MarkazPage() {
   }
 
   async function removeMarkaz(markaz: Markaz) {
-    if (!(await confirm({ title: "تأكيد المسح", description: `تمسح مركز «${markaz.nameAr}»؟ لو فيه مدن وقرى تحته هتترفض العملية.`, confirmLabel: "مسح", destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("markaz.deleteConfirm.description", { markazNameAr: markaz.nameAr }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteMarkaz(markaz.id);
     if (!result.ok) return setDialogError(result.message);
     removeFromList<Markaz>(queryClient, qk.markazAll, markaz.id);
@@ -110,14 +111,14 @@ export default function MarkazPage() {
   const columns: CommunityColumnDef<Markaz>[] = [
     {
       field: "code",
-      headerName: "الكود",
-      cellRenderer: (params: { data?: Markaz }) => params.data ? <span className="font-bold" dir="ltr">{params.data.code}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? "نشط" : "موقوف"}</span></span> : null,
+      headerName: t("common.fields.code"),
+      cellRenderer: (params: { data?: Markaz }) => params.data ? <span className="font-bold" dir="ltr">{params.data.code}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
     },
-    { field: "nameAr", headerName: "الاسم (عربي)" },
-    { field: "nameEn", headerName: "الاسم (إنجليزي)" },
+    { field: "nameAr", headerName: t("markaz.columns.nameAr") },
+    { field: "nameEn", headerName: t("markaz.columns.nameEn") },
     {
       field: "governorateId",
-      headerName: "المحافظة",
+      headerName: t("common.fields.governorate"),
       filter: "agTextColumnFilter",
       valueGetter: (params) => params.data?.governorate ? `${params.data.governorate.nameAr} · ${params.data.governorate.nameEn}` : "",
     },
@@ -127,15 +128,15 @@ export default function MarkazPage() {
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title">المراكز</h1>
-          <p className="page-description">المركز/الحي تحت المحافظة — فلتر المحافظة متاح من القايمة أو من عمود الجدول، أو الاتنين مع بعض.</p>
+          <h1 className="page-title">{t("markaz.title")}</h1>
+          <p className="page-description">{t("markaz.description")}</p>
         </div>
-        <Button onClick={openCreate}><Plus className="size-4" /> مركز جديد</Button>
+        <Button onClick={openCreate}><Plus className="size-4" /> {t("markaz.newMarkaz")}</Button>
       </div>
       <label className="mb-4 block max-w-sm text-sm">
-        <span className="mb-1.5 block font-bold text-[#334454]">فلتر المحافظة</span>
+        <span className="mb-1.5 block font-bold text-[#334454]">{t("markaz.filters.governorate")}</span>
         <select value={governorateFilter} onChange={(event) => setGovernorateFilter(event.target.value)} className="select-field w-full">
-          <option value="">كل المحافظات</option>
+          <option value="">{t("localities.filters.allGovernorates")}</option>
           {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
         </select>
       </label>
@@ -149,37 +150,37 @@ export default function MarkazPage() {
           keyOf={(markaz) => markaz.id}
           filter={filterPredicate}
           columnDefs={columns}
-          emptyMessage="لا توجد مراكز مطابقة — ابدأ بإضافة أول مركز."
+          emptyMessage={t("markaz.empty")}
           renderItem={(markaz) => (
             <RowActionsMenu
-              label={`إجراءات مركز ${markaz.nameAr}`}
+              label={t("markaz.list.rowActions", { markazNameAr: markaz.nameAr })}
               actions={[
-                { label: "تعديل", onSelect: () => openEdit(markaz) },
-                { label: markaz.isActive ? "إيقاف" : "تفعيل", onSelect: () => void toggleActive(markaz) },
-                { label: "مسح", danger: true, onSelect: () => void removeMarkaz(markaz) },
+                { label: t("common.actions.edit"), onSelect: () => openEdit(markaz) },
+                { label: markaz.isActive ? t("common.actions.disable") : t("common.actions.enable"), onSelect: () => void toggleActive(markaz) },
+                { label: t("common.actions.delete"), danger: true, onSelect: () => void removeMarkaz(markaz) },
               ]}
             />
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? "تعديل المركز" : "مركز جديد"} description={editing ? "الكود والمحافظة ثابتين — عدّل الأسماء فقط." : "اختار المحافظة من القايمة، والكود إنجليزي بحروف كبيرة (مثال: BANHA)."} size="sm">
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("markaz.dialog.editTitle") : t("markaz.dialog.createTitle")} description={editing ? t("markaz.dialog.description") : t("markaz.dialog.codeHint")} size="sm">
         <div className="space-y-4">
           {!editing ? (
             <label className="block text-sm">
-              <span className="mb-1.5 block font-bold text-[#334454]">المحافظة</span>
+              <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span>
               <select value={dialogGovernorateId} onChange={(event) => setDialogGovernorateId(event.target.value)} className="select-field w-full">
-                <option value="">اختار المحافظة…</option>
+                <option value="">{t("localities.dialog.pickGovernorate")}</option>
                 {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
               </select>
             </label>
           ) : null}
-          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الكود</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="BANHA" /></label> : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالعربي</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder="بنها" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">الاسم بالإنجليزي</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
+          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="BANHA" /></label> : null}
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameAr")}</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder={t("localities.placeholders.nameAr")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameEn")}</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={closeDialog}>إلغاء</Button>
-            <AsyncButton type="button" variant="success" onClick={save}>حفظ</AsyncButton>
+            <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>
+            <AsyncButton type="button" variant="success" onClick={save}>{t("common.actions.save")}</AsyncButton>
           </div>
         </div>
       </Dialog>
