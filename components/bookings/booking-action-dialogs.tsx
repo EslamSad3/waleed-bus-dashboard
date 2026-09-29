@@ -97,7 +97,7 @@ export function VerifyPaymentDialog({
         <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-[#5e6b78]">{t("bookings.actions.verify.totalLabel")}</span>
-            <span className="font-bold text-[#00134c] text-base" dir="ltr">{booking.totalAmount} EGP</span>
+            <span className="font-bold text-[#00134c] text-base" dir="ltr">{hasTotal ? `${booking.totalAmount} EGP` : "—"}</span>
           </div>
           {hasTotal ? (
             <p className="mt-1 text-xs text-[#5e6b78]">{t("bookings.actions.verify.exactMatchWarning")}</p>
@@ -282,7 +282,14 @@ export function RefundPaymentDialog({
   onOpenChange: (open: boolean) => void;
   onSuccess: (updatedNote?: string) => void;
 }) {
-  const total = Number(booking.totalAmount) || 0;
+  const rawDialogTotal = (booking as { totalAmount?: unknown; totalPrice?: unknown; amount?: unknown }).totalAmount
+    ?? (booking as { totalPrice?: unknown }).totalPrice
+    ?? (booking as { amount?: unknown }).amount
+    ?? null;
+  const dialogFare = Number(booking.trip?.fare) || 0;
+  const dialogSeats = Number(booking.seats) || 0;
+  const dialogFallback = dialogFare > 0 && dialogSeats > 0 ? dialogFare * dialogSeats : 0;
+  const total = Number(rawDialogTotal) || dialogFallback;
   const refunded = Number(booking.refundedAmount) || 0;
   const remaining = Math.max(0, total - refunded);
 
@@ -349,11 +356,11 @@ export function RefundPaymentDialog({
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:grid-cols-3 sm:text-sm">
           <div>
             <span className="text-[#5e6b78] block">{t("bookings.actions.refund.totalLabel")}</span>
-            <span className="font-bold text-[#00134c]" dir="ltr">{booking.totalAmount} EGP</span>
+            <span className="font-bold text-[#00134c]" dir="ltr">{total.toFixed(2)} EGP</span>
           </div>
           <div>
             <span className="text-[#5e6b78] block">{t("bookings.actions.refund.refundedLabel")}</span>
-            <span className="font-bold text-[#e16800]" dir="ltr">{booking.refundedAmount} EGP</span>
+            <span className="font-bold text-[#e16800]" dir="ltr">{refunded.toFixed(2)} EGP</span>
           </div>
           <div>
             <span className="text-[#5e6b78] block">{t("bookings.actions.refund.remainingLabel")}</span>

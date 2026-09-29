@@ -88,9 +88,14 @@ export function AgGridTable<T>({
   const gridHeight = Math.min(560, Math.max(240, 144 + rows.length * 48));
   const normalizedColumnDefs = columnDefs.map((column) => {
     if (column.field !== "isActive" && column.field !== "hasReports") return column;
+    // Boolean fields render as a read-only checkbox by default in AG Grid
+    // (boolean cellDataType -> agCheckboxCellRenderer), which is what showed
+    // an empty checkbox under "بلاغات". Force text rendering with نعم/لا.
     return {
       ...column,
       cellDataType: "text" as const,
+      cellRenderer: undefined,
+      filter: "agTextColumnFilter" as const,
       valueFormatter: column.valueFormatter ?? ((params: { value: unknown }) => {
         if (column.field === "hasReports") return params.value ? t("common.value.yes") : t("common.value.no");
         return params.value ? t("common.status.active") : t("common.status.inactive");
@@ -129,7 +134,7 @@ export function AgGridTable<T>({
             theme={themeQuartz}
             enableRtl
             rowData={rows}
-            columnDefs={columnDefs}
+            columnDefs={normalizedColumnDefs}
             defaultColDef={arabicGridDefaultColDef}
             localeText={arabicGridLocale}
             quickFilterText={quickFilterText}

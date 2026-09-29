@@ -142,9 +142,20 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const total = Number(booking.totalAmount) || 0;
+  const rawTotalAmount = (booking as { totalAmount?: unknown; totalPrice?: unknown; amount?: unknown }).totalAmount
+    ?? (booking as { totalPrice?: unknown }).totalPrice
+    ?? (booking as { amount?: unknown }).amount
+    ?? null;
+  const fareNum = Number(booking.trip?.fare) || 0;
+  const seatsNum = Number(booking.seats) || 0;
+  // totalAmount is nullable backend-side (booking can exist before its fare is
+  // set) — fall back to seats × fare so the card never renders a bare "EGP".
+  const computedFallback = fareNum > 0 && seatsNum > 0 ? fareNum * seatsNum : 0;
+  const total = Number(rawTotalAmount) || computedFallback;
   const refunded = Number(booking.refundedAmount) || 0;
   const remaining = Math.max(0, total - refunded);
+  const displayTotal = total.toFixed(2);
+  const displayRefunded = refunded.toFixed(2);
 
   const isCancelled = booking.status === "CANCELLED";
   const isPaid = booking.paymentStatus === "PAID";
@@ -479,14 +490,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.bookingTotal")}</span>
               <span className="font-extrabold text-base text-[#00134c]" dir="ltr">
-                {booking.totalAmount} EGP
+                {displayTotal} EGP
               </span>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.refundedTotal")}</span>
               <span className="font-bold text-[#e16800]" dir="ltr">
-                {booking.refundedAmount} EGP
+                {displayRefunded} EGP
               </span>
             </div>
 

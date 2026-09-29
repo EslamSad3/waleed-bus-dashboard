@@ -132,8 +132,13 @@ export default function BookingsPage() {
     { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
     { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value ?? t("common.value.unpaid") },
     { field: "paymentMethod", headerName: t("common.fields.paymentMethod"), valueFormatter: (params) => PAYMENT_METHOD_AR[params.value as keyof typeof PAYMENT_METHOD_AR] ?? params.value },
-    { field: "totalAmount", headerName: t("common.fields.total"), filter: "agNumberColumnFilter" },
-    { field: "hasReports", headerName: t("bookings.columns.hasReports"), valueFormatter: (params) => params.value ? t("common.value.yes") : t("common.value.no") },
+    { field: "totalAmount", headerName: t("common.fields.total"), filter: "agNumberColumnFilter", valueFormatter: (params) => {
+      const raw = params.value ?? (params.data as AdminBookingListItem | undefined)?.totalAmount;
+      if (raw === null || raw === undefined || raw === "") return "—";
+      const num = Number(raw);
+      return Number.isNaN(num) ? String(raw) : `${num} EGP`;
+    } },
+    { field: "hasReports", headerName: t("bookings.columns.hasReports"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? t("common.value.yes") : t("common.value.no") },
     { field: "createdAt", headerName: t("bookings.columns.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
 ];
 
