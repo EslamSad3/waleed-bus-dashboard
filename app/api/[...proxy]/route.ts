@@ -58,7 +58,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     }
   }
 
-  const fleetId = req.headers.get("x-fleet-id");
+  const ownerId = req.headers.get("x-owner-id");
 
   // P1 trust-boundary re-validation: per-resource zod schemas (research R2).
   // Unmatched paths pass through unvalidated (P0 behavior preserved).
@@ -87,7 +87,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     }
   }
 
-  const result = await busFetch(path, { method, body, rawBody, fleetId });
+  const result = await busFetch(path, { method, body, rawBody, ownerId });
 
   if (!result.ok) {
     // status 0 = the backend was never reached: timeouts are 504 (retryable),

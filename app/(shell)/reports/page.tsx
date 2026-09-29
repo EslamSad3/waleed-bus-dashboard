@@ -1,21 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { FleetPicker } from "@/components/fleet-picker";
-import { FleetReportsTab } from "@/components/fleets/fleet-detail-listings";
-import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
+import { OwnerPicker } from "@/components/owners/owner-picker";
+import { OwnerReports } from "@/components/owners/owner-sections";
+import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
 
+/** Passenger reports and split bus/driver rating averages for one company. */
 export default function ReportsPage() {
-  const fleetId = useFilterStore((state) => state.fleetId);
-  const setFleetId = useFilterStore((state) => state.setFleetId);
-  const [selectedFleetId, setSelectedFleetId] = useState(fleetId ?? "");
+  const ownerId = useFilterStore((state) => state.ownerId);
+  const setOwnerId = useFilterStore((state) => state.setOwnerId);
+  const [selectedOwnerId, setSelectedOwnerId] = useState(ownerId ?? "");
 
-  function selectFleet(id: string) {
-    setSelectedFleetId(id);
-    setFleetId(id || null);
-    setFleetScopeCookie(id || null);
+  function selectOwner(id: string) {
+    setSelectedOwnerId(id);
+    setOwnerId(id || null);
+    setOwnerScopeCookie(id || null);
   }
 
   return (
@@ -27,9 +28,9 @@ export default function ReportsPage() {
         </div>
       </div>
       <div className="panel-card mb-5 max-w-xl p-5 sm:p-6">
-        <FleetPicker value={selectedFleetId} onChange={selectFleet} label={t("reports.pickFleet")} />
+        <OwnerPicker ownerId={selectedOwnerId} onOwnerChange={selectOwner} label={t("reports.pickOwner")} />
       </div>
-      {selectedFleetId ? <FleetReportsTab fleetId={selectedFleetId} /> : <p className="empty-state">{t("reports.pickFleetHint")}</p>}
+      {selectedOwnerId ? <OwnerReports ownerId={selectedOwnerId} /> : <p className="empty-state">{t("reports.pickOwnerHint")}</p>}
     </div>
   );
 }

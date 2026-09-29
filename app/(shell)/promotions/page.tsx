@@ -45,6 +45,7 @@ export default function PromotionsPage() {
   const [userSearch, setUserSearch] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
   const [maxPerUser, setMaxPerUser] = useState("1");
+  const [startsAt, setStartsAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
 
   function openCreate() {
@@ -56,6 +57,7 @@ export default function PromotionsPage() {
     setUserSearch("");
     setMaxTotal("");
     setMaxPerUser("1");
+    setStartsAt("");
     setExpiresAt("");
     setError(null);
     setCreating(true);
@@ -70,6 +72,7 @@ export default function PromotionsPage() {
     setUserSearch("");
     setMaxTotal(promo.maxTotalUses != null ? String(promo.maxTotalUses) : "");
     setMaxPerUser(String(promo.maxUsesPerUser));
+    setStartsAt(promo.startsAt ? promo.startsAt.slice(0, 16) : "");
     setExpiresAt(promo.expiresAt ? promo.expiresAt.slice(0, 16) : "");
     setError(null);
   }
@@ -89,12 +92,24 @@ export default function PromotionsPage() {
       setError(t("promotions.errors.usersRequired"));
       return;
     }
+    if (startsAt && expiresAt && new Date(expiresAt) <= new Date(startsAt)) {
+      setError(t("promotions.errors.expiryBeforeStart"));
+      return;
+    }
+    // blank = unlimited, and the field says so — an empty box is a decision,
+    // not an accidental reset of a limit that already existed.
+    const parsedMaxTotal = maxTotal ? Number(maxTotal) : null;
+    if (parsedMaxTotal !== null && (!Number.isInteger(parsedMaxTotal) || parsedMaxTotal < 1)) {
+      setError(t("promotions.errors.maxTotalInvalid"));
+      return;
+    }
     const result = editing
       ? await updatePromotion(editing.id, {
           value: numValue,
           ...(!editing.isGlobal ? { targetUserIds: targetIds } : {}),
           maxUsesPerUser: Number(maxPerUser) || 1,
-          maxTotalUses: maxTotal ? Number(maxTotal) : null,
+          maxTotalUses: parsedMaxTotal,
+          startsAt: startsAt ? new Date(startsAt).toISOString() : null,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         })
       : await createPromotion({
@@ -104,8 +119,9 @@ export default function PromotionsPage() {
           isGlobal: audience === "all",
           ...(audience === "specific" ? { targetUserIds: targetIds } : {}),
           maxUsesPerUser: Number(maxPerUser) || 1,
-          maxTotalUses: maxTotal ? Number(maxTotal) : undefined,
-          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+          maxTotalUses: parsedMaxTotal,
+          startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         });
     if (!result.ok) return setError(result.message);
     upsertInCursorList(queryClient, qk.promotions, result.data);
@@ -263,7 +279,10 @@ export default function PromotionsPage() {
           ) : null}
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxPerUser")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxPerUser} onChange={(event) => setMaxPerUser(event.target.value)} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxTotal")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /><span className="mt-1 block text-xs text-slate-500">{t("promotions.dialog.maxTotalHint")}</span></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.expiresAt")}</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.startsAt")}</span><Input dir="ltr" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
+            <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.expiresAt")}</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
+          </div>
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>{t("common.actions.cancel")}</Button><AsyncButton type="button" onClick={save}>{t("common.actions.save")}</AsyncButton></div>
         </div>

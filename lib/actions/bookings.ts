@@ -64,8 +64,9 @@ export const REPORT_STATUS_AR: Record<string, string> = {
 
 export type AdminBookingListItem = {
   id: string;
-  fleetId: string;
-  fleetName: string;
+  ownerId: string;
+  /** Company display name, resolved from the owner account. */
+  ownerName: string;
   tripId: string;
   passengerName: string;
   passengerPhone?: string | null;
@@ -146,7 +147,7 @@ export type AuditLogEntry = {
 
 export type AdminBookingDetail = {
   id: string;
-  fleetId: string;
+  ownerId: string;
   fleetName: string;
   status: BookingStatus;
   seats: number;
@@ -188,7 +189,7 @@ export type AdminBookingDetail = {
 export type AdminBookingFilterParams = {
   cursor?: string;
   limit?: number;
-  fleetId?: string;
+  ownerId?: string;
   tripId?: string;
   passengerUserId?: string;
   passengerPhone?: string;
@@ -217,7 +218,7 @@ export function fetchAdminBookingsPage(
   if (cursor) params.set("cursor", cursor);
   params.set("limit", String(filters.limit ?? 20));
 
-  if (filters.fleetId) params.set("fleetId", filters.fleetId);
+  if (filters.ownerId) params.set("ownerId", filters.ownerId);
   if (filters.tripId) params.set("tripId", filters.tripId);
   if (filters.passengerUserId) params.set("passengerUserId", filters.passengerUserId);
   if (filters.passengerPhone) params.set("passengerPhone", filters.passengerPhone);
@@ -340,42 +341,42 @@ export function resolveIncidentReport(
   );
 }
 
-// Backward compatibility functions
+// Owner-scoped aliases over the platform review endpoints.
 export function fetchBookingsPage(
-  fleetId: string,
+  ownerId: string,
   cursor: string | null,
 ): Promise<ActionResult<BookingPage>> {
-  return fetchAdminBookingsPage({ fleetId }, cursor);
+  return fetchAdminBookingsPage({ ownerId }, cursor);
 }
 
 export function fetchBooking(
-  fleetId: string,
+  ownerId: string,
   id: string,
 ): Promise<ActionResult<AdminBookingDetail>> {
   return fetchAdminBookingDetail(id);
 }
 
 export function createBooking(
-  fleetId: string,
+  ownerId: string,
   input: CreateBookingInput,
 ): Promise<ActionResult<AdminBookingListItem>> {
   return notifyResult(
     t("bookings.toast.created"),
-    apiSend<AdminBookingListItem>(`/api/fleet-owners/fleets/${fleetId}/bookings`, "POST", input),
+    apiSend<AdminBookingListItem>(`/api/fleet-owners/${ownerId}/bookings`, "POST", input),
   );
 }
 
 export function updateBooking(
-  fleetId: string,
+  ownerId: string,
   id: string,
   input: { passengerName?: string; passengerPhone?: string; status?: BookingStatus },
 ): Promise<ActionResult<AdminBookingListItem>> {
   return notifyResult(
     t("bookings.toast.saved"),
-    apiSend<AdminBookingListItem>(`/api/fleet-owners/fleets/${fleetId}/bookings/${id}`, "PATCH", input),
+    apiSend<AdminBookingListItem>(`/api/fleet-owners/${ownerId}/bookings/${id}`, "PATCH", input),
   );
 }
 
-export function deleteBooking(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult(t("bookings.toast.deleted"), apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/bookings/${id}`, "DELETE"));
+export function deleteBooking(ownerId: string, id: string): Promise<ActionResult<null>> {
+  return notifyResult(t("bookings.toast.deleted"), apiSend<null>(`/api/fleet-owners/${ownerId}/bookings/${id}`, "DELETE"));
 }

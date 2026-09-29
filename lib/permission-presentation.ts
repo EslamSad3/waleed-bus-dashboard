@@ -9,15 +9,17 @@ type PermissionPresentation = {
 
 const RESOURCES: Record<string, { group: string; name: string }> = {
   users: { group: t("permissions.groups.accounts"), name: t("permissions.resources.users") },
-  fleets: { group: t("permissions.groups.operations"), name: t("permissions.resources.fleets") },
   buses: { group: t("permissions.groups.operations"), name: t("permissions.resources.buses") },
   trips: { group: t("permissions.groups.operations"), name: t("permissions.resources.trips") },
   bookings: { group: t("permissions.groups.operations"), name: t("permissions.resources.bookings") },
   members: { group: t("permissions.groups.operations"), name: t("permissions.resources.members") },
-  "fleet.buses": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetBuses") },
-  "fleet.trips": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetTrips") },
-  "fleet.drivers": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetDrivers") },
-  "fleet.reports": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.fleetReports") },
+  // Owner-company surface: one company per owner user, addressed by ownerId.
+  "fleet-owners.buses": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerBuses") },
+  "fleet-owners.trips": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerTrips") },
+  "fleet-owners.lines": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerLines") },
+  "fleet-owners.drivers": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerDrivers") },
+  "fleet-owners.bookings": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerBookings") },
+  "fleet-owners.reports": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerReports") },
   roles: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.roles") },
   permissions: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.permissions") },
   audit: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.audit") },

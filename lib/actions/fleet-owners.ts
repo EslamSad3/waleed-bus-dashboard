@@ -3,6 +3,17 @@ import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateFleetOwnerInput, UpdateFleetOwnerInput } from "@/lib/schemas/p1";
 import { t } from "@/lib/i18n/t";
 
+/**
+ * An owner account IS the company: the payload carries the user, the company
+ * fields (`companyName`, `vipTierId`) and the owner's own ACTIVE membership —
+ * there is no nested fleet array any more.
+ */
+export type OwnerMembershipBrief = {
+  id: string;
+  roleSlug: string;
+  status: "ACTIVE" | "SUSPENDED" | "REVOKED";
+};
+
 export type FleetOwnerAccount = {
   id: string;
   name: string | null;
@@ -10,12 +21,16 @@ export type FleetOwnerAccount = {
   phoneNumber: string | null;
   picture: string | null;
   nationalId: string | null;
+  companyName: string | null;
+  vipTierId?: string | null;
   isActive: boolean;
   createdAt: string;
-  fleets: { id: string; name: string; isActive: boolean }[];
+  membership: OwnerMembershipBrief | null;
 };
 
-export function fetchFleetOwnersPage(cursor: string | null): Promise<ActionResult<CursorPage<FleetOwnerAccount>>> {
+export type FleetOwnerPage = CursorPage<FleetOwnerAccount>;
+
+export function fetchFleetOwnersPage(cursor: string | null): Promise<ActionResult<FleetOwnerPage>> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
   return apiGet(`/api/fleet-owners${query}`);
 }
@@ -36,8 +51,30 @@ export function deleteFleetOwner(id: string): Promise<ActionResult<null>> {
   return notifyResult(t("fleetOwners.toast.deleted"), apiSend(`/api/fleet-owners/${id}`, "DELETE"));
 }
 
+/** The caller's own profile plus their ACTIVE owner memberships (tenant selectors). */
+export type MyOwnerMembership = {
+  ownerId: string;
+  ownerName: string;
+  membershipId: string;
+  roleSlug: string;
+  status: string;
+};
+
+export type MyOwner = {
+  id: string;
+  name: string | null;
+  picture?: string | null;
+  phoneNumber?: string | null;
+  email?: string | null;
+  memberships: MyOwnerMembership[];
+};
+
+export function fetchMyOwner(): Promise<ActionResult<MyOwner>> {
+  return apiGet<MyOwner>("/api/fleet-owners/me");
+}
+
 /**
- * Stage a fleet-owner picture via direct browser→Supabase upload (Vercel-safe).
+ * Stage an owner picture via direct browser→Supabase upload (Vercel-safe).
  * Link `staged.publicUrl` as `picture` on create/update, and call
  * `discardFleetOwnerPicture` when the user cancels or the record write fails.
  */
@@ -60,4 +97,35 @@ export function uploadFleetOwnerPicture(id: string, file: File, opts?: NotifyOpt
     apiSendFile<{ url: string }>(`/api/fleet-owners/${id}/picture`, file),
     opts,
   );
+}
+
+/** Owner picker options (read-only reuse of `GET /users`). */
+export type UserOption = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+};
+
+export function fetchUserOptions(): Promise<ActionResult<{ items: UserOption[] }>> {
+  return apiGet("/api/users?limit=100");
+}
+
+/**
+ * ownerId → company display name, for the cross-owner indexes that only carry
+ * the id (buses, trip lines). One small map beats a request per row.
+ */
+export async function fetchOwnerNameMap(): Promise<ActionResult<Map<string, string>>> {
+  const page = await fetchFleetOwnersPage(null);
+  if (!page.ok) return page;
+  return {
+    ok: true,
+    data: new Map(
+      page.data.items.map((owner) => [
+        owner.id,
+        owner.companyName || owner.name || owner.phoneNumber || owner.id,
+      ]),
+    ),
+  };
 }

@@ -26,7 +26,7 @@ export function EditDriverDialog({
   onSaved,
 }: {
   open: boolean;
-  driver: (DriverRow & { fleet: { id: string } }) | null;
+  driver: (DriverRow & { owner: { id: string } }) | null;
   onClose: () => void;
   onSaved?: (fresh: DriverRow) => void;
 }) {
@@ -62,7 +62,9 @@ export function EditDriverDialog({
 
   async function save() {
     if (!driver) return;
-    const fleetId = driver.fleet.id;
+    const ownerId = driver.owner.id;
+    // Driver subresources are keyed by the DRIVER USER id, not the membership row.
+    const driverUserId = driver.userId ?? driver.id;
     setError(null);
     if (name.trim() === "") {
       setError(t("drivers.editDialog.errors.nameRequired"));
@@ -86,7 +88,7 @@ export function EditDriverDialog({
       }
       staged = s.data;
     }
-    const r = await updateDriver(fleetId, driver.id, {
+    const r = await updateDriver(ownerId, driverUserId, {
       status,
       name: name.trim(),
       nickname: nickname.trim() || undefined,
@@ -101,7 +103,7 @@ export function EditDriverDialog({
       setError(r.message);
       return;
     }
-    const refreshed = await fetchDriver(fleetId, driver.id);
+    const refreshed = await fetchDriver(ownerId, driverUserId);
     setSaving(false);
     if (refreshed.ok) onSaved?.(refreshed.data);
     resetForm();

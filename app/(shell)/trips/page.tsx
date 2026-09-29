@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,102 +8,83 @@ import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { deleteTrip, fetchTripsPage, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { OwnerPicker } from "@/components/owners/owner-picker";
+import {
+  deleteTrip,
+  fetchTripsPage,
+  TRIP_STATUS_AR,
+  type Trip,
+} from "@/lib/actions/trips";
+import { fetchOwnerTripLinesPage, lineEndpoints } from "@/lib/actions/trip-lines";
 import { fetchBusesPage } from "@/lib/actions/buses";
-import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/members";
-import { fetchFleetsPage } from "@/lib/actions/fleets";
+import { fetchDriversPage } from "@/lib/actions/members";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { qk, removeFromCursorList, useDataQuery } from "@/lib/queries";
-import { mapWithConcurrency } from "@/lib/actions/http";
-import { useQueryClient } from "@/lib/queries";
+import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
+import { qk, removeFromCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
 
-type TripRow = Trip & { fleetName: string; busName: string; driverName: string };
-type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
-type TripAggregatePage = { items: TripRow[]; nextCursor: string | null };
+type TripRow = Trip & { busName: string; driverName: string };
 
-async function fetchFleetBuses(fleetId: string) {
-  const buses = new Map<string, string>();
-  let cursor: string | null = null;
-  do {
-    const result = await fetchBusesPage(fleetId, cursor);
-    if (!result.ok) throw new Error(result.message);
-    // عمود العربية بيعرض رقم اللوحة — رقم التسجيل احتياطي لو مفيش لوحة
-    result.data.items.forEach((bus) => buses.set(bus.id, bus.plateNumber ?? bus.registrationNumber));
-    cursor = result.data.nextCursor;
-  } while (cursor);
-  return buses;
-}
-
-async function fetchAssignedDrivers() {
-  const drivers = new Map<string, string>();
-  let cursor: string | null = null;
-  do {
-    const result = await fetchSystemDriversPage(cursor);
-    if (!result.ok) throw new Error(result.message);
-    result.data.items.forEach((driver: SystemDriverRow) => {
-      if (driver.assignedBus) drivers.set(driver.assignedBus.id, driver.name || driver.nickname || driver.phoneNumber || t("common.value.unassigned"));
-    });
-    cursor = result.data.nextCursor;
-  } while (cursor);
-  return drivers;
-}
-
-async function fetchAllFleetStates(): Promise<FleetCursor[]> {
-  const fleets: FleetCursor[] = [];
-  let cursor: string | null = null;
-  do {
-    const result = await fetchFleetsPage(cursor);
-    if (!result.ok) throw new Error(result.message);
-    fleets.push(...result.data.items.map((fleet) => ({ fleetId: fleet.id, fleetName: fleet.name, cursor: null })));
-    cursor = result.data.nextCursor;
-  } while (cursor);
-  return fleets;
-}
-
-async function fetchAggregateTripPage(cursorState: string | null): Promise<TripAggregatePage> {
-  const states: FleetCursor[] = cursorState ? JSON.parse(cursorState) as FleetCursor[] : await fetchAllFleetStates();
-  const [assignedDrivers, fleetBuses] = await Promise.all([
-    fetchAssignedDrivers(),
-    mapWithConcurrency(states, 4, async (state) => [state.fleetId, await fetchFleetBuses(state.fleetId)] as const),
-  ]);
-  const busesByFleet = new Map(fleetBuses);
-  const results = await mapWithConcurrency(states, 4, async (state) => {
-    const result = await fetchTripsPage(state.fleetId, state.cursor);
-    if (!result.ok) throw new Error(result.message);
-    return { state, page: result.data };
-  });
-  const nextStates = results.map(({ state, page }) => ({ ...state, cursor: page.nextCursor }));
-  const items = results.flatMap(({ state, page }) => page.items.map((trip) => ({
-    ...trip,
-    fleetName: state.fleetName,
-    busName: busesByFleet.get(state.fleetId)?.get(trip.busId) ?? t("common.value.unassigned"),
-    driverName: assignedDrivers.get(trip.busId) ?? t("common.value.unassigned"),
-  })));
-  return {
-    items,
-    nextCursor: nextStates.some((state) => state.cursor) ? JSON.stringify(nextStates) : null,
-  };
-}
-
+/**
+ * Trips live under their line and take their endpoints from it, so the screen
+ * scopes by owner company, then by line. Everything shown is that line's real
+ * cursor page — no cross-tenant fan-out, no derived origin/destination inputs.
+ */
 export default function TripsPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const scopedOwnerId = useFilterStore((s) => s.ownerId);
+  const setOwnerId = useFilterStore((s) => s.setOwnerId);
+  const [lineId, setLineId] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [tripForEdit, setTripForEdit] = useState<TripRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; from?: string; to?: string }>({});
-  const { data: first, isLoading, error } = useDataQuery<TripAggregatePage>(
-    qk.trips(null),
-    () => fetchAggregateTripPage(null),
+
+  const { data: linesPage } = useApiQuery(
+    qk.tripLines(scopedOwnerId ?? "none"),
+    () => fetchOwnerTripLinesPage(scopedOwnerId!, null),
+    { enabled: Boolean(scopedOwnerId) },
+  );
+  const { data: busesPage } = useApiQuery(
+    qk.buses(scopedOwnerId ?? "none"),
+    () => fetchBusesPage(scopedOwnerId!, null),
+    { enabled: Boolean(scopedOwnerId) },
+  );
+  const { data: driversPage } = useApiQuery(
+    qk.drivers,
+    () => fetchDriversPage(scopedOwnerId!, null),
+    { enabled: Boolean(scopedOwnerId) },
   );
 
+  // Default to the first line of the selected company, and reset when it changes.
+  const [ownerForLine, setOwnerForLine] = useState<string | null>(null);
+  if (scopedOwnerId && ownerForLine !== scopedOwnerId) {
+    setOwnerForLine(scopedOwnerId);
+    setLineId("");
+  }
+  const lines = useMemo(() => linesPage?.items ?? [], [linesPage]);
+  if (lines.length && !lineId && lines[0].id) setLineId(lines[0].id);
+
+  const { data: trips, isLoading, error } = useApiQuery(
+    qk.trips(scopedOwnerId ?? "none", lineId || "none"),
+    () => fetchTripsPage(scopedOwnerId!, lineId, null),
+    { enabled: Boolean(scopedOwnerId && lineId) },
+  );
+
+  const busNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const bus of busesPage?.items ?? []) map.set(bus.id, bus.plateNumber ?? bus.registrationNumber);
+    return map;
+  }, [busesPage]);
+
   async function removeTrip(trip: TripRow) {
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.list.deleteConfirm.description", { tripOrigin: trip.origin, tripDestination: trip.destination }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const result = await deleteTrip(trip.fleetId, trip.id);
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.list.deleteConfirm.description", { tripOrigin: trip.origin ?? "—", tripDestination: trip.destination ?? "—" }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
+    const result = await deleteTrip(scopedOwnerId!, lineId, trip.id);
     if (!result.ok) return;
-    removeFromCursorList<TripRow>(queryClient, qk.trips(null), trip.id);
+    removeFromCursorList<TripRow>(queryClient, qk.trips(scopedOwnerId!, lineId), trip.id);
   }
 
   const query = (listFilters.q ?? "").trim();
@@ -111,20 +92,27 @@ export default function TripsPage() {
   const from = listFilters.from ?? "";
   const to = listFilters.to ?? "";
   const predicate = (trip: TripRow) =>
-    (!query || trip.origin.includes(query) || trip.destination.includes(query) || trip.fleetName.includes(query) || trip.busName.includes(query) || trip.driverName.includes(query)) &&
+    (!query || (trip.origin ?? "").includes(query) || (trip.destination ?? "").includes(query) || trip.busName.includes(query) || trip.driverName.includes(query)) &&
     (status === "all" || trip.status === status) &&
     (!from || trip.departAt.slice(0, 10) >= from) &&
     (!to || trip.departAt.slice(0, 10) <= to);
 
   const columns: CommunityColumnDef<TripRow>[] = [
-    { field: "origin", headerName: t("common.fields.origin"), filter: "agTextColumnFilter" },
-    { field: "destination", headerName: t("common.fields.destination"), filter: "agTextColumnFilter" },
-    { field: "fleetName", headerName: t("common.fields.fleetName"), filter: "agTextColumnFilter" },
+    { field: "line.name", headerName: t("common.fields.tripLine"), valueGetter: (params) => params.data?.line?.name },
+    { field: "origin", headerName: t("common.fields.origin"), valueGetter: (params) => params.data?.origin || "—" },
+    { field: "destination", headerName: t("common.fields.destination"), valueGetter: (params) => params.data?.destination || "—" },
     { field: "busName", headerName: t("common.fields.bus"), filter: "agTextColumnFilter" },
-    { field: "driverName", headerName: t("common.fields.driver"), filter: "agTextColumnFilter" },
-    { field: "departAt", headerName: t("trips.columns.departAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleString("ar-EG") : "—" },
+    { field: "driverName", headerName: t("common.fields.snapshottedDriver"), filter: "agTextColumnFilter" },
+    { field: "departAt", headerName: t("trips.columns.departAt"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleString("ar-EG") : "—") },
     { field: "status", headerName: t("common.fields.status"), filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
+    { field: "fare", headerName: t("common.fields.fare") },
   ];
+
+  function selectOwner(nextOwnerId: string) {
+    setOwnerId(nextOwnerId || null);
+    setOwnerScopeCookie(nextOwnerId || null);
+    setLineId("");
+  }
 
   return (
     <div className="dashboard-page">
@@ -133,15 +121,63 @@ export default function TripsPage() {
           <h1 className="page-title">{t("trips.title")}</h1>
           <p className="page-description">{t("trips.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>{t("trips.newTrip")}</Button>
+        <Button onClick={() => setCreateOpen(true)} disabled={!scopedOwnerId || !lineId}>{t("trips.newTrip")}</Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <OwnerPicker ownerId={scopedOwnerId ?? ""} onOwnerChange={selectOwner} />
+        <label className="block text-sm">
+          <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.tripLine")}</span>
+          <select
+            aria-label={t("common.fields.tripLine")}
+            value={lineId}
+            onChange={(event) => setLineId(event.target.value)}
+            disabled={!scopedOwnerId}
+            className="select-field w-full"
+          >
+            <option value="">{t("trips.filters.pickLine")}</option>
+            {lines.map((line) => {
+              const ends = lineEndpoints(line);
+              return (
+                <option key={line.id} value={line.id}>
+                  {line.name} · {ends.origin ?? "—"} ← {ends.destination ?? "—"}
+                </option>
+              );
+            })}
+          </select>
+        </label>
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      {isLoading ? <TableSkeleton columns={8} /> : (
+      {!scopedOwnerId ? (
+        <p className="panel-card p-4 text-sm text-[#606060]">{t("trips.pickOwnerDescription")}</p>
+      ) : isLoading || !lineId ? (
+        <TableSkeleton columns={8} />
+      ) : (
         <CursorList<TripRow>
-          initialItems={first?.items ?? []}
-          initialCursor={first?.nextCursor ?? null}
-          loadMore={fetchAggregateTripPage}
+          gridId={`trips-${lineId}`}
+          initialItems={(trips?.items ?? []).map((trip) => ({
+            ...trip,
+            busName: busNames.get(trip.busId) ?? trip.busId.slice(0, 8),
+            driverName: trip.driverUserId
+              ? (driversPage?.items.find((driver) => driver.userId === trip.driverUserId)?.name ?? t("common.value.withoutName"))
+              : t("common.value.unassigned"),
+          }))}
+          initialCursor={trips?.nextCursor ?? null}
+          loadMore={async (cursor) => {
+            const result = await fetchTripsPage(scopedOwnerId, lineId, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return {
+              items: result.data.items.map((trip) => ({
+                ...trip,
+                busName: busNames.get(trip.busId) ?? trip.busId.slice(0, 8),
+                driverName: trip.driverUserId
+                  ? (driversPage?.items.find((driver) => driver.userId === trip.driverUserId)?.name ?? t("common.value.withoutName"))
+                  : t("common.value.unassigned"),
+              })),
+              nextCursor: result.data.nextCursor,
+            };
+          }}
           keyOf={(trip) => trip.id}
           filter={predicate}
           columnDefs={columns}
@@ -156,10 +192,11 @@ export default function TripsPage() {
           emptyMessage={t("trips.empty")}
           renderItem={(trip) => (
             <RowActions
-              label={t("trips.list.rowActions", { tripOrigin: trip.origin, tripDestination: trip.destination })}
+              label={t("trips.list.rowActions", { tripOrigin: trip.origin ?? "—", tripDestination: trip.destination ?? "—" })}
               actions={[
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/trips/${trip.id}` },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/trips/${trip.id}?ownerId=${scopedOwnerId}&lineId=${lineId}` },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setTripForEdit(trip) },
+                { label: t("common.actions.viewFeedback"), icon: Eye, href: `/trips/${trip.id}/feedback?ownerId=${scopedOwnerId}` },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTrip(trip) },
               ]}
             />
@@ -167,7 +204,7 @@ export default function TripsPage() {
         />
       )}
       <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} onClose={() => setTripForEdit(null)} />
+      <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} lineId={lineId} onClose={() => setTripForEdit(null)} />
     </div>
   );
 }

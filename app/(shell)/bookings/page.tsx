@@ -17,16 +17,14 @@ import {
   type AdminBookingFilterParams,
   type AdminBookingListItem,
 } from "@/lib/actions/bookings";
-import { apiGet } from "@/lib/actions/http";
-import { findTripAcrossFleets } from "@/lib/actions/trips";
+import { findTripAcrossLines } from "@/lib/actions/trips";
 import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
+import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
-
-type FleetOption = { id: string; name: string };
 
 export default function BookingsPage() {
   const searchParams = useSearchParams();
@@ -34,13 +32,14 @@ export default function BookingsPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
-  const [fleets, setFleets] = useState<FleetOption[]>([]);
   const [, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState("");
   // Trip scope is fully URL-driven: /bookings?tripId=X always filters to that
   // trip, including when the page is already mounted and only the param changes.
   const tripId = searchParams.get("tripId") ?? "";
-  const [fleetId, setFleetId] = useState("");
+  // The trip banner is opened from a trip page, which knows its owner company.
+  const ownerIdFromLink = searchParams.get("ownerId") ?? "";
+  const [ownerId, setOwnerId] = useState("");
   const [status, setStatus] = useState("all");
   const [paymentStatus, setPaymentStatus] = useState("all");
   const [paymentMethod, setPaymentMethod] = useState("all");
@@ -50,17 +49,11 @@ export default function BookingsPage() {
   const [toDate, setToDate] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  useEffect(() => {
-    apiGet<{ items: FleetOption[] }>("/api/fleet-owners/fleets?limit=100").then((result) => {
-      if (result.ok) setFleets(result.data.items);
-    });
-  }, []);
-
   const [tripLabel, setTripLabel] = useState<{ tripId: string; text: string } | null>(null);
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId || !ownerIdFromLink) return;
     let cancelled = false;
-    findTripAcrossFleets(tripId).then((result) => {
+    findTripAcrossLines(ownerIdFromLink, tripId).then((result) => {
       if (cancelled) return;
       const text = result.ok
         ? `${result.data.trip.origin} ← ${result.data.trip.destination} • ${new Date(result.data.trip.departAt).toLocaleString("ar-EG")}`
@@ -68,12 +61,12 @@ export default function BookingsPage() {
       setTripLabel({ tripId, text });
     });
     return () => { cancelled = true; };
-  }, [tripId]);
+  }, [tripId, ownerIdFromLink]);
   const activeTripLabel = tripLabel && tripLabel.tripId === tripId ? tripLabel.text : null;
 
   const buildFilterParams = useCallback((): AdminBookingFilterParams => {
     const params: AdminBookingFilterParams = { limit: 20 };
-    if (fleetId) params.fleetId = fleetId;
+    if (ownerId) params.ownerId = ownerId;
     if (tripId) params.tripId = tripId;
     if (searchTerm.trim()) {
       if (/^\+?[0-9]+$/.test(searchTerm.trim())) params.passengerPhone = searchTerm.trim();
@@ -91,9 +84,10 @@ export default function BookingsPage() {
       if (toDate) { const date = new Date(toDate); date.setHours(23, 59, 59, 999); params.createdTo = date.toISOString(); }
     }
     return params;
-  }, [fleetId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
+  }, [ownerId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
 
   const filterParams = buildFilterParams();
+  const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
   const { data: pageData, isPending, error: fetchError } = useDataQuery(
     qk.adminBookingsParams(filterParams),
     async () => {
@@ -108,7 +102,7 @@ export default function BookingsPage() {
 
   async function removeBooking(booking: AdminBookingListItem) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || booking.passengerPhone }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const result = await deleteBooking(booking.fleetId, booking.id);
+    const result = await deleteBooking(booking.ownerId, booking.id);
     if (!result.ok) return;
     removeFromCursorList<AdminBookingListItem>(queryClient, qk.adminBookingsParams(filterParams), booking.id);
   }
@@ -116,7 +110,7 @@ export default function BookingsPage() {
   function resetFilters() {
     startTransition(() => {
       setSearchTerm("");
-      setFleetId("");
+      setOwnerId("");
       setStatus("all");
       setPaymentStatus("all");
       setPaymentMethod("all");
@@ -127,11 +121,11 @@ export default function BookingsPage() {
     if (tripId) router.replace("/bookings");
   }
 
-  const hasActiveFilters = Boolean(searchTerm || tripId || fleetId || hasReports || fromDate || toDate) || status !== "all" || paymentStatus !== "all" || paymentMethod !== "all";
+  const hasActiveFilters = Boolean(searchTerm || tripId || ownerId || hasReports || fromDate || toDate) || status !== "all" || paymentStatus !== "all" || paymentMethod !== "all";
   const columns: CommunityColumnDef<AdminBookingListItem>[] = [
     { field: "passengerName", headerName: t("bookings.columns.passengerName"), filter: "agTextColumnFilter" },
     { field: "passengerPhone", headerName: t("common.fields.phone"), filter: "agTextColumnFilter" },
-    { field: "fleetName", headerName: t("common.fields.fleet"), filter: "agTextColumnFilter" },
+    { field: "ownerName", headerName: t("common.fields.owner"), filter: "agTextColumnFilter" },
     { field: "originName", headerName: t("common.fields.origin") },
     { field: "destinationName", headerName: t("common.fields.destination") },
     { field: "seats", headerName: t("common.fields.seats"), filter: "agNumberColumnFilter" },
@@ -160,7 +154,7 @@ export default function BookingsPage() {
             <p className="text-xs text-[#606060]">{activeTripLabel ? <span dir="auto">{activeTripLabel}</span> : <InlineBlockSkeleton className="h-3.5 w-44" />}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}`}>{t("bookings.list.tripDetails")}</Link></Button>
+            <Button asChild size="sm" variant="secondary"><Link href={`/trips/${tripId}?ownerId=${ownerIdFromLink}`}>{t("bookings.list.tripDetails")}</Link></Button>
             <Button size="sm" variant="outline" onClick={() => router.replace("/bookings")}>{t("bookings.list.showAllBookings")}</Button>
           </div>
         </div>
@@ -169,7 +163,7 @@ export default function BookingsPage() {
       <div className="rounded-2xl border border-[#d6eeff] bg-white p-4 shadow-sm space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input aria-label={t("bookings.filters.searchAria")} placeholder={t("bookings.filters.searchPlaceholder")} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-white" />
-          <select aria-label={t("bookings.filters.fleet")} value={fleetId} onChange={(event) => setFleetId(event.target.value)} className="select-field w-full"><option value="">{t("bookings.filters.allFleetsPrefix")}{fleets.length})</option>{fleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}</select>
+          <select aria-label={t("common.fields.owner")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full"><option value="">{t("bookings.filters.allOwners")}</option>{(owners?.items ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.companyName || owner.name || owner.phoneNumber || owner.id}</option>)}</select>
           <select aria-label={t("common.fields.bookingStatus")} value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allStatuses")}</option><option value="CONFIRMED">{t("enums.bookingStatus.confirmed")}</option><option value="CANCELLED">{t("enums.bookingStatus.cancelled")}</option><option value="COMPLETED">{t("enums.bookingStatus.completed")}</option></select>
           <select aria-label={t("common.fields.paymentStatus")} value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allPaymentStatuses")}</option><option value="PENDING">{t("enums.paymentStatus.pending")}</option><option value="PAID">{t("enums.paymentStatus.paid")}</option><option value="REFUNDED">{t("enums.paymentStatus.refunded")}</option><option value="FAILED">{t("enums.paymentStatus.failed")}</option></select>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import {
   assignDriver,
   deleteBus,
@@ -18,11 +20,9 @@ import {
   reactivateBus,
   stageBusImage,
   unassignDriver,
-  assignTripLine,
-  unassignTripLine,
   updateBus,
   type Bus,
-  type TripRef,
+  type BusTripRow,
   type VehicleBrand,
 } from "@/lib/actions/buses";
 import { apiGet, validateImageFile, type StagedUpload } from "@/lib/actions/http";
@@ -30,29 +30,34 @@ import type { DriverRow } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { fetchTripLines, type TripLine } from "@/lib/actions/trip-lines";
+import { RatingCell } from "@/components/owners/rating-cell";
+import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { BUS_COLORS, busColorHex } from "@/lib/colors";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
 import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, Trash2, UserPlus, Route as RouteIcon } from "lucide-react";
-import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { t as tr } from "@/lib/i18n/t";
 
+/**
+ * Bus detail. A bus no longer owns a trip line — a TRIP picks both its bus and
+ * its line — so the line-assignment controls are gone and the trips tab is a
+ * full, cursor-paginated history with each trip's own bus average.
+ */
 export default function BusDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ fleetId?: string }>;
+  searchParams: Promise<{ ownerId?: string }>;
 }) {
   const { id } = use(params);
-  const { fleetId: scopeFleetId } = use(searchParams);
+  const { ownerId: scopeOwnerId } = use(searchParams);
   const router = useRouter();
-  const storeFleetId = useFilterStore((s) => s.fleetId);
-  const setStoreFleetId = useFilterStore((s) => s.setFleetId);
-  // الأسطول بيجي من اللينك نفسه (?fleetId=) أو من آخر نطاق مختار — من غير ما نطلب من المستخدم يختار.
-  const fleetId = scopeFleetId || storeFleetId || null;
+  const storeOwnerId = useFilterStore((s) => s.ownerId);
+  const setStoreOwnerId = useFilterStore((s) => s.setOwnerId);
+  // النطاق بيجي من اللينك نفسه (?ownerId=) أو من آخر نطاق مختار.
+  const ownerId = scopeOwnerId || storeOwnerId || null;
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [tab, setTab] = useState<"overview" | "trips">("overview");
@@ -70,21 +75,24 @@ export default function BusDetailPage({
   const [driversLoaded, setDriversLoaded] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tripsFirst, setTripsFirst] = useState<{ key: string; items: TripRef[]; nextCursor: string | null } | null>(null);
-  const [createTripOpen, setCreateTripOpen] = useState(false);
+  const [tripsFirst, setTripsFirst] = useState<{
+    key: string;
+    items: BusTripRow[];
+    nextCursor: string | null;
+  } | null>(null);
   const [tripsReloadKey, setTripsReloadKey] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [lineOpen, setLineOpen] = useState(false);
-  const [tripLineId, setTripLineId] = useState("");
 
   const { data: bus, isLoading: busLoading, error: busError } = useApiQuery<Bus>(
-    qk.bus(fleetId ?? "unknown", id),
-    () => fetchBus(fleetId!, id),
-    { enabled: Boolean(fleetId) },
+    qk.bus(ownerId ?? "unknown", id),
+    () => fetchBus(ownerId!, id),
+    { enabled: Boolean(ownerId) },
   );
-  const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true));
-  const { data: tripLines, isPending: tripLinesPending } = useApiQuery<TripLine[]>(qk.tripLines, fetchTripLines);
+  const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(
+    qk.brands,
+    () => fetchBrands(true),
+  );
 
   function syncForm(next: Bus) {
     setPlate(next.plateNumber ?? "");
@@ -105,25 +113,25 @@ export default function BusDetailPage({
   }
 
   useEffect(() => {
-    if (fleetId) setStoreFleetId(fleetId);
-  }, [fleetId, setStoreFleetId]);
+    if (ownerId) setStoreOwnerId(ownerId);
+  }, [ownerId, setStoreOwnerId]);
 
   useEffect(() => {
-    if (!fleetId) return;
-    apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId).then((r) => {
+    if (!ownerId) return;
+    apiGet<{ items: DriverRow[] }>(`/api/fleet-owners/${ownerId}/drivers?limit=100`).then((r) => {
       if (r.ok) setDrivers(r.data.items.filter((d) => d.status === "ACTIVE"));
       setDriversLoaded(true);
     });
-  }, [fleetId]);
+  }, [ownerId]);
 
   useEffect(() => {
-    if (tab !== "trips" || !fleetId) return;
-    const key = `${fleetId}/${id}`;
-    fetchBusTripsPage(fleetId, id, null).then((r) => {
+    if (tab !== "trips" || !ownerId) return;
+    const key = `${ownerId}/${id}`;
+    fetchBusTripsPage(ownerId, id, null).then((r) => {
       if (r.ok) setTripsFirst({ key, items: r.data.items, nextCursor: r.data.nextCursor });
       else setError(r.message);
     });
-  }, [tab, fleetId, id, tripsReloadKey]);
+  }, [tab, ownerId, id, tripsReloadKey]);
 
   function onImageFile(file: File | null) {
     if (!file) {
@@ -145,19 +153,19 @@ export default function BusDetailPage({
     setError(ok ? null : msg);
     setStatus(ok ? msg : null);
     if (ok && updated) {
-      patchDetail(queryClient, qk.bus(fleetId ?? "unknown", id), updated);
+      patchDetail(queryClient, qk.bus(ownerId ?? "unknown", id), updated);
     }
   }
 
   async function save() {
-    if (!fleetId) return;
+    if (!ownerId) return;
     // الصورة المختارة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل
     // مفيش تعديل يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
     let staged: StagedUpload | null = null;
     let nextImageUrl = imageUrl || undefined;
     if (imageFile) {
       setUploading(true);
-      const s = await stageBusImage(fleetId, imageFile);
+      const s = await stageBusImage(ownerId, imageFile);
       setUploading(false);
       if (!s.ok) {
         note(false, s.message);
@@ -166,7 +174,7 @@ export default function BusDetailPage({
       staged = s.data;
       nextImageUrl = staged.publicUrl;
     }
-    const r = await updateBus(fleetId, id, {
+    const r = await updateBus(ownerId, id, {
       plateNumber: plate || undefined,
       color: color || undefined,
       imageUrl: nextImageUrl,
@@ -175,7 +183,7 @@ export default function BusDetailPage({
       modelYear: modelYear === "" ? undefined : Number(modelYear),
       capacity: capacity === "" ? undefined : Number(capacity),
     });
-    if (!r.ok && staged) await discardBusImage(fleetId, staged);
+    if (!r.ok && staged) await discardBusImage(ownerId, staged);
     note(r.ok, r.ok ? tr("common.toast.saved") : r.message, r.ok ? r.data : undefined);
     if (r.ok) {
       setImageFile(null);
@@ -184,7 +192,7 @@ export default function BusDetailPage({
   }
 
   async function remove() {
-    if (!fleetId) return;
+    if (!ownerId) return;
     if (
       !(await confirm({
         title: tr("common.actions.deleteConfirmTitle"),
@@ -195,7 +203,7 @@ export default function BusDetailPage({
     ) {
       return;
     }
-    const r = await deleteBus(fleetId, id);
+    const r = await deleteBus(ownerId, id);
     if (!r.ok) {
       note(false, r.message);
       return;
@@ -205,34 +213,41 @@ export default function BusDetailPage({
   }
 
   async function disable() {
-    if (!fleetId) return;
-    const r = await disableBus(fleetId, id);
+    if (!ownerId) return;
+    const r = await disableBus(ownerId, id);
     note(r.ok, r.ok ? tr("buses.detail.toast.disabled") : r.message, r.ok ? r.data : undefined);
   }
 
   async function reactivate() {
-    if (!fleetId) return;
-    const r = await reactivateBus(fleetId, id);
+    if (!ownerId) return;
+    const r = await reactivateBus(ownerId, id);
     note(r.ok, r.ok ? tr("buses.detail.toast.enabled") : r.message, r.ok ? r.data : undefined);
   }
 
+  const refreshDrivers = async () => {
+    if (!ownerId) return;
+    const refreshed = await apiGet<{ items: DriverRow[] }>(
+      `/api/fleet-owners/${ownerId}/drivers?limit=100`,
+    );
+    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+  };
+
   async function assign() {
-    if (!fleetId || !driverId) {
+    if (!ownerId || !driverId) {
       setError(tr("buses.detail.errors.pickDriver"));
       return;
     }
-    const r = await assignDriver(fleetId, id, { driverUserId: driverId });
+    const r = await assignDriver(ownerId, id, { driverUserId: driverId });
     note(r.ok, r.ok ? tr("buses.detail.toast.driverAssigned") : r.message);
     if (r.ok) {
       setAssignOpen(false);
       setDriverId("");
-      const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId);
-      if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+      await refreshDrivers();
     }
   }
 
   async function unassign() {
-    if (!fleetId) return;
+    if (!ownerId) return;
     if (
       !(await confirm({
         title: tr("buses.detail.unassignConfirm.title"),
@@ -243,79 +258,96 @@ export default function BusDetailPage({
     ) {
       return;
     }
-    const r = await unassignDriver(fleetId, id);
+    const r = await unassignDriver(ownerId, id);
     note(r.ok, r.ok ? tr("buses.detail.toast.driverUnassigned") : r.message);
-    if (r.ok) {
-      const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet/drivers?limit=100`, fleetId);
-      if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
-    }
+    if (r.ok) await refreshDrivers();
   }
 
-  async function assignLine() {
-    if (!fleetId || !tripLineId) { setError(tr("buses.detail.errors.pickLine")); return; }
-    const r = await assignTripLine(fleetId, id, tripLineId);
-    if (!r.ok) { setError(r.message); return; }
-    patchDetail(queryClient, qk.bus(fleetId, id), r.data);
-    setLineOpen(false); setTripLineId(""); setStatus(tr("buses.detail.toast.lineAssigned"));
-  }
-  async function clearLine() {
-    if (!fleetId) return;
-    const r = await unassignTripLine(fleetId, id);
-    if (!r.ok) { setError(r.message); return; }
-    if (bus) patchDetail(queryClient, qk.bus(fleetId, id), { ...bus, lineId: null, line: null });
-    setStatus(tr("buses.detail.toast.lineCleared"));
-  }
-
-  if (!fleetId) {
+  if (!ownerId) {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="title-grad text-2xl font-extrabold">{tr("buses.detail.fallbackTitle")}</h1>
-        <p className="empty-state">{tr("buses.detail.noFleetSelected")}</p>
+        <p className="empty-state">{tr("buses.detail.noOwnerSelected")}</p>
       </div>
     );
   }
   if (busError) return <p role="alert" className="text-sm text-red-600">{busError.message}</p>;
   if (!bus || busLoading) return <DetailPageSkeleton />;
 
-  const currentDriver = drivers.find((driver) => driver.assignments?.some((assignment) => assignment.busId === id && assignment.status === "ACTIVE"));
-  // A driver has one active bus at a time. The API ends that assignment and
-  // moves the driver when another bus is selected, so do not hide drivers
-  // already operating a different bus.
+  const currentDriver = drivers.find((driver) =>
+    driver.assignments?.some(
+      (assignment) => assignment.busId === id && assignment.status === "ACTIVE",
+    ),
+  );
   const eligibleDrivers = drivers;
   const colorPresets = BUS_COLORS;
   const storedColorHex = busColorHex(color);
   const colorMissing = color && !colorPresets.some((preset) => preset.name === color);
 
+  const tripColumns: CommunityColumnDef<BusTripRow>[] = [
+    { field: "line.name", headerName: tr("common.fields.tripLine"), valueGetter: (params) => params.data?.line.name },
+    { field: "line.origin", headerName: tr("common.fields.origin"), valueGetter: (params) => params.data?.line.origin || "—" },
+    { field: "line.destination", headerName: tr("common.fields.destination"), valueGetter: (params) => params.data?.line.destination || "—" },
+    { field: "departAt", headerName: tr("common.fields.date"), valueGetter: (params) => new Date(params.data?.departAt ?? 0).toLocaleString("ar-EG") },
+    {
+      headerName: tr("common.fields.snapshottedDriver"),
+      valueGetter: (params) => params.data?.driver?.name || "—",
+      cellRenderer: (params: { data: BusTripRow }) =>
+        params.data.driver ? (
+          <div className="flex items-center gap-2">
+            <DriverAvatar name={params.data.driver.name} picture={params.data.driver.picture} size="sm" />
+            <span>{params.data.driver.name}</span>
+          </div>
+        ) : (
+          <span>{tr("common.value.withoutName")}</span>
+        ),
+    },
+    { field: "status", headerName: tr("common.fields.status") },
+    { field: "passengerCount", headerName: tr("common.fields.passengerCount") },
+    {
+      headerName: tr("common.fields.busRatingAvg"),
+      cellRenderer: (params: { data: BusTripRow }) => <RatingCell value={params.data.busRatingAvg} />,
+    },
+  ];
+
   return (
     <div className="dashboard-page">
       <div className="page-heading">
-        <div className="min-w-0 flex-1"><h1 className="page-title break-words"><span dir="ltr">{bus.registrationNumber}</span></h1><p className="page-description">{tr("buses.detail.description")}</p></div>
+        <div className="min-w-0 flex-1">
+          <h1 className="page-title break-words">
+            <span dir="ltr">{bus.registrationNumber}</span>
+          </h1>
+          <p className="page-description">{tr("buses.detail.description")}</p>
+        </div>
         <div className="flex flex-wrap items-center gap-3 max-md:w-full">
-          <span className={bus.isActive ? "shrink-0 rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800" : "shrink-0 rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"}>
+          <span
+            className={
+              bus.isActive
+                ? "shrink-0 rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800"
+                : "shrink-0 rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"
+            }
+          >
             {bus.isActive ? tr("common.status.active") : tr("common.status.inactive")}
           </span>
-          <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> {tr("buses.detail.deleteBus")}</AsyncButton>
+          <AsyncButton type="button" variant="destructive" onClick={remove}>
+            <Trash2 className="size-4" /> {tr("buses.detail.deleteBus")}
+          </AsyncButton>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
       <nav aria-label={tr("buses.detail.tabsAria")} className="flex gap-2 overflow-x-auto pb-1">
-        {(["overview", "trips"] as const).map((t) => (
+        {(["overview", "trips"] as const).map((key) => (
           <button
-            key={t}
+            key={key}
             type="button"
-            onClick={() => setTab(t)}
-            aria-current={tab === t ? "page" : undefined}
-            className={`rounded-xl px-4 py-2 text-sm font-medium ${tab === t ? "bg-[#059ff8] text-white" : "bg-white text-[#1a1a1a] hover:bg-[#d6eeff]"}`}
+            onClick={() => setTab(key)}
+            aria-current={tab === key ? "page" : undefined}
+            className={`rounded-xl px-4 py-2 text-sm font-medium ${tab === key ? "bg-[#059ff8] text-white" : "bg-white text-[#1a1a1a] hover:bg-[#d6eeff]"}`}
           >
-            {t === "overview" ? tr("buses.detail.tabOverview") : tr("buses.detail.tabTrips")}
+            {key === "overview" ? tr("buses.detail.tabOverview") : tr("buses.detail.tabTrips")}
           </button>
         ))}
       </nav>
-        <Button type="button" className="max-md:w-full" onClick={() => setCreateTripOpen(true)}>
-          <RouteIcon className="size-4" aria-hidden="true" /> {tr("common.actions.newTrip")}
-        </Button>
-      </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {status && <p role="status" className="text-sm text-green-700">{status}</p>}
@@ -326,7 +358,14 @@ export default function BusDetailPage({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <h2 className="section-title">{tr("buses.detail.sections.details")}</h2>
-                {bus.imageUrl ? <img src={bus.imageUrl} alt={tr("buses.detail.imageAlt", { busRegistrationNumber: bus.registrationNumber })} className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
+                {bus.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={bus.imageUrl}
+                    alt={tr("buses.detail.imageAlt", { busRegistrationNumber: bus.registrationNumber })}
+                    className="mb-3 h-32 w-full rounded-xl object-cover"
+                  />
+                ) : null}
                 <dl className="space-y-2 text-sm">
                   <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.plateNumber")}</dt><dd dir="ltr" className="min-w-0 flex-1 truncate font-semibold">{bus.plateNumber ?? "—"}</dd></div>
                   <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.color")}</dt><dd className="flex min-w-0 flex-1 items-center gap-2 font-semibold">{bus.color ? <span className="inline-block size-4 shrink-0 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}<span className="truncate">{bus.color ?? "—"}</span></dd></div>
@@ -347,12 +386,9 @@ export default function BusDetailPage({
               <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
                 <span className="block text-[#606060]">{tr("buses.detail.currentDriver")}</span>
                 <strong>{currentDriver?.name ?? tr("buses.detail.noDriver")}</strong>
-                {currentDriver?.phoneNumber ? <span className="ms-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span> : null}
-              </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
-                <span className="block text-[#606060]">{tr("buses.detail.currentLine")}</span>
-                <strong>{bus.line ? bus.line.name : tr("buses.detail.noLine")}</strong>
-                {bus.line ? <span dir="ltr" className="ms-2 text-[#606060]">{bus.line.code}</span> : null}
+                {currentDriver?.phoneNumber ? (
+                  <span className="ms-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>{tr("common.actions.disable")}</AsyncButton>
@@ -362,37 +398,44 @@ export default function BusDetailPage({
                 <UserPlus className="size-4" aria-hidden="true" /> {tr("buses.detail.actions.assignDriver")}
               </Button>
               <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>{tr("buses.detail.actions.unassignDriver")}</AsyncButton>
-              <Button type="button" variant="secondary" onClick={() => setLineOpen(true)}>{tr("buses.detail.actions.assignLine")}</Button>
-              <AsyncButton type="button" variant="secondary" onClick={clearLine} disabled={!bus.lineId}>{tr("buses.detail.actions.clearLine")}</AsyncButton>
             </div>
           </div>
         </div>
       )}
 
       {tab === "trips" && (
-        !tripsFirst || tripsFirst.key !== `${fleetId}/${id}` ? (
-          <TableSkeleton rows={9} columns={5} />
-        ) : (
-          <CursorList<TripRef>
-            key={`${fleetId}/${id}`}
-            initialItems={tripsFirst.items}
-            initialCursor={tripsFirst.nextCursor}
-            loadMore={(cursor) =>
-              fetchBusTripsPage(fleetId, id, cursor).then((r) => {
+        <section className="space-y-3">
+          <div>
+            <h2 className="section-title">{tr("buses.detail.tripsTitle")}</h2>
+            <p className="page-description">{tr("buses.detail.tripsDescription")}</p>
+          </div>
+          {!tripsFirst || tripsFirst.key !== `${ownerId}/${id}` ? (
+            <TableSkeleton rows={9} columns={tripColumns.length} />
+          ) : (
+            <CursorList<BusTripRow>
+              gridId={`bus-trips-${id}`}
+              key={`${ownerId}/${id}`}
+              initialItems={tripsFirst.items}
+              initialCursor={tripsFirst.nextCursor}
+              loadMore={async (cursor) => {
+                const r = await fetchBusTripsPage(ownerId, id, cursor);
                 if (!r.ok) throw new Error(r.message);
-                return { items: r.data.items, nextCursor: r.data.nextCursor };
-              })
-            }
-            keyOf={(t) => t.id}
-            emptyMessage={tr("buses.detail.tripsEmpty")}
-            renderItem={(t) => (
-              <div className="list-card">
-                <span className="min-w-0 truncate font-semibold">{t.origin} ← {t.destination}</span>
-                <span className="min-w-0 truncate text-sm text-[#606060]">{t.status} · <time dateTime={t.departAt}>{new Date(t.departAt).toLocaleString("en-EG")}</time></span>
-              </div>
-            )}
-          />
-        )
+                return r.data;
+              }}
+              keyOf={(row) => row.id}
+              columnDefs={tripColumns}
+              emptyMessage={tr("buses.detail.tripsEmpty")}
+              renderItem={(row) => (
+                <Link
+                  href={`/trips/${row.id}/feedback`}
+                  className="text-sm font-medium text-[#059ff8] underline"
+                >
+                  {tr("common.actions.viewFeedback")}
+                </Link>
+              )}
+            />
+          )}
+        </section>
       )}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen} title={tr("buses.detail.editDialog.title")} description={tr("buses.detail.editDialog.description", { busRegistrationNumber: bus.registrationNumber })} size="sm">
@@ -487,33 +530,6 @@ export default function BusDetailPage({
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="danger" onClick={() => setAssignOpen(false)}>{tr("common.actions.cancel")}</Button>
             <AsyncButton type="button" variant="success" onClick={assign} disabled={!driverId}>{tr("common.actions.confirmAssignment")}</AsyncButton>
-          </div>
-        </div>
-      </Dialog>
-      <CreateTripDialog
-        open={createTripOpen}
-        lockedFleetId={fleetId ?? undefined}
-        lockedBusId={id}
-        onCreated={() => {
-          setTripsReloadKey((key) => key + 1);
-          setStatus(tr("buses.detail.toast.tripCreated"));
-        }}
-        onClose={() => setCreateTripOpen(false)}
-      />
-      <Dialog open={lineOpen} onOpenChange={setLineOpen} title={tr("buses.detail.lineDialog.title")} description={tr("buses.detail.lineDialog.description")} size="sm">
-        <div className="space-y-4">
-          {tripLinesPending ? (
-            <Skeleton className="h-[2.75rem] w-full" />
-          ) : (
-            <select value={tripLineId} onChange={(e) => setTripLineId(e.target.value)} className="select-field w-full">
-              <option value="">{tr("buses.detail.pickLine")}</option>
-              {(tripLines ?? []).filter((line) => line.isActive).map((line) => <option key={line.id} value={line.id}>{line.name} · {line.origin} ← {line.destination}</option>)}
-            </select>
-          )}
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-          <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={() => setLineOpen(false)}>{tr("common.actions.cancel")}</Button>
-            <AsyncButton type="button" variant="success" onClick={assignLine}>{tr("common.actions.confirmAssignment")}</AsyncButton>
           </div>
         </div>
       </Dialog>

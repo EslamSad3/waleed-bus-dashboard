@@ -11,8 +11,17 @@ import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { FleetOwnerFleetPicker } from "@/components/fleet-owner-fleet-picker";
-import { fetchSystemDriversPage, inviteDriver, removeDriver, MEMBER_STATUS_AR, type DriverRow, type SystemDriverRow } from "@/lib/actions/members";
+import { OwnerPicker } from "@/components/owners/owner-picker";
+import { DriverAvatar } from "@/components/owners/driver-avatar";
+import { RatingCell } from "@/components/owners/rating-cell";
+import {
+  fetchSystemDriversPage,
+  inviteDriver,
+  removeDriver,
+  MEMBER_STATUS_AR,
+  type DriverRow,
+  type SystemDriverRow,
+} from "@/lib/actions/members";
 import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
 import type { StagedUpload } from "@/lib/actions/http";
 import { driverFreshSchema } from "@/lib/schemas/p1";
@@ -25,7 +34,7 @@ type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
 /** نافذة إضافة سواق — الصورة بتترفع كملف (FormData) مش لينك. */
 function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [fleetId, setFleetId] = useState("");
+  const [ownerId, setOwnerId] = useState("");
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
@@ -37,14 +46,14 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [error, setError] = useState<string | null>(null);
 
   function resetForm() {
-    setFleetId(""); setName(""); setNickname(""); setPhone(""); setNationalId("");
+    setOwnerId(""); setName(""); setNickname(""); setPhone(""); setNationalId("");
     setPassword(""); setPasswordConfirmation(""); setImageFile(null); setError(null);
   }
 
   async function submit() {
     setError(null);
-    if (!fleetId) {
-      setError(t("drivers.errors.pickOwnerAndFleet"));
+    if (!ownerId) {
+      setError(t("drivers.errors.pickOwner"));
       return;
     }
     if (password !== passwordConfirmation) {
@@ -76,7 +85,7 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
       }
       staged = s.data;
     }
-    const result = await inviteDriver(fleetId, {
+    const result = await inviteDriver(ownerId, {
       name: name.trim(),
       nickname: nickname.trim(),
       phone,
@@ -92,7 +101,13 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
     }
     const refreshed = await fetchSystemDriversPage(null);
     if (refreshed.ok) queryClient.setQueryData<DriverPage>(qk.drivers, refreshed.data);
-    else upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, { ...result.data, fleet: { id: fleetId, name: "" }, fleetOwner: { id: "", name: null, phoneNumber: null }, assignedBus: null });
+    else {
+      upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, {
+        ...result.data,
+        owner: { id: ownerId, name: "", phoneNumber: null },
+        assignedBus: null,
+      } as SystemDriverRow);
+    }
     setSaving(false);
     resetForm();
     onClose();
@@ -101,7 +116,7 @@ function CreateDriverDialog({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("drivers.createDialog.title")} description={t("drivers.createDialog.description")} size="lg">
       <div>
-        <div className="mb-5"><FleetOwnerFleetPicker fleetId={fleetId} onFleetChange={setFleetId} /></div>
+        <div className="mb-5"><OwnerPicker ownerId={ownerId} onOwnerChange={setOwnerId} /></div>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("drivers.placeholders.fullName")} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("drivers.placeholders.nickname")} /></label>
@@ -137,8 +152,8 @@ export default function DriversPage() {
 
   async function removeDriverRow(driver: SystemDriverRow) {
     const label = driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel");
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.list.deleteConfirm.description", { label: label, value: driver.fleet.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const result = await removeDriver(driver.fleet.id, driver.id);
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.list.deleteConfirm.description", { label: label, value: driver.owner?.name ?? "" }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
+    const result = await removeDriver(driver.owner.id, driver.userId ?? driver.id);
     if (!result.ok) return;
     removeFromCursorList<SystemDriverRow>(queryClient, qk.drivers, driver.id);
   }
@@ -149,18 +164,30 @@ export default function DriversPage() {
   }
 
   const columns: CommunityColumnDef<SystemDriverRow>[] = [
-    { field: "name", headerName: t("common.fields.driver"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || t("common.value.withoutName") },
-    { field: "phoneNumber", headerName: t("common.fields.phone"), filter: "agTextColumnFilter" },
-    { field: "fleet.name", headerName: t("common.fields.fleet"), valueGetter: (params) => params.data?.fleet.name },
-    { field: "fleetOwner.name", headerName: t("common.fields.fleetOwner"), valueGetter: (params) => params.data?.fleetOwner.name || t("common.value.withoutName") },
+    {
+      headerName: t("common.fields.driver"),
+      valueGetter: (params) => params.data?.name || t("common.value.withoutName"),
+      cellRenderer: (params: { data: SystemDriverRow }) => (
+        <div className="flex items-center gap-2">
+          <DriverAvatar name={params.data.name} picture={params.data.picture} size="sm" />
+          <span>{params.data.name || t("common.value.withoutName")}</span>
+        </div>
+      ),
+    },
+    { field: "phoneNumber", headerName: t("common.fields.phone") },
+    { field: "owner.name", headerName: t("common.fields.owner"), valueGetter: (params) => params.data?.owner?.name || t("common.value.ownerWithoutName") },
     { field: "assignedBus.registrationNumber", headerName: t("drivers.columns.assignedBus"), valueGetter: (params) => params.data?.assignedBus?.registrationNumber || t("drivers.list.notAssigned") },
+    {
+      headerName: t("drivers.columns.overallRating"),
+      cellRenderer: (params: { data: SystemDriverRow }) => <RatingCell value={params.data.stats?.overallRating ?? null} />,
+    },
     {
       field: "status",
       headerName: t("common.fields.status"),
       filter: "agTextColumnFilter",
       valueFormatter: (params) => MEMBER_STATUS_AR[params.value as keyof typeof MEMBER_STATUS_AR] ?? params.value,
     },
-];
+  ];
 
   return (
     <div className="dashboard-page">
@@ -174,7 +201,7 @@ export default function DriversPage() {
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       {isLoading ? (
-        <TableSkeleton rows={8} columns={7} />
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <CursorList<SystemDriverRow>
           gridId="drivers"
@@ -192,7 +219,9 @@ export default function DriversPage() {
             <RowActions
               label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
               actions={[
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.id}?fleetId=${driver.fleet.id}` },
+                // Detail links use the DRIVER USER id, which is stable across
+                // membership churn and keys every driver sub-resource.
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.userId ?? driver.id}` },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver) },
               ]}

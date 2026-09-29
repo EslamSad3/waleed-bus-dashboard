@@ -3,6 +3,9 @@ import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import type { CreateBusInput, AssignDriverInput } from "@/lib/schemas/p1";
 import { t } from "@/lib/i18n/t";
 
+/** Owner-scoped bus reads/writes. The owner id is the tenant selector. */
+const base = (ownerId: string) => `/api/fleet-owners/${ownerId}/buses`;
+
 export type VehicleBrand = {
   id: string;
   name: string;
@@ -12,7 +15,7 @@ export type VehicleBrand = {
 
 export type Bus = {
   id: string;
-  fleetId: string;
+  ownerId: string;
   registrationNumber: string;
   plateNumber?: string | null;
   color?: string | null;
@@ -22,36 +25,54 @@ export type Bus = {
   isAirConditioned?: boolean | null;
   modelYear?: number | null;
   capacity: number;
-  lineId?: string | null;
-  line?: { id: string; name: string; code: string } | null;
   isActive: boolean;
+  /** Mean bus rating across the bus's trips; null when nobody rated it yet. */
+  avgRating?: number | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type BusPage = CursorPage<Bus>;
-export type TripRef = { id: string; origin: string; destination: string; departAt: string; status: string };
 
-export function fetchBusesPage(fleetId: string, cursor: string | null): Promise<ActionResult<BusPage>> {
+/** Super-admin cross-owner bus index (`GET /fleet-owners/buses`). */
+export function fetchSystemBusesPage(cursor: string | null): Promise<ActionResult<BusPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<BusPage>(`/api/fleet-owners/fleets/${fleetId}/buses${q}`);
+  return apiGet<BusPage>(`/api/fleet-owners/buses${q}`);
 }
 
-export function fetchBus(fleetId: string, id: string): Promise<ActionResult<Bus>> {
-  return apiGet<Bus>(`/api/fleet-owners/fleets/${fleetId}/buses/${id}`);
+/** One row of `GET /fleet-owners/{ownerId}/buses/{busId}/trips`. */
+export type BusTripRow = {
+  id: string;
+  departAt: string;
+  status: string;
+  fare: string;
+  line: { id: string; name: string; code: string; origin: string | null; destination: string | null };
+  bus: { id: string; registrationNumber: string; plateNumber: string | null };
+  driver: { id: string; name: string | null; nickname?: string | null; picture?: string | null } | null;
+  passengerCount: number;
+  busRatingAvg: number | null;
+};
+
+export function fetchBusesPage(ownerId: string, cursor: string | null): Promise<ActionResult<BusPage>> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet<BusPage>(`${base(ownerId)}${q}`);
 }
 
-export function createBus(fleetId: string, input: CreateBusInput): Promise<ActionResult<Bus>> {
+export function fetchBus(ownerId: string, id: string): Promise<ActionResult<Bus>> {
+  return apiGet<Bus>(`${base(ownerId)}/${id}`);
+}
+
+export function createBus(ownerId: string, input: CreateBusInput): Promise<ActionResult<Bus>> {
   return notifyResult(
     t("buses.toast.created"),
-    apiSend<Bus>(`/api/fleet-owners/fleets/${fleetId}/buses`, "POST", input, "REGISTRATION_TAKEN"),
+    apiSend<Bus>(base(ownerId), "POST", input, "REGISTRATION_TAKEN"),
   );
 }
 
-export function updateBus(fleetId: string, id: string, input: { plateNumber?: string; color?: string; imageUrl?: string; brandId?: string | null; isAirConditioned?: boolean; modelYear?: number; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
+export function updateBus(ownerId: string, id: string, input: { plateNumber?: string; color?: string; imageUrl?: string; brandId?: string | null; isAirConditioned?: boolean; modelYear?: number; capacity?: number; isActive?: boolean }): Promise<ActionResult<Bus>> {
   return notifyResult(
     t("buses.toast.saved"),
-    apiSend<Bus>(`/api/fleet-owners/fleets/${fleetId}/buses/${id}`, "PATCH", input, "REGISTRATION_TAKEN"),
+    apiSend<Bus>(`${base(ownerId)}/${id}`, "PATCH", input, "REGISTRATION_TAKEN"),
   );
 }
 
@@ -60,25 +81,66 @@ export function updateBus(fleetId: string, id: string, input: { plateNumber?: st
  * Link `staged.publicUrl` as `imageUrl` on create/update, and discard the
  * staged object when the user cancels or the record write fails.
  */
-export function stageBusImage(fleetId: string, file: File, signal?: AbortSignal): Promise<ActionResult<StagedUpload>> {
-  return apiStageImage("bus-image", file, { fleetId }, signal);
+export function stageBusImage(ownerId: string, file: File, signal?: AbortSignal): Promise<ActionResult<StagedUpload>> {
+  return apiStageImage("bus-image", file, { ownerId }, signal);
 }
 
 /** Best-effort cleanup of a staged bus image (cancel / failed record write). */
-export function discardBusImage(fleetId: string, staged: StagedUpload): Promise<void> {
-  return apiDiscardStaged(staged, { fleetId });
+export function discardBusImage(ownerId: string, staged: StagedUpload): Promise<void> {
+  return apiDiscardStaged(staged, { ownerId });
 }
 
 /**
  * @deprecated Use stageBusImage + imageUrl instead. The legacy multipart path
  * proxies file bytes through Vercel and 503s under load.
  */
-export function uploadBusImage(fleetId: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
+export function uploadBusImage(ownerId: string, file: File, opts?: NotifyOptions): Promise<ActionResult<{ url: string }>> {
   return notifyResult(
     t("buses.toast.imageUploaded"),
-    apiSendFile<{ url: string }>(`/api/fleet-owners/fleets/${fleetId}/uploads/bus-image`, file),
+    apiSendFile<{ url: string }>(`/api/fleet-owners/${ownerId}/uploads/bus-image`, file),
     opts,
   );
+}
+
+export function deleteBus(ownerId: string, id: string): Promise<ActionResult<null>> {
+  return notifyResult(t("buses.toast.deleted"), apiSend<null>(`${base(ownerId)}/${id}`, "DELETE"));
+}
+
+export function disableBus(ownerId: string, busId: string): Promise<ActionResult<Bus>> {
+  return notifyResult(
+    t("buses.toast.disabled"),
+    apiSend<Bus>(`${base(ownerId)}/${busId}/disable`, "POST"),
+  );
+}
+
+export function reactivateBus(ownerId: string, busId: string): Promise<ActionResult<Bus>> {
+  return notifyResult(
+    t("buses.toast.enabled"),
+    apiSend<Bus>(`${base(ownerId)}/${busId}/reactivate`, "POST"),
+  );
+}
+
+export function assignDriver(ownerId: string, busId: string, input: AssignDriverInput): Promise<ActionResult<unknown>> {
+  return notifyResult(
+    t("buses.toast.driverAssigned"),
+    apiSend(`${base(ownerId)}/${busId}/driver`, "POST", input),
+  );
+}
+
+export function unassignDriver(ownerId: string, busId: string): Promise<ActionResult<null>> {
+  return notifyResult(
+    t("buses.toast.driverUnassigned"),
+    apiSend<null>(`${base(ownerId)}/${busId}/driver`, "DELETE"),
+  );
+}
+
+export function fetchBusTripsPage(
+  ownerId: string,
+  busId: string,
+  cursor: string | null,
+): Promise<ActionResult<CursorPage<BusTripRow>>> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet<CursorPage<BusTripRow>>(`${base(ownerId)}/${busId}/trips${q}`);
 }
 
 export const fetchBrands = (includeInactive = false) =>
@@ -93,55 +155,3 @@ export const updateBrand = (id: string, input: { name?: string; sortOrder?: numb
   );
 export const deleteBrand = (id: string) =>
   notifyResult(t("brands.toast.deleted"), apiSend<null>(`/api/brands/${id}`, "DELETE"));
-
-export function deleteBus(fleetId: string, id: string): Promise<ActionResult<null>> {
-  return notifyResult(t("buses.toast.deleted"), apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/buses/${id}`, "DELETE"));
-}
-
-/** Tenant lifecycle actions (research R1) — fleetId sent as x-fleet-id. */
-export function disableBus(fleetId: string, busId: string): Promise<ActionResult<Bus>> {
-  return notifyResult(
-    t("buses.toast.disabled"),
-    apiSend<Bus>(`/api/fleet/buses/${busId}/disable`, "POST", undefined, undefined, fleetId),
-  );
-}
-
-export function reactivateBus(fleetId: string, busId: string): Promise<ActionResult<Bus>> {
-  return notifyResult(
-    t("buses.toast.enabled"),
-    apiSend<Bus>(`/api/fleet/buses/${busId}/reactivate`, "POST", undefined, undefined, fleetId),
-  );
-}
-
-export function assignDriver(fleetId: string, busId: string, input: AssignDriverInput): Promise<ActionResult<unknown>> {
-  return notifyResult(
-    t("buses.toast.driverAssigned"),
-    apiSend(`/api/fleet/buses/${busId}/driver`, "POST", input, undefined, fleetId),
-  );
-}
-
-export function unassignDriver(fleetId: string, busId: string): Promise<ActionResult<null>> {
-  return notifyResult(
-    t("buses.toast.driverUnassigned"),
-    apiSend<null>(`/api/fleet/buses/${busId}/driver`, "DELETE", undefined, undefined, fleetId),
-  );
-}
-
-export function assignTripLine(fleetId: string, busId: string, tripLineId: string): Promise<ActionResult<Bus>> {
-  return notifyResult(
-    t("buses.toast.lineAssigned"),
-    apiSend<Bus>(`/api/fleet/buses/${busId}/trip-line`, "POST", { tripLineId }, undefined, fleetId),
-  );
-}
-
-export function unassignTripLine(fleetId: string, busId: string): Promise<ActionResult<null>> {
-  return notifyResult(
-    t("buses.toast.lineUnassigned"),
-    apiSend<null>(`/api/fleet/buses/${busId}/trip-line`, "DELETE", undefined, undefined, fleetId),
-  );
-}
-
-export function fetchBusTripsPage(fleetId: string, busId: string, cursor: string | null): Promise<ActionResult<CursorPage<TripRef>>> {
-  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet(`/api/fleet/buses/${busId}/trips${q}`, fleetId);
-}

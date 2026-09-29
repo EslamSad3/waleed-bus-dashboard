@@ -17,50 +17,49 @@ import {
   type VehicleBrand,
 } from "@/lib/actions/buses";
 import { validateImageFile, type StagedUpload } from "@/lib/actions/http";
-import { fetchFleetsPage, type Fleet } from "@/lib/actions/fleets";
-import type { CursorPage } from "@/lib/actions/http";
+import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { createBusSchema } from "@/lib/schemas/p1";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { useFilterStore } from "@/stores/filters";
-import { FleetPicker } from "@/components/fleet-picker";
-import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
+import { OwnerPicker } from "@/components/owners/owner-picker";
+import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { Skeleton } from "@/components/ui/skeleton";
 import { t } from "@/lib/i18n/t";
 
-type BusRow = Bus & { fleetName: string };
+type BusRow = Bus & { ownerId: string; ownerName: string };
 
 type CreateValues = z.input<typeof createBusSchema>;
 
 /**
  * نافذة إضافة عربية — من غير رقم تسجيل (بيتولد تلقائيًا) واللون قايمة بمعاينة.
- * تُستخدم في صفحة العربيات وفي تبويب عربيات الأسطول (lockedFleetId يثبّت الأسطول).
+ * تُستخدم في صفحة العربيات وفي تبويب عربيات الشركة (lockedOwnerId يثبّت الشركة).
  */
 export function CreateBusDialog({
   open,
   onClose,
   onCreated,
-  lockedFleetId,
+  lockedOwnerId,
 }: {
   open: boolean;
   onClose: () => void;
-  /** Extra cache hook for callers with their own list (e.g. fleet tab). */
+  /** Extra cache hook for callers with their own list (e.g. owner tab). */
   onCreated?: (bus: Bus) => void;
-  /** When set, the fleet is fixed and the picker is hidden. */
-  lockedFleetId?: string;
+  /** When set, the owner company is fixed and the picker is hidden. */
+  lockedOwnerId?: string;
 }) {
   const queryClient = useQueryClient();
-  const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
-  const [fleetId, setLocalFleetId] = useState(lockedFleetId ?? scopedFleetId ?? "");
+  const { ownerId: scopedOwnerId, setOwnerId } = useFilterStore();
+  const [ownerId, setLocalOwnerId] = useState(lockedOwnerId ?? scopedOwnerId ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true), { enabled: open });
-  const { data: fleetsPage } = useApiQuery<CursorPage<Fleet>>(qk.fleets, () => fetchFleetsPage(null), { enabled: open && !lockedFleetId });
-  const fleetName = useMemo(
-    () => (fleetsPage?.items ?? []).find((fleet) => fleet.id === fleetId)?.name ?? "—",
-    [fleetsPage, fleetId],
+  const { data: ownersPage } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null), { enabled: open && !lockedOwnerId });
+  const ownerName = useMemo(
+    () => (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.companyName ?? "—",
+    [ownersPage, ownerId],
   );
 
   const form = useForm<CreateValues>({
@@ -90,7 +89,7 @@ export function CreateBusDialog({
       form.setValue("imageUrl", "", { shouldValidate: true });
       return;
     }
-    // الرفع الفعلي بيحصل مع الحفظ (بعد اختيار الأسطول) مباشر للتخزين
+    // الرفع الفعلي بيحصل مع الحفظ (بعد اختيار الشركة) مباشر للتخزين
     // السحابي — مفيش صور يتيمة لو المستخدم لغى.
     const invalid = validateImageFile(file);
     if (invalid) {
@@ -104,25 +103,25 @@ export function CreateBusDialog({
 
   async function onSubmit(values: CreateValues) {
     setFormError(null);
-    if (!fleetId) {
-      setFormError(t("buses.createDialog.errors.pickFleet"));
+    if (!ownerId) {
+      setFormError(t("buses.createDialog.errors.pickOwner"));
       return;
     }
     if (!imageFile) {
       setFormError(t("buses.createDialog.errors.imageRequired"));
       return;
     }
-    setFleetId(fleetId);
-    setFleetScopeCookie(fleetId);
+    setOwnerId(ownerId);
+    setOwnerScopeCookie(ownerId);
     setUploading(true);
-    const stagedResult = await stageBusImage(fleetId, imageFile);
+    const stagedResult = await stageBusImage(ownerId, imageFile);
     if (!stagedResult.ok) {
       setUploading(false);
       setFormError(stagedResult.message);
       return;
     }
     const staged: StagedUpload = stagedResult.data;
-    const r = await createBus(fleetId, {
+    const r = await createBus(ownerId, {
       ...values,
       imageUrl: staged.publicUrl,
       registrationNumber: values.registrationNumber || undefined,
@@ -131,12 +130,12 @@ export function CreateBusDialog({
     });
     setUploading(false);
     if (!r.ok) {
-      await discardBusImage(fleetId, staged);
+      await discardBusImage(ownerId, staged);
       setFormError(r.message);
       return;
     }
     // تحديث فوري للجداول من غير إعادة تحميل
-    upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, { ...r.data, fleetName });
+    upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, { ...r.data, ownerId, ownerName });
     onCreated?.(r.data);
     resetForm();
     onClose();
@@ -147,9 +146,9 @@ export function CreateBusDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
       <div>
-        {lockedFleetId ? null : (
+        {lockedOwnerId ? null : (
           <div className="mb-4">
-            <FleetPicker value={fleetId} onChange={setLocalFleetId} />
+            <OwnerPicker ownerId={ownerId} onOwnerChange={setLocalOwnerId} />
           </div>
         )}
         <form

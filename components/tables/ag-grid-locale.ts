@@ -63,8 +63,6 @@ export const arabicGridHeaders: Record<string, string> = {
   isActive: t("agGrid.fields.isActive"),
   status: t("agGrid.fields.status"),
   roleSlug: t("agGrid.fields.roleSlug"),
-  fleetId: t("agGrid.fields.fleetId"),
-  fleetName: t("agGrid.fields.fleetName"),
   ownerName: t("agGrid.fields.ownerName"),
   origin: t("agGrid.fields.origin"),
   destination: t("agGrid.fields.destination"),

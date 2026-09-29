@@ -15,29 +15,22 @@ import {
   UsersRound,
   Waypoints,
 } from "lucide-react";
-import { apiGet, mapWithConcurrency, type CursorPage } from "@/lib/actions/http";
+import { apiGet, type CursorPage } from "@/lib/actions/http";
 import { fetchAdminBookingsPage, type Booking } from "@/lib/actions/bookings";
-import { fetchStops, fetchTripLines, type Stop, type TripLine } from "@/lib/actions/trip-lines";
+import { fetchStops, fetchSystemTripLinesPage, type Stop } from "@/lib/actions/trip-lines";
+import { fetchSystemBusesPage } from "@/lib/actions/buses";
+import { fetchSystemTripsPage } from "@/lib/actions/trips";
+import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { qk, useApiQuery, useDataQuery } from "@/lib/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCardsSkeleton } from "@/components/ui/skeletons";
 import { ApexChart } from "@/components/charts/apex-chart";
 import { t } from "@/lib/i18n/t";
 
-type FleetLite = { id: string; name: string; isActive: boolean };
-
 async function fetchCountPage(path: string): Promise<number> {
   const result = await apiGet<CursorPage<unknown>>(path);
   if (!result.ok) throw new Error(result.message);
   return result.data.items.length;
-}
-
-/** عدّاد لكل أسطول من مصدر معين (عربيات/رحلات) */
-async function countPerFleet(fleets: FleetLite[], resource: "buses" | "trips") {
-  return mapWithConcurrency(fleets.slice(0, 12), 4, async (fleet) => {
-    const result = await apiGet<CursorPage<unknown>>(`/api/fleet-owners/fleets/${fleet.id}/${resource}?limit=100`);
-    return { name: fleet.name, count: result.ok ? result.data.items.length : 0 };
-  });
 }
 
 type Kpi = {
@@ -71,65 +64,67 @@ function KpiCard({ label, value, href, icon: Icon, tint }: Kpi) {
 
 /** كروت مؤشرات (كل كارت لينك لصفحته) + رسوم ApexCharts ثلاثية الإحساس. */
 export function OverviewInsights() {
-  const fleetsQuery = useDataQuery<FleetLite[]>(["fleets", "kpi"], async () => {
-    const result = await apiGet<CursorPage<FleetLite>>("/api/fleet-owners/fleets?limit=100");
-    if (!result.ok) throw new Error(result.message);
-    return result.data.items;
-  });
+  const ownersPageQuery = useApiQuery(["owners", "kpi"], () => fetchFleetOwnersPage(null));
   const driversQuery = useDataQuery<number>(["drivers", "kpi"], () => fetchCountPage("/api/drivers?limit=100"));
   const ownersQuery = useDataQuery<number>(["fleet-owners", "kpi"], () => fetchCountPage("/api/fleet-owners?limit=100"));
   const usersQuery = useDataQuery<number>(["users", "kpi"], () => fetchCountPage("/api/users?limit=100"));
   const stopsQuery = useApiQuery<Stop[]>(qk.stops, fetchStops);
-  const tripLinesQuery = useApiQuery<TripLine[]>(qk.tripLines, fetchTripLines);
+  const tripLinesQuery = useApiQuery(["trip-lines", "kpi"], () => fetchSystemTripLinesPage(null));
+  const busesQuery = useApiQuery(["buses", "kpi"], () => fetchSystemBusesPage(null));
+  const tripsQuery = useApiQuery(["trips", "kpi"], () => fetchSystemTripsPage(null));
   const bookingsQuery = useDataQuery<Booking[]>(["bookings", "kpi"], async () => {
     const result = await fetchAdminBookingsPage({ limit: 100 }, null);
     if (!result.ok) throw new Error(result.message);
     return result.data.items;
   });
-  const busesPerFleetQuery = useDataQuery<{ name: string; count: number }[]>(
-    ["buses", "per-fleet", fleetsQuery.data?.length ?? 0],
-    () => countPerFleet(fleetsQuery.data ?? [], "buses"),
-    { enabled: Boolean(fleetsQuery.data) },
-  );
-  const tripsPerFleetQuery = useDataQuery<{ name: string; count: number }[]>(
-    ["trips", "per-fleet", fleetsQuery.data?.length ?? 0],
-    () => countPerFleet(fleetsQuery.data ?? [], "trips"),
-    { enabled: Boolean(fleetsQuery.data) },
-  );
 
-  const fleets = fleetsQuery.data ?? [];
-  const activeFleets = fleets.filter((fleet) => fleet.isActive).length;
-  const totalBuses = (busesPerFleetQuery.data ?? []).reduce((sum, row) => sum + row.count, 0);
-  const totalTrips = (tripsPerFleetQuery.data ?? []).reduce((sum, row) => sum + row.count, 0);
+  const owners = useMemo(() => ownersPageQuery.data?.items ?? [], [ownersPageQuery.data?.items]);
+  const activeOwners = owners.filter((owner) => owner.isActive).length;
+  const totalBuses = busesQuery.data?.items.length ?? 0;
+  const totalTrips = tripsQuery.data?.items.length ?? 0;
   const bookings = bookingsQuery.data ?? [];
   const statusCount = (status: string) => bookings.filter((booking) => booking.status === status).length;
+  // Bar chart: how many buses each company runs, from the cross-owner bus index.
+  const busesPerOwner = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const bus of busesQuery.data?.items ?? []) {
+      counts.set(bus.ownerId, (counts.get(bus.ownerId) ?? 0) + 1);
+    }
+    return owners
+      .map((owner) => ({
+        name: owner.companyName || owner.name || owner.id,
+        count: counts.get(owner.id) ?? 0,
+      }))
+      .filter((row) => row.count > 0)
+      .slice(0, 12);
+  }, [owners, busesQuery.data?.items]);
   const loadingText = "…";
 
   const kpis: Kpi[] = [
     {
-      label: t("home.insights.activeFleets"),
-      value: fleetsQuery.isLoading ? loadingText : `${activeFleets} / ${fleets.length}`,
+      label: t("home.insights.activeOwners"),
+      value: ownersPageQuery.isLoading ? loadingText : `${activeOwners} / ${owners.length}`,
       href: "/fleet-owners",
       icon: Building2,
       tint: "bg-[#f0edff] text-[#5d4ca8]",
     },
     {
       label: t("common.nav.buses"),
-      value: busesPerFleetQuery.isLoading ? loadingText : totalBuses,
+      value: busesQuery.isLoading ? loadingText : totalBuses,
       href: "/buses",
       icon: BusFront,
       tint: "bg-[#e9f7f0] text-[#147353]",
     },
     {
       label: t("common.nav.trips"),
-      value: tripsPerFleetQuery.isLoading ? loadingText : totalTrips,
+      value: tripsQuery.isLoading ? loadingText : totalTrips,
       href: "/trips",
       icon: Route,
       tint: "bg-[#eaf6ff] text-[#059ff8]",
     },
     {
       label: t("common.nav.tripLines"),
-      value: tripLinesQuery.isLoading ? loadingText : tripLinesQuery.data?.length ?? loadingText,
+      value: tripLinesQuery.isLoading ? loadingText : tripLinesQuery.data?.items.length ?? loadingText,
       href: "/trip-lines",
       icon: Waypoints,
       tint: "bg-[#fff7e3] text-[#8b6814]",
@@ -241,7 +236,7 @@ export function OverviewInsights() {
         },
       },
       xaxis: {
-        categories: (busesPerFleetQuery.data ?? []).map((row) => row.name),
+        categories: busesPerOwner.map((row) => row.name),
         labels: { trim: true, hideOverlappingLabels: true },
         axisBorder: { show: false },
         axisTicks: { show: false },
@@ -249,30 +244,30 @@ export function OverviewInsights() {
       yaxis: { labels: { formatter: (value) => String(Math.round(value)) } },
       grid: { border: { dashed: true }, strokeDashArray: 4 },
     }),
-    [baseOptions, busesPerFleetQuery.data],
+    [baseOptions, busesPerOwner],
   );
 
-  const fleetRunningPercent = fleets.length
-    ? Math.round((activeFleets / fleets.length) * 100)
+  const ownerRunningPercent = owners.length
+    ? Math.round((activeOwners / owners.length) * 100)
     : 0;
   const chartFrame = "panel-card p-5 sm:p-6";
 
   const hasData =
-    !fleetsQuery.isLoading && !bookingsQuery.isLoading && !busesPerFleetQuery.isLoading;
+    !ownersPageQuery.isLoading && !bookingsQuery.isLoading && !busesQuery.isLoading;
 
   // أول تحميل لصف الكروت — سكيليتون بنفس شبكة البيانات (بدون قفزة).
   // isLoading يعني isPending + قيد الجلب، فالاستعلامات المعطّلة (المتوقفة على الأساطيل)
   // أو فاشلة أو مأخوذة من الكاش ما بتعطّل الصف.
   const kpisLoading = [
-    fleetsQuery,
+    ownersPageQuery,
     driversQuery,
     ownersQuery,
     usersQuery,
     stopsQuery,
     tripLinesQuery,
     bookingsQuery,
-    busesPerFleetQuery,
-    tripsPerFleetQuery,
+    busesQuery,
+    tripsQuery,
   ].some((query) => query.isLoading);
 
   return (
@@ -307,20 +302,20 @@ export function OverviewInsights() {
             />
           </div>
           <div className={chartFrame}>
-            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.fleetsOperatingTitle")}</h3>
+            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.ownersOperatingTitle")}</h3>
             <ApexChart
               type="radialBar"
               options={radialOptions}
-              series={[fleetRunningPercent]}
+              series={[ownerRunningPercent]}
               height={280}
             />
           </div>
           <div className={chartFrame}>
-            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.busesPerFleetTitle")}</h3>
+            <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.busesPerOwnerTitle")}</h3>
             <ApexChart
               type="bar"
               options={barOptions}
-              series={[{ name: t("home.insights.busesSeries"), data: (busesPerFleetQuery.data ?? []).map((row) => row.count) }]}
+              series={[{ name: t("home.insights.busesSeries"), data: busesPerOwner.map((row) => row.count) }]}
               height={280}
             />
           </div>

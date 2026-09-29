@@ -12,8 +12,8 @@ type BusFetchOptions = {
   body?: unknown;
   /** Raw multipart body (forwarded with its content type, never JSON-encoded). */
   rawBody?: { bytes: ArrayBuffer; contentType: string };
-  /** Attach the fleet-scope hint (persisted zustand filter → cookie → header). */
-  fleetId?: string | null;
+  /** Attach the owner-scope hint (persisted zustand filter → cookie → header). */
+  ownerId?: string | null;
   /** Retry once via refresh on 401 (default true; false for the refresh call itself). */
   retryAuth?: boolean;
   /** Abort budget for the backend call (default 15s; Vercel Hobby kills at ~10-60s). */
@@ -25,13 +25,13 @@ type BusFetchOptions = {
  * `{statusCode, data}` envelope exactly once, preserves cursor pages untouched.
  */
 export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Promise<BusResult<T>> {
-  const { method = "GET", body, rawBody, fleetId, retryAuth = true, timeoutMs = 15000 } = opts;
+  const { method = "GET", body, rawBody, ownerId, retryAuth = true, timeoutMs = 15000 } = opts;
   const store = await cookies();
   const access = store.get(ACCESS_COOKIE)?.value;
 
   const headers: Record<string, string> = {};
   if (access) headers.Authorization = `Bearer ${access}`;
-  if (fleetId) headers["x-fleet-id"] = fleetId;
+  if (ownerId) headers["x-owner-id"] = ownerId;
   if (rawBody) headers["Content-Type"] = rawBody.contentType;
   else if (body !== undefined) headers["Content-Type"] = "application/json";
 
