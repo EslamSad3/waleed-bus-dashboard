@@ -41,10 +41,10 @@ async function parse<T>(res: Response, conflictKey?: ConflictKey): Promise<Actio
   return { ok: false, message, code, fields: normalizeFields(payload?.details?.fields) };
 }
 
-export async function apiGet<T>(path: string, fleetId?: string | null): Promise<ActionResult<T>> {
+export async function apiGet<T>(path: string, ownerId?: string | null): Promise<ActionResult<T>> {
   try {
     const res = await fetch(path, {
-      headers: fleetId ? { "x-fleet-id": fleetId } : {},
+      headers: ownerId ? { "x-owner-id": ownerId } : {},
       cache: "no-store",
     });
     return parse<T>(res);
@@ -58,14 +58,14 @@ export async function apiSend<T>(
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown,
   conflictKey?: ConflictKey,
-  fleetId?: string | null,
+  ownerId?: string | null,
 ): Promise<ActionResult<T>> {
   try {
     const res = await fetch(path, {
       method,
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(fleetId ? { "x-fleet-id": fleetId } : {}),
+        ...(ownerId ? { "x-owner-id": ownerId } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -111,7 +111,7 @@ type SignResponse = {
 export async function apiStageImage(
   kind: SignKind,
   file: File,
-  scope: { fleetId: string } | { userId?: string },
+  scope: { ownerId: string } | { userId?: string },
   signal?: AbortSignal,
 ): Promise<ActionResult<StagedUpload>> {
   const invalid = validateImageFile(file);
@@ -120,11 +120,11 @@ export async function apiStageImage(
     return { ok: false, message: invalid, code };
   }
   const signPath =
-    "fleetId" in scope ? `/api/fleet-owners/fleets/${scope.fleetId}/uploads/sign` : "/api/uploads/sign";
+    "ownerId" in scope ? `/api/fleet-owners/${scope.ownerId}/uploads/sign` : "/api/uploads/sign";
   // scopeId namespaces the staged path; create-flows omit it (server scopes
   // to the actor) since the target record does not exist yet.
   const signBody =
-    "fleetId" in scope
+    "ownerId" in scope
       ? { kind, contentType: file.type, sizeBytes: file.size }
       : {
           kind,
@@ -157,10 +157,10 @@ export async function apiStageImage(
 /** Best-effort staged cleanup (cancel / failed record write). Never throws. */
 export async function apiDiscardStaged(
   staged: StagedUpload,
-  scope?: { fleetId: string },
+  scope?: { ownerId: string },
 ): Promise<void> {
   try {
-    const path = scope ? `/api/fleet-owners/fleets/${scope.fleetId}/uploads/staged-delete` : "/api/uploads/staged";
+    const path = scope ? `/api/fleet-owners/${scope.ownerId}/uploads/staged-delete` : "/api/uploads/staged";
     await apiSend(path, scope ? "POST" : "DELETE", { bucket: staged.bucket, path: staged.path });
   } catch {
     // Staged tmp/... objects without a linked record are harmless.
@@ -184,7 +184,7 @@ export async function apiSendFile<T>(
 
 /**
  * Maps over items with bounded parallelism. The dashboard fans out
- * fleet-scoped reads; unbounded Promise.all exhausts the backend's
+ * owner-scoped reads; unbounded Promise.all exhausts the backend's
  * transaction pool (P2024/P2028 "unable to start a transaction").
  */
 export async function mapWithConcurrency<T, R>(

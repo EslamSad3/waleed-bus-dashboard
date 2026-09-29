@@ -3,10 +3,10 @@ import { notifyResult } from "@/lib/actions/toast";
 import { t } from "@/lib/i18n/t";
 
 /**
- * VIP tiers are a platform catalog, not a fleet: `/vip-tiers` stays a top-level
+ * VIP tiers are a platform catalog, not a company: `/vip-tiers` stays top-level
  * resource even after spec 014 moved the *assignment* route to
- * `/fleet-owners/fleets/:fleetId/vip`. Split out of `lib/actions/fleets.ts` so
- * the fleet-owner screen does not carry an unrelated catalog module.
+ * the owner company does not own tiers. Split into its own module so the
+ * fleet-owner screen does not carry an unrelated catalog module.
  */
 export type VipTier = {
   id: string;

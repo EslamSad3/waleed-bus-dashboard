@@ -1,12 +1,16 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
 import type { AddMemberInput, AddDriverInput } from "@/lib/schemas/p1";
+import type { DriverRatingRow, DriverTripRow, TripFeedbackRow } from "@/lib/actions/feedback";
+import { fetchDriverRatingsPage, fetchDriverTripsPage } from "@/lib/actions/feedback";
 import { t } from "@/lib/i18n/t";
+
+const ownerBase = (ownerId: string) => `/api/fleet-owners/${ownerId}`;
 
 export type Member = {
   id: string;
   userId: string;
-  fleetId: string;
+  ownerId: string;
   roleId: string;
   status: "ACTIVE" | "SUSPENDED" | "REVOKED";
   joinedAt: string;
@@ -25,8 +29,16 @@ export const MEMBER_STATUS_AR: Record<Member["status"], string> = {
   REVOKED: t("enums.memberStatus.revoked"),
 };
 
-/** Driver roster row — fields beyond id/status render defensively (backend-owned shape). */
+/** Driver stats embedded by the roster detail endpoint. */
+export type DriverStats = {
+  tripCount: number;
+  overallRating: number | null;
+  uniqueBusCount: number;
+};
+
+/** Roster row. Driver subresources are keyed by the DRIVER USER id. */
 export type DriverRow = {
+  /** Membership row id. */
   id: string;
   userId?: string;
   name?: string | null;
@@ -37,29 +49,49 @@ export type DriverRow = {
   status: string;
   roleSlug?: string | null;
   joinedAt?: string;
-  assignments?: { id: string; busId: string; registrationNumber: string; plateNumber?: string | null; status: string; createdAt: string; endedAt: string | null }[];
+  stats?: DriverStats;
+  assignments?: {
+    id: string;
+    busId: string;
+    registrationNumber: string;
+    plateNumber?: string | null;
+    status: string;
+    createdAt: string;
+    endedAt: string | null;
+  }[];
 };
 
-/** Platform roster row: one driver membership plus its fleet ownership and active bus context. */
+/** Cross-owner roster row: the driver membership plus its company and active bus. */
 export type SystemDriverRow = DriverRow & {
-  fleet: { id: string; name: string };
-  fleetOwner: { id: string; name: string | null; phoneNumber: string | null };
+  owner: { id: string; name: string | null; phoneNumber: string | null };
   assignedBus: { id: string; registrationNumber: string; plateNumber: string | null } | null;
 };
 
-export function fetchMembersPage(fleetId: string, cursor: string | null): Promise<ActionResult<MemberPage>> {
+export type DriverAssignmentRow = {
+  id: string;
+  busId: string;
+  registrationNumber: string;
+  plateNumber: string | null;
+  status: string;
+  createdAt: string;
+  endedAt: string | null;
+};
+
+export type DriverPage = CursorPage<DriverRow>;
+
+export function fetchMembersPage(ownerId: string, cursor: string | null): Promise<ActionResult<MemberPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<MemberPage>(`/api/fleet-owners/fleets/${fleetId}/members${q}`);
+  return apiGet<MemberPage>(`${ownerBase(ownerId)}/members${q}`);
 }
 
-export function addMember(fleetId: string, input: AddMemberInput): Promise<ActionResult<Member>> {
+export function addMember(ownerId: string, input: AddMemberInput): Promise<ActionResult<Member>> {
   return notifyResult(
     t("members.toast.added"),
-    apiSend<Member>(`/api/fleet-owners/fleets/${fleetId}/members`, "POST", input, "MEMBER_EXISTS"),
+    apiSend<Member>(`${ownerBase(ownerId)}/members`, "POST", input, "MEMBER_EXISTS"),
   );
 }
 
-export function updateMember(fleetId: string, memberId: string, input: { roleSlug?: string; status?: Member["status"] }): Promise<ActionResult<Member>> {
+export function updateMember(ownerId: string, memberId: string, input: { roleSlug?: string; status?: Member["status"] }): Promise<ActionResult<Member>> {
   return notifyResult(
     input.status === "ACTIVE"
       ? t("members.toast.activated")
@@ -68,42 +100,43 @@ export function updateMember(fleetId: string, memberId: string, input: { roleSlu
         : input.status === "REVOKED"
           ? t("members.toast.revoked")
           : t("members.toast.saved"),
-    apiSend<Member>(`/api/fleet-owners/fleets/${fleetId}/members/${memberId}`, "PATCH", input),
+    apiSend<Member>(`${ownerBase(ownerId)}/members/${memberId}`, "PATCH", input),
   );
 }
 
-export function removeMember(fleetId: string, memberId: string): Promise<ActionResult<null>> {
+export function removeMember(ownerId: string, memberId: string): Promise<ActionResult<null>> {
   return notifyResult(
     t("members.toast.removed"),
-    apiSend<null>(`/api/fleet-owners/fleets/${fleetId}/members/${memberId}`, "DELETE"),
+    apiSend<null>(`${ownerBase(ownerId)}/members/${memberId}`, "DELETE"),
   );
 }
 
-/** Tenant driver roster (research R1) — fleetId sent as x-fleet-id. */
-export function fetchDriversPage(fleetId: string, cursor: string | null): Promise<ActionResult<CursorPage<DriverRow>>> {
+/** Owner driver roster. */
+export function fetchDriversPage(ownerId: string, cursor: string | null): Promise<ActionResult<DriverPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet(`/api/fleet/drivers${q}`, fleetId);
+  return apiGet<DriverPage>(`${ownerBase(ownerId)}/drivers${q}`);
 }
 
+/** Super-admin cross-owner roster (`GET /fleet-owners/drivers`). */
 export function fetchSystemDriversPage(cursor: string | null): Promise<ActionResult<CursorPage<SystemDriverRow>>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet(`/api/drivers${q}`);
+  return apiGet<CursorPage<SystemDriverRow>>(`/api/fleet-owners/drivers${q}`);
 }
 
-export function inviteDriver(fleetId: string, input: AddDriverInput): Promise<ActionResult<DriverRow>> {
+export function inviteDriver(ownerId: string, input: AddDriverInput): Promise<ActionResult<DriverRow>> {
   return notifyResult(
     t("members.toast.inviteSent"),
-    apiSend(`/api/fleet/drivers`, "POST", input, "MEMBER_EXISTS", fleetId),
+    apiSend<DriverRow>(`${ownerBase(ownerId)}/drivers`, "POST", input, "MEMBER_EXISTS"),
   );
 }
 
-export function fetchDriver(fleetId: string, driverId: string): Promise<ActionResult<DriverRow>> {
-  return apiGet(`/api/fleet/drivers/${driverId}`, fleetId);
+export function fetchDriver(ownerId: string, driverUserId: string): Promise<ActionResult<DriverRow>> {
+  return apiGet<DriverRow>(`${ownerBase(ownerId)}/drivers/${driverUserId}`);
 }
 
 export function updateDriver(
-  fleetId: string,
-  driverId: string,
+  ownerId: string,
+  driverUserId: string,
   input: {
     roleSlug?: string;
     status?: Member["status"];
@@ -123,18 +156,50 @@ export function updateDriver(
         : input.status === "REVOKED"
           ? t("members.toast.driverRevoked")
           : t("members.toast.driverSaved"),
-    apiSend(`/api/fleet/drivers/${driverId}`, "PATCH", input, undefined, fleetId),
+    apiSend<DriverRow>(`${ownerBase(ownerId)}/drivers/${driverUserId}`, "PATCH", input),
   );
 }
 
-export function removeDriver(fleetId: string, driverId: string): Promise<ActionResult<null>> {
+export function removeDriver(ownerId: string, driverUserId: string): Promise<ActionResult<null>> {
   return notifyResult(
     t("members.toast.driverDeleted"),
-    apiSend<null>(`/api/fleet/drivers/${driverId}`, "DELETE", undefined, undefined, fleetId),
+    apiSend<null>(`${ownerBase(ownerId)}/drivers/${driverUserId}`, "DELETE"),
   );
+}
+
+/** Bus-assignment history for one driver, scoped to this owner company. */
+export function fetchDriverAssignmentsPage(
+  ownerId: string,
+  driverUserId: string,
+  cursor: string | null,
+): Promise<ActionResult<CursorPage<DriverAssignmentRow>>> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet<CursorPage<DriverAssignmentRow>>(
+    `${ownerBase(ownerId)}/drivers/${driverUserId}/assignments${q}`,
+  );
+}
+
+/** Trips the driver operated (snapshot) with per-trip rating averages. */
+export function fetchDriverTripRowsPage(
+  ownerId: string,
+  driverUserId: string,
+  cursor: string | null,
+): Promise<ActionResult<CursorPage<DriverTripRow>>> {
+  return fetchDriverTripsPage(ownerId, driverUserId, cursor);
+}
+
+/** Every driver rating + comment for this owner company. */
+export function fetchDriverRatingRowsPage(
+  ownerId: string,
+  driverUserId: string,
+  cursor: string | null,
+): Promise<ActionResult<CursorPage<DriverRatingRow>>> {
+  return fetchDriverRatingsPage(ownerId, driverUserId, cursor);
 }
 
 /** Role picker (read-only reuse of GET /roles per research R7). */
 export function fetchRoleOptions(): Promise<ActionResult<{ items: { id: string; slug: string; name?: string | null }[] }>> {
   return apiGet("/api/roles?limit=100");
 }
+
+export type { TripFeedbackRow };

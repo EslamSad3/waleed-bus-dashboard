@@ -19,7 +19,7 @@ export type FleetReports = {
   };
 };
 
-/** Owner-report endpoint scoped through the dashboard's selected fleet. */
-export function fetchFleetReports(fleetId: string): Promise<ActionResult<FleetReports>> {
-  return apiGet<FleetReports>("/api/fleet/reports", fleetId);
+/** Owner-report endpoint scoped to the selected owner company. */
+export function fetchOwnerReports(ownerId: string): Promise<ActionResult<FleetReports>> {
+  return apiGet<FleetReports>(`/api/fleet-owners/${ownerId}/reports`);
 }

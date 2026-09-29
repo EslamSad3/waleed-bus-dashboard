@@ -11,11 +11,15 @@ import {
 import { t } from "@/lib/i18n/t";
 
 /**
- * P1 per-resource zod schemas + proxy registry (research R2).
+ * Per-resource zod schemas + proxy registry.
  * The generic `app/api/[...proxy]` forwarder validates mutation bodies against
- * the schema registered for (method, pathname) BEFORE forwarding — same schemas
- * are imported by client forms (Principle V: trust-boundary re-validation).
- * Constraints mirror `docs/openapi.json` DTOs exactly.
+ * the schema registered for (method, pathname) BEFORE forwarding — the same
+ * schemas are imported by the client forms (Principle V: trust-boundary
+ * re-validation). Constraints mirror `docs/openapi.json` DTOs exactly.
+ *
+ * Owner tenants: the owner user id is the tenant id, so every owner-scoped
+ * route is `/fleet-owners/{ownerId}/…` and a trip's endpoints always derive
+ * from its trip line (never accepted in a body).
  */
 
 const uuid = z.uuid(t("validation.uuid"));
@@ -42,7 +46,7 @@ const memberStatus = z.enum(["ACTIVE", "SUSPENDED", "REVOKED"]);
 const tripStatus = z.enum(["SCHEDULED", "DEPARTED", "COMPLETED", "CANCELLED"]);
 const bookingStatus = z.enum(["CONFIRMED", "CANCELLED"]);
 
-// ---- Fleet-owner onboarding (platform) ----
+// ---- Owner account onboarding (platform) ----
 export const createFleetOwnerSchema = z.object({
   name: name255,
   nickname,
@@ -50,29 +54,19 @@ export const createFleetOwnerSchema = z.object({
   password,
   picture: z.string().max(1024).optional(),
   nationalId,
-  fleetName: name255,
+  vipTierId: uuid.nullable().optional(),
 });
 export const updateFleetOwnerSchema = z.object({
   name: name255.optional(),
   nickname: nickname.optional(),
   phone: egyptPhone.optional(),
+  vipTierId: uuid.nullable().optional(),
   picture: z.string().max(1024).optional(),
   nationalId: z.union([z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")), z.literal("")]).optional(),
   isActive: z.boolean().optional(),
 });
 
-// ---- Fleets ----
-export const createFleetSchema = z.object({
-  name: name255,
-  ownerId: uuid,
-  ownerRoleSlug: z.string(t("validation.ownerRoleSlug")).min(1, t("validation.ownerRoleSlug")).max(100).optional(),
-});
-export const updateFleetSchema = z.object({
-  name: name255.optional(),
-  isActive: z.boolean().optional(),
-});
-
-// ---- Buses (platform CRUD) ----
+// ---- Buses (owner-scoped CRUD) ----
 const httpsUrl = z.url(t("validation.httpsUrl")).refine(
   (value) => value.startsWith("https://"),
   t("validation.httpsUrl"),
@@ -118,25 +112,37 @@ export const updateVipTierSchema = z.object({
   rank: z.number().int().min(1).optional(),
   isActive: z.boolean().optional(),
 });
-export const assignFleetVipSchema = z.object({
-  vipTierId: uuid.nullable().optional(),
-});
 export const assignDriverSchema = z.object({ driverUserId: uuid });
 
-// ---- Trips ----
+// ---- Trip lines (owner-scoped; ONE direction, one ordered stop list) ----
+const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
+export const createTripLineSchema = z.object({
+  name: name255,
+  code: z.string(t("validation.lineCodeRequired")).min(1, t("validation.lineCodeRequired")).max(50),
+  qrIdentifier: z.string().min(1).max(100).optional(),
+  stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
+});
+export const updateTripLineSchema = z.object({
+  name: name255.optional(),
+  isActive: z.boolean().optional(),
+});
+export const updateLineStopsSchema = z.object({
+  stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
+});
+
+// ---- Trips (nested under their line; no From/To, no direction) ----
 export const createTripSchema = z.object({
   busId: uuid,
-  origin: name255,
-  destination: name255,
   departAt: datetime,
-  routeId: uuid.optional(),
+  fare: z.string().optional(),
   status: tripStatus.optional(),
 });
 export const updateTripSchema = z.object({
-  origin: name255.optional(),
-  destination: name255.optional(),
   departAt: datetime.optional(),
+  fare: z.string().optional(),
   status: tripStatus.optional(),
+  /** The trip's own driver; null clears it. Rejected by the API after departure. */
+  driverUserId: uuid.nullable().optional(),
 });
 
 // ---- Bookings ----
@@ -152,7 +158,7 @@ export const updateBookingSchema = z.object({
   status: bookingStatus.optional(),
 });
 
-// ---- Fleet members (platform) ----
+// ---- Owner members (owner-scoped) ----
 export const addMemberSchema = z.object({
   userId: uuid,
   roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
@@ -164,7 +170,7 @@ export const updateMemberSchema = z.object({
   status: memberStatus.optional(),
 });
 
-// ---- Driver roster (tenant) ----
+// ---- Driver roster (owner-scoped) ----
 const driverFromUser = z.object({
   userId: uuid,
   name: z.string().max(255).optional(),
@@ -198,7 +204,7 @@ export const updateDriverSchema = z.object({
   picture: z.string().max(1024).optional(),
 });
 
-// ---- Stop points and trip lines (platform) ----
+// ---- Stop points and geography (platform catalog) ----
 const latitude = z.number(t("validation.latitude")).min(-90, t("validation.latitude")).max(90, t("validation.latitude"));
 const longitude = z.number(t("validation.longitude")).min(-180, t("validation.longitude")).max(180, t("validation.longitude"));
 export const createStopSchema = z.object({
@@ -234,19 +240,35 @@ export const createLocalitySchema = z.object({
 export const updateLocalitySchema = z.object({
   nameAr: name255.optional(), nameEn: name255.optional(), isActive: z.boolean().optional(),
 });
-const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
-export const createTripLineSchema = z.object({
-  name: name255, code: z.string(t("validation.lineCodeRequired")).min(1, t("validation.lineCodeRequired")).max(50),
-  outboundStops: z.array(tripLineStop).min(2, t("validation.lineOutboundStops")),
-  returnStops: z.array(tripLineStop).min(2, t("validation.lineReturnStops")),
-  isActive: z.boolean().optional(),
+
+// ---- Promotions (platform) ----
+/** FIXED-only discount codes; `maxTotalUses: null` means unlimited. */
+const promotionCode = z
+  .string(t("validation.required"))
+  .regex(/^[A-Za-z0-9_-]{3,32}$/, t("validation.promoCode"));
+const positiveAmount = z.number(t("validation.required")).positive(t("validation.required"));
+const maxUses = z.number(t("validation.required")).int(t("validation.required")).min(1, t("validation.required"));
+const optionalDate = z.union([datetime, z.null()]);
+const targetUserIds = z.array(uuid).max(1000).optional();
+export const createPromotionSchema = z.object({
+  code: promotionCode,
+  type: z.literal("FIXED"),
+  value: positiveAmount,
+  isGlobal: z.boolean().optional(),
+  targetUserIds,
+  maxUsesPerUser: maxUses.optional(),
+  maxTotalUses: z.union([maxUses, z.null()]).optional(),
+  startsAt: optionalDate.optional(),
+  expiresAt: optionalDate.optional(),
 });
-export const updateTripLineSchema = z.object({
-  name: name255.optional(), code: z.string().min(1, t("validation.lineCodeRequired")).max(50).optional(),
+export const updatePromotionSchema = z.object({
+  value: positiveAmount.optional(),
+  targetUserIds,
+  maxUsesPerUser: maxUses.optional(),
+  maxTotalUses: z.union([maxUses, z.null()]).optional(),
+  startsAt: optionalDate.optional(),
+  expiresAt: optionalDate.optional(),
   isActive: z.boolean().optional(),
-});
-export const updateDirectionStopsSchema = z.object({
-  stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
 });
 
 // ---- Registry ----
@@ -256,41 +278,51 @@ export type RegistryEntry = {
   pattern: RegExp;
   schema: z.ZodType;
   /** Bare-409 `CONFLICT` context message key (research R3). */
-  conflictKey?: "REGISTRATION_TAKEN" | "FLEET_REFERENCED" | "MEMBER_EXISTS" | "OWNER_LINK";
+  conflictKey?: "REGISTRATION_TAKEN" | "OWNER_LINK" | "MEMBER_EXISTS";
 };
 
 const SEG = "[^/]+";
+/** Owner tenant prefix: `/fleet-owners/{ownerId}/…`. */
+const OWNER = `^/fleet-owners/${SEG}`;
 
 export const P1_REGISTRY: RegistryEntry[] = [
+  // ---- Owner accounts (platform) ----
   { method: "POST", pattern: /^\/fleet-owners$/, schema: createFleetOwnerSchema },
   { method: "PATCH", pattern: new RegExp(`^/fleet-owners/${SEG}$`), schema: updateFleetOwnerSchema },
-  { method: "POST", pattern: /^\/fleet-owners\/fleets$/, schema: createFleetSchema, conflictKey: "OWNER_LINK" },
-  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}$`), schema: updateFleetSchema },
-  { method: "POST", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/buses$`), schema: createBusSchema, conflictKey: "REGISTRATION_TAKEN" },
-  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/buses/${SEG}$`), schema: updateBusSchema, conflictKey: "REGISTRATION_TAKEN" },
+  // ---- Owner members ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/members$`), schema: addMemberSchema, conflictKey: "MEMBER_EXISTS" },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/members/${SEG}$`), schema: updateMemberSchema },
+  // ---- Owner buses ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/buses$`), schema: createBusSchema, conflictKey: "REGISTRATION_TAKEN" },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/buses/${SEG}$`), schema: updateBusSchema, conflictKey: "REGISTRATION_TAKEN" },
+  { method: "POST", pattern: new RegExp(`${OWNER}/buses/${SEG}/driver$`), schema: assignDriverSchema },
+  // ---- Owner trip lines ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/trip-lines$`), schema: createTripLineSchema },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}$`), schema: updateTripLineSchema },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/stops$`), schema: updateLineStopsSchema },
+  // ---- Owner trips (nested under their line) ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/trips$`), schema: createTripSchema },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/trips/${SEG}$`), schema: updateTripSchema },
+  // ---- Owner bookings ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/bookings$`), schema: createBookingSchema },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/bookings/${SEG}$`), schema: updateBookingSchema },
+  // ---- Owner driver roster ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/drivers$`), schema: addDriverSchema, conflictKey: "MEMBER_EXISTS" },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/drivers/${SEG}$`), schema: updateDriverSchema },
+  // ---- Platform catalog ----
   { method: "POST", pattern: /^\/brands$/, schema: createBrandSchema },
   { method: "PATCH", pattern: new RegExp(`^/brands/${SEG}$`), schema: updateBrandSchema },
   { method: "POST", pattern: /^\/vip-tiers$/, schema: createVipTierSchema },
   { method: "PATCH", pattern: new RegExp(`^/vip-tiers/${SEG}$`), schema: updateVipTierSchema },
-  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/vip$`), schema: assignFleetVipSchema },
-  { method: "POST", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/trips$`), schema: createTripSchema },
-  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/trips/${SEG}$`), schema: updateTripSchema },
-  { method: "POST", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/bookings$`), schema: createBookingSchema },
-  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/bookings/${SEG}$`), schema: updateBookingSchema },
-  { method: "POST", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/members$`), schema: addMemberSchema, conflictKey: "MEMBER_EXISTS" },
-  { method: "PATCH", pattern: new RegExp(`^/fleet-owners/fleets/${SEG}/members/${SEG}$`), schema: updateMemberSchema },
-  { method: "POST", pattern: new RegExp(`^/fleet/buses/${SEG}/driver$`), schema: assignDriverSchema },
-  { method: "POST", pattern: /^\/fleet\/drivers$/, schema: addDriverSchema, conflictKey: "MEMBER_EXISTS" },
-  { method: "PATCH", pattern: new RegExp(`^/fleet/drivers/${SEG}$`), schema: updateDriverSchema },
   { method: "POST", pattern: /^\/stops$/, schema: createStopSchema },
   { method: "PATCH", pattern: new RegExp(`^/stops/${SEG}$`), schema: updateStopSchema },
   { method: "POST", pattern: /^\/markaz$/, schema: createMarkazSchema },
   { method: "PATCH", pattern: new RegExp(`^/markaz/${SEG}$`), schema: updateMarkazSchema },
   { method: "POST", pattern: /^\/localities$/, schema: createLocalitySchema },
   { method: "PATCH", pattern: new RegExp(`^/localities/${SEG}$`), schema: updateLocalitySchema },
-  { method: "POST", pattern: /^\/trip-lines$/, schema: createTripLineSchema },
-  { method: "PATCH", pattern: new RegExp(`^/trip-lines/${SEG}$`), schema: updateTripLineSchema },
-  { method: "PATCH", pattern: new RegExp(`^/trip-lines/${SEG}/directions/${SEG}/stops$`), schema: updateDirectionStopsSchema },
+  // ---- Promotions ----
+  { method: "POST", pattern: /^\/platform\/promotions$/, schema: createPromotionSchema },
+  { method: "PATCH", pattern: new RegExp(`^/platform/promotions/${SEG}$`), schema: updatePromotionSchema },
   // ---- Super Admin Booking Review & Payment Reconciliation ----
   { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/payment/verify$`), schema: adminVerifyPaymentSchema },
   { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/payment/fail$`), schema: adminFailPaymentSchema },
@@ -305,11 +337,12 @@ export function findRegistryEntry(method: string, pathname: string): RegistryEnt
   return P1_REGISTRY.find((e) => e.method === method && e.pattern.test(pathname));
 }
 
-export type CreateFleetInput = z.infer<typeof createFleetSchema>;
 export type CreateFleetOwnerInput = z.infer<typeof createFleetOwnerSchema>;
 export type UpdateFleetOwnerInput = z.infer<typeof updateFleetOwnerSchema>;
 export type CreateBusInput = z.infer<typeof createBusSchema>;
+export type CreateTripLineInput = z.infer<typeof createTripLineSchema>;
 export type CreateTripInput = z.infer<typeof createTripSchema>;
+export type UpdateTripInput = z.infer<typeof updateTripSchema>;
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 export type AssignDriverInput = z.infer<typeof assignDriverSchema>;

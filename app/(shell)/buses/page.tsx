@@ -8,78 +8,81 @@ import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
-import { fetchFleetsPage } from "@/lib/actions/fleets";
-import { mapWithConcurrency } from "@/lib/actions/http";
+import { deleteBus, fetchSystemBusesPage, type Bus, type BusPage } from "@/lib/actions/buses";
+import { fetchOwnerNameMap } from "@/lib/actions/fleet-owners";
+import { RatingCell } from "@/components/owners/rating-cell";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { qk, removeFromCursorList, useDataQuery, useQueryClient } from "@/lib/queries";
+import { qk, removeFromCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
-type BusRow = Bus & { fleetName: string };
-type FleetCursor = { fleetId: string; fleetName: string; cursor: string | null };
-type BusAggregatePage = { items: BusRow[]; nextCursor: string | null };
+/** The company name comes from the shared id→name map, not from the row. */
+type BusRow = Bus;
 
-async function fetchAllFleetStates(): Promise<FleetCursor[]> {
-  const fleets: FleetCursor[] = [];
-  let cursor: string | null = null;
-  do {
-    const result = await fetchFleetsPage(cursor);
-    if (!result.ok) throw new Error(result.message);
-    fleets.push(...result.data.items.map((fleet) => ({ fleetId: fleet.id, fleetName: fleet.name, cursor: null })));
-    cursor = result.data.nextCursor;
-  } while (cursor);
-  return fleets;
-}
-
-async function fetchAggregateBusPage(cursorState: string | null): Promise<BusAggregatePage> {
-  const states: FleetCursor[] = cursorState ? JSON.parse(cursorState) as FleetCursor[] : await fetchAllFleetStates();
-  const results = await mapWithConcurrency(states, 4, async (state) => {
-    const result = await fetchBusesPage(state.fleetId, state.cursor);
-    if (!result.ok) throw new Error(result.message);
-    return { state, page: result.data };
-  });
-  const nextStates = results.map(({ state, page }) => ({ ...state, cursor: page.nextCursor }));
-  const items = results.flatMap(({ state, page }) => page.items.map((bus) => ({ ...bus, fleetName: state.fleetName })));
-  return {
-    items,
-    nextCursor: nextStates.some((state) => state.cursor) ? JSON.stringify(nextStates) : null,
-  };
-}
-
+/**
+ * Cross-owner bus list. The index already carries each bus's own average
+ * rating, so the column needs no per-bus follow-up request, and a bus nobody
+ * rated reports "not rated yet" instead of a misleading zero.
+ */
 export default function BusesPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const { data: first, isLoading, error } = useDataQuery<BusAggregatePage>(
-    qk.busesAggregate,
-    () => fetchAggregateBusPage(null),
+  const { data: first, isLoading, error } = useApiQuery<BusPage>(
+    qk.systemBuses,
+    () => fetchSystemBusesPage(null),
   );
+  // qk.ownerNames, not qk.fleetOwners: that key holds the owners CursorPage for
+  // the owners grid, and one key cannot carry two shapes.
+  const { data: ownerNameEntries } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
+  const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
   const [createOpen, setCreateOpen] = useState(false);
   const [busForEdit, setBusForEdit] = useState<BusRow | null>(null);
-  const [listFilters, setListFilters] = useState<{ q?: string; status?: string }>({});
+  const [listFilters, setListFilters] = useState<{ q?: string; status?: string; ownerId?: string }>({});
+
+  const nameOf = useMemo(
+    () => (ownerId: string) => ownerNames?.get(ownerId) ?? ownerId,
+    [ownerNames],
+  );
 
   async function removeBus(bus: BusRow) {
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("buses.list.deleteConfirm.description", { value: bus.plateNumber || bus.registrationNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const result = await deleteBus(bus.fleetId, bus.id);
+    if (
+      !(await confirm({
+        title: t("common.actions.deleteConfirmTitle"),
+        description: t("buses.list.deleteConfirm.description", {
+          value: bus.plateNumber || bus.registrationNumber,
+        }),
+        confirmLabel: t("common.actions.delete"),
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    const result = await deleteBus(bus.ownerId, bus.id);
     if (!result.ok) return;
-    removeFromCursorList<BusRow>(queryClient, qk.busesAggregate, bus.id);
+    removeFromCursorList<BusRow>(queryClient, qk.systemBuses, bus.id);
   }
 
   const query = (listFilters.q ?? "").trim();
   const status = listFilters.status ?? "all";
+  const ownerFilter = listFilters.ownerId ?? "";
   const predicate = (bus: BusRow) =>
-    (!query || bus.registrationNumber.includes(query) || (bus.plateNumber ?? "").includes(query) || bus.fleetName.includes(query)) &&
+    (!ownerFilter || bus.ownerId === ownerFilter) &&
+    (!query ||
+      bus.registrationNumber.includes(query) ||
+      (bus.plateNumber ?? "").includes(query) ||
+      nameOf(bus.ownerId).includes(query)) &&
     (status === "all" || (status === "active" ? bus.isActive : !bus.isActive));
 
-  const columns: CommunityColumnDef<BusRow>[] = useMemo(() => [
+  const columns: CommunityColumnDef<BusRow>[] = [
     { field: "registrationNumber", headerName: t("common.fields.registrationNumber"), filter: "agTextColumnFilter" },
     { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter" },
-    { field: "fleetName", headerName: t("common.fields.fleetName"), filter: "agTextColumnFilter" },
+    { field: "ownerId", headerName: t("common.fields.owner"), valueGetter: (params) => nameOf(params.data?.ownerId ?? ""), filter: "agTextColumnFilter" },
     { field: "capacity", headerName: t("common.fields.capacity"), filter: "agNumberColumnFilter" },
-    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? t("common.status.active") : t("common.status.inactive") },
-    { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
-  ], []);
+    { headerName: t("common.fields.avgBusRating"), cellRenderer: (params: { data: BusRow }) => <RatingCell value={params.data.avgRating ?? null} /> },
+    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")) },
+    { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
+  ];
 
   return (
     <div className="dashboard-page">
@@ -92,11 +95,18 @@ export default function BusesPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
-      {isLoading ? <TableSkeleton rows={9} columns={7} /> : (
+      {isLoading ? (
+        <TableSkeleton rows={9} columns={7} />
+      ) : (
         <CursorList<BusRow>
+          gridId="buses"
           initialItems={first?.items ?? []}
           initialCursor={first?.nextCursor ?? null}
-          loadMore={fetchAggregateBusPage}
+          loadMore={async (cursor) => {
+            const result = await fetchSystemBusesPage(cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
           keyOf={(bus) => bus.id}
           filter={predicate}
           columnDefs={columns}
@@ -109,7 +119,23 @@ export default function BusesPage() {
                 onChange={(event) => setListFilters((current) => ({ ...current, q: event.target.value }))}
                 className="w-full bg-white md:w-auto md:min-w-0 md:max-w-72 md:basis-64 md:flex-1"
               />
-              <select aria-label={t("common.fields.status")} value={status} onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))} className="select-field w-full md:w-28">
+              <select
+                aria-label={t("common.fields.owner")}
+                value={ownerFilter}
+                onChange={(event) => setListFilters((current) => ({ ...current, ownerId: event.target.value }))}
+                className="select-field w-full md:w-56"
+              >
+                <option value="">{t("common.value.all")}</option>
+                {[...(ownerNames?.keys() ?? [])].map((ownerId) => (
+                  <option key={ownerId} value={ownerId}>{ownerNames?.get(ownerId)}</option>
+                ))}
+              </select>
+              <select
+                aria-label={t("common.fields.status")}
+                value={status}
+                onChange={(event) => setListFilters((current) => ({ ...current, status: event.target.value }))}
+                className="select-field w-full md:w-28"
+              >
                 <option value="all">{t("common.value.all")}</option>
                 <option value="active">{t("common.status.active")}</option>
                 <option value="inactive">{t("common.status.inactive")}</option>
@@ -121,7 +147,7 @@ export default function BusesPage() {
             <RowActions
               label={t("buses.list.rowActions", { value: bus.plateNumber || bus.registrationNumber })}
               actions={[
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?fleetId=${bus.fleetId}` },
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?ownerId=${bus.ownerId}` },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBus(bus) },
               ]}

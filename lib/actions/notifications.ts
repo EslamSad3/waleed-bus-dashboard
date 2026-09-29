@@ -1,6 +1,6 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
-import { t } from "@/lib/i18n/t";
+
 
 export type OpsNotification = {
   id: string;
@@ -44,13 +44,38 @@ export type SendNotificationResult = {
   sentCount: number;
   isGlobal: boolean;
   notificationIds: string[];
+  /**
+   * Push dispatch outcome, reported separately from the inbox count:
+   * `sentCount` is rows saved in PostgreSQL, `acceptedDeviceCount` is device
+   * submissions FCM accepted (NOT proof that a device displayed anything).
+   */
+  push: PushSummary;
 };
+
+export type PushSummary = {
+  status: "disabled" | "completed" | "incomplete";
+  acceptedDeviceCount: number;
+  failedDeviceCount: number;
+  skippedUserCount: number;
+};
+
+/**
+ * `sentCount` (inbox rows) and the push counts are deliberately reported
+ * separately: merging them would imply a delivery guarantee that FCM does not
+ * make. `incomplete` means processing stopped early, so the device counts are
+ * partial. The copy lives in the dictionary — see `describePushSummary` in
+ * `components/notifications/push-summary.ts`.
+ */
+
 
 export function sendPlatformNotification(
   input: SendNotificationInput,
 ): Promise<ActionResult<SendNotificationResult>> {
-  return notifyResult(
-    input.isGlobal ? t("notifications.toast.sentGlobal") : t("notifications.toast.sentDirect"),
-    apiSend("/api/platform/notifications", "POST", input),
-  );
+  // `notify: false` on purpose: the send dialog renders one composed result
+  // banner that already carries the inbox count AND the Firebase acceptance /
+  // failure / skipped counts. A second generic toast here would restate
+  // "sent successfully" without the counts and read as a duplicate.
+  return notifyResult("", apiSend("/api/platform/notifications", "POST", input), {
+    notify: false,
+  });
 }

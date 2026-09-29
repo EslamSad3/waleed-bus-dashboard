@@ -17,7 +17,7 @@ import {
   type IncidentReport,
 } from "@/lib/actions/bookings";
 import { DetailPageSkeleton } from "@/components/ui/skeletons";
-import { qk, useDataQuery } from "@/lib/queries";
+import { qk, useDataQuery, useQueryClient } from "@/lib/queries";
 import {
   VerifyPaymentDialog,
   FailPaymentDialog,
@@ -74,6 +74,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     report: null,
   });
 
+  const queryClient = useQueryClient();
+
   const [reloadKey, setReloadKey] = useState(0);
 
   const auditColumns: CommunityColumnDef<AuditLog>[] = [
@@ -84,7 +86,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   ];
 
   // TanStack cache: تفاصيل الحجز من طبقة الكاش — والتحديثات بتحصل في الخلفية
-  const { data: bookingData, isFetching, error: bookingError } = useDataQuery<AdminBookingDetail>(
+  const { data: bookingData, isFetching, error: bookingError, refetch } = useDataQuery<AdminBookingDetail>(
     qk.adminBooking(id),
     async () => {
       const res = await fetchAdminBookingDetail(id);
@@ -107,7 +109,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       setSuccessNote(note);
       setTimeout(() => setSuccessNote(null), 5000);
     }
+    // Re-read the booking so the screen shows what the action did. This used to
+    // only bump a reload key nothing consumed, so every mutation left the page
+    // stale until a manual refresh. The list is invalidated too, otherwise
+    // going back to /bookings showed the pre-action row.
     setReloadKey((k) => k + 1);
+    void refetch();
+    void queryClient.invalidateQueries({ queryKey: qk.adminBookings });
   }
 
   if (loading) {
@@ -176,7 +184,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <Ticket className="size-5" />
               </span>
               <h1 className="min-w-0 break-words text-xl font-black text-[#00134c] sm:text-2xl">
-                {t("bookings.detail.bookingLabel")} {booking.passenger?.name ?? t("bookings.detail.unnamedPassenger")}
+                {t("bookings.detail.bookingLabel")} {booking?.passengerName ?? t("bookings.detail.unnamedPassenger")}
               </h1>
               <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-lg bg-[#d6eeff] px-2.5 py-0.5 text-xs font-bold text-[#00134c]">
                 <Building2 className="size-3.5 shrink-0" />
@@ -190,9 +198,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             </p>
           </div>
 
-          {/* Status Badges */}
+          {/* Status Badges — two different statuses, so each says which it is */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Booking Status Pill */}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#5e6b78]">{t("bookings.detail.bookingStatusLabel")}</span>
             <span
               className={
                 booking.status === "CONFIRMED"
@@ -204,8 +214,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             >
               {BOOKING_STATUS_AR[booking.status] ?? booking.status}
             </span>
+            </span>
 
             {/* Payment Status Pill */}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#5e6b78]">{t("bookings.detail.paymentStatusLabel")}</span>
             <span
               className={
                 booking.paymentStatus === "PAID"
@@ -219,7 +232,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   : "status-pill bg-slate-100 text-slate-700 text-sm px-3 py-1 font-bold"
               }
             >
-              {PAYMENT_STATUS_AR[booking.paymentStatus] ?? booking.paymentStatus}
+              {/* paymentStatus is nullable, and unknown values used to leave this chip blank */}
+              {PAYMENT_STATUS_AR[booking.paymentStatus ?? ""] ?? booking.paymentStatus ?? t("common.value.unpaid")}
+            </span>
             </span>
           </div>
         </div>
@@ -229,7 +244,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <span className="text-xs font-bold text-[#5e6b78] me-1">{t("bookings.detail.adminActions")}</span>
 
           {/* Payment Verification */}
-          {!isPaid && !isRefunded && (
+          {isPaid ? (
+            // Verified is a state, not a missing button: the API refuses a
+            // second verification, so showing the action again would only fail.
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#bbf7d0] bg-[#dcfce7] px-2.5 py-1 text-xs font-bold text-[#15803d]">
+              <CheckCircle2 className="size-4" />
+              {t("bookings.detail.actions.paymentVerified")}
+            </span>
+          ) : !isRefunded ? (
             <Button
               type="button"
               size="sm"
@@ -239,7 +261,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               <CheckCircle2 className="size-4" />
               <span>{t("bookings.detail.actions.verifyPayment")}</span>
             </Button>
-          )}
+          ) : null}
 
           {/* Mark Payment Failed */}
           {isPendingPayment && (
@@ -319,36 +341,20 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.passengerName")}</span>
-              <span className="min-w-0 font-bold text-[#1a1a1a]">{booking.passenger?.name ?? "—"}</span>
+              <span className="min-w-0 font-bold text-[#1a1a1a]">{booking?.passengerName ?? "—"}</span>
             </div>
 
             <div className="flex items-center justify-between gap-3">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.passengerPhone")}</span>
               <div className="flex min-w-0 items-center gap-1.5 font-semibold text-[#1a1a1a]">
-                <span dir="ltr">{booking.passenger?.phoneNumber ?? "—"}</span>
-                {booking.passenger?.phoneVerifiedAt ? (
-                  <span className="inline-flex items-center gap-0.5 rounded bg-green-100 px-1.5 py-0.2 text-[10px] font-bold text-green-800" title={t("bookings.detail.passengerPhoneVerifiedTitle")}>
-                    <Check className="size-3" /> {t("bookings.detail.verified")}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-600">
-                    {t("bookings.detail.notVerified")}
-                  </span>
-                )}
+                <span dir="ltr">{booking?.passenger?.phoneNumber || booking?.passengerPhone || "—"}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.nationalIdInline")}</span>
               <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">
-                {booking.passenger?.nationalId ?? t("common.value.notRegistered")}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[#5e6b78]">{t("bookings.detail.fields.userId")}</span>
-              <span className="min-w-0 break-all font-mono text-xs text-[#5e6b78]" dir="ltr">
-                {booking.passenger?.id ? `${booking.passenger.id.slice(0, 16)}…` : "—"}
+                {booking.passenger?.nationalId || t("bookings.detail.noAccount")}
               </span>
             </div>
 
@@ -676,7 +682,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Card 7: Inline Administrative Audit Trail (Full Width) */}
-      <div className="panel-card p-5 sm:p-6 space-y-4">
+      {/* <div className="panel-card p-5 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 border-b border-[#e4ecf2] pb-3">
           <History className="size-5 text-[#059ff8]" />
           <h2 className="min-w-0 text-lg font-bold text-[#00134c]">{t("bookings.detail.sections.audit")}</h2>
@@ -692,7 +698,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           withActions={false}
           emptyMessage={t("bookings.detail.audit.empty")}
         />
-      </div>
+      </div> */}
 
       {/* Action Dialogs */}
       <VerifyPaymentDialog

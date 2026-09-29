@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { Menu, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarLinks } from "@/components/shell/sidebar";
 import { t } from "@/lib/i18n/t";
+
+/** Stable no-op subscription: the client snapshot never changes. */
+const subscribeToNothing = () => () => {};
 
 /**
  * Phone-only navigation (below md): hamburger toggle in the topbar plus an
@@ -15,6 +19,18 @@ import { t } from "@/lib/i18n/t";
  */
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  // The overlay and drawer are portalled to <body>: this component lives inside
+  // the sticky topbar, and a `backdrop-filter` on an ancestor (that header has
+  // one) makes it the containing block for position:fixed children. Without the
+  // portal the drawer was sized and placed against the 60px header instead of
+  // the viewport — clipped off-screen, with an overlay covering only the top
+  // strip so tapping outside never closed it.
+  //
+  // useSyncExternalStore is the hydration-safe "am I on the client?" probe: the
+  // server snapshot is false, the first client snapshot is true, and React
+  // re-renders after hydration. A `useState`+`useEffect` pair is the common
+  // alternative but trips react-hooks/set-state-in-effect.
+  const mounted = useSyncExternalStore(subscribeToNothing, () => true, () => false);
   const pathname = usePathname();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -77,47 +93,54 @@ export function MobileNav() {
         )}
       </button>
 
-      {/* Overlay */}
-      <div
-        aria-hidden="true"
-        onClick={() => setOpen(false)}
-        className={cn(
-          "fixed inset-0 z-50 bg-[#00134c]/45 backdrop-blur-sm transition-all duration-300 md:hidden",
-          open ? "opacity-100" : "invisible opacity-0",
-        )}
-      />
+      {mounted
+        ? createPortal(
+            <>
+              {/* Overlay */}
+              <div
+                aria-hidden="true"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "fixed inset-0 z-50 bg-[#00134c]/45 backdrop-blur-sm transition-all duration-300 md:hidden",
+                  open ? "opacity-100" : "invisible opacity-0",
+                )}
+              />
 
-      {/* Drawer panel */}
-      <div
-        id="mobile-nav-panel"
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("shell.nav.mainAria")}
-        tabIndex={-1}
-        className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-hidden rounded-e-2xl border border-white/80 bg-white/95 p-3 shadow-[0_18px_55px_rgba(0,19,76,.11)] backdrop-blur-xl outline-none transition-all duration-300 ease-out md:hidden",
-          open ? "visible translate-x-0" : "invisible translate-x-full",
-        )}
-      >
-        <div className="mb-3 flex shrink-0 items-center justify-between gap-2 rounded-2xl bg-[#00134c] px-3 py-3 text-white">
-          <span className="flex items-center gap-2 text-xs font-bold">
-            <Sparkles className="size-4 text-[#9ed0f0]" aria-hidden="true" />
-            {t("shell.nav.adminArea")}
-          </span>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label={t("shell.nav.closeMenuAria")}
-            className="grid size-8 place-items-center rounded-xl text-white/90 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#059ff8]/25"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </button>
-        </div>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pb-3">
-          <SidebarLinks />
-        </nav>
-      </div>
+              {/* Drawer panel */}
+              <div
+                id="mobile-nav-panel"
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t("shell.nav.mainAria")}
+                tabIndex={-1}
+                className={cn(
+                  "fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-hidden rounded-e-2xl border border-white/80 bg-white/95 p-3 shadow-[0_18px_55px_rgba(0,19,76,.11)] backdrop-blur-xl outline-none transition-all duration-300 ease-out md:hidden",
+                  open ? "visible translate-x-0" : "invisible translate-x-full",
+                )}
+              >
+                <div className="mb-3 flex shrink-0 items-center justify-between gap-2 rounded-2xl bg-[#00134c] px-3 py-3 text-white">
+                  <span className="flex items-center gap-2 text-xs font-bold">
+                    <Sparkles className="size-4 text-[#9ed0f0]" aria-hidden="true" />
+                    {t("shell.nav.adminArea")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label={t("shell.nav.closeMenuAria")}
+                    className="grid size-8 place-items-center rounded-xl text-white/90 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#059ff8]/25"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pb-3">
+                  <SidebarLinks />
+                </nav>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

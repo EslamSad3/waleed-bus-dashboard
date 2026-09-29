@@ -1,13 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Spec 014 folded the standalone fleet screens into /fleet-owners. Old bookmarks and
-  // links keep working: /fleets/:fleetId lands on the owner screen with `?fleet=`, which
-  // expands that company inline (the fleet-owner detail page reads the param).
+  // Owner companies replaced fleets: the owner user IS the company, so the old
+  // fleet screens are gone and every bookmark lands on the owner index.
   async redirects() {
     return [
       { source: "/fleets", destination: "/fleet-owners", permanent: true },
-      { source: "/fleets/:fleetId", destination: "/fleet-owners?fleet=:fleetId", permanent: true },
+      { source: "/fleets/:fleetId", destination: "/fleet-owners", permanent: true },
     ];
   },
 };

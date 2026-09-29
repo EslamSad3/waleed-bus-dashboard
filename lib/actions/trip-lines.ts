@@ -1,4 +1,4 @@
-import { apiGet, apiSend, type ActionResult } from "@/lib/actions/http";
+import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
 import { t } from "@/lib/i18n/t";
 
@@ -42,24 +42,41 @@ export type Stop = {
   isActive: boolean;
 };
 
+/** One row of a line's single ordered stop collection. */
 export type TripLineStop = {
   id: string;
+  stationId: string;
   stopOrder: number;
   estimatedStopMinutes?: number | null;
   stopType: "BOARDING" | "LANDING" | "BOTH";
   station: Stop;
 };
 
+/** An owner trip line IS one direction; a return journey is a separate line. */
 export type TripLine = {
   id: string;
+  ownerId: string;
   name: string;
   code: string;
-  origin: string;
-  destination: string;
-  stations: TripLineStop[];
+  qrIdentifier: string;
   isActive: boolean;
-  directions: { id: string; direction: "OUTBOUND" | "RETURN"; origin: string; destination: string; stations: TripLineStop[] }[];
+  stops: TripLineStop[];
 };
+
+/**
+ * A line has no stored origin/destination: they are the first and last ORDERED
+ * stop, which is the same rule the API uses to derive a trip's endpoints.
+ */
+export function lineEndpoints(line: Pick<TripLine, "stops">): {
+  origin: string | null;
+  destination: string | null;
+} {
+  const ordered = [...line.stops].sort((a, b) => a.stopOrder - b.stopOrder);
+  return {
+    origin: ordered[0]?.station.name ?? null,
+    destination: ordered[ordered.length - 1]?.station.name ?? null,
+  };
+}
 
 export const fetchStops = () => apiGet<Stop[]>("/api/stops");
 export const fetchGovernorates = () => apiGet<Governorate[]>("/api/governorates");
@@ -112,21 +129,67 @@ export const updateStop = (id: string, input: Partial<StopInput>) =>
 export const deleteStop = (id: string) =>
   notifyResult(t("stops.toast.deleted"), apiSend<null>(`/api/stops/${id}`, "DELETE"));
 
-export const fetchTripLines = () => apiGet<TripLine[]>("/api/trip-lines");
-export const fetchTripLine = (id: string) => apiGet<TripLine>(`/api/trip-lines/${id}`);
-export const createTripLine = (input: { name: string; code: string; isActive?: boolean; outboundStops: { stopId: string; stopType: "BOARDING" | "LANDING"; estimatedStopMinutes?: number }[]; returnStops: { stopId: string; stopType: "BOARDING" | "LANDING"; estimatedStopMinutes?: number }[] }) =>
-  notifyResult(t("tripLines.toast.created"), apiSend<TripLine>("/api/trip-lines", "POST", input));
-export const updateTripLine = (id: string, input: { name?: string; code?: string; isActive?: boolean }) =>
+// ---- Owner trip lines (one line = one direction) ----
+const lineBase = (ownerId: string) => `/api/fleet-owners/${ownerId}/trip-lines`;
+
+export type LineStopInput = {
+  stopId: string;
+  stopType: "BOARDING" | "LANDING";
+  estimatedStopMinutes?: number;
+};
+
+export function fetchOwnerTripLinesPage(
+  ownerId: string,
+  cursor: string | null,
+): Promise<ActionResult<CursorPage<TripLine>>> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet<CursorPage<TripLine>>(`${lineBase(ownerId)}${q}`);
+}
+
+export const fetchOwnerTripLine = (ownerId: string, id: string) =>
+  apiGet<TripLine>(`${lineBase(ownerId)}/${id}`);
+
+export const createOwnerTripLine = (
+  ownerId: string,
+  input: { name: string; code: string; qrIdentifier?: string; stops: LineStopInput[] },
+) =>
   notifyResult(
-    input.isActive === undefined ? t("tripLines.toast.saved") : input.isActive ? t("tripLines.toast.activated") : t("tripLines.toast.deactivated"),
-    apiSend<TripLine>(`/api/trip-lines/${id}`, "PATCH", input),
+    t("tripLines.toast.created"),
+    apiSend<TripLine>(lineBase(ownerId), "POST", input),
   );
-export const updateTripLineDirectionStops = (lineId: string, directionId: string, stops: { stopId: string; stopType: "BOARDING" | "LANDING"; estimatedStopMinutes?: number }[]) =>
+
+export const updateOwnerTripLine = (
+  ownerId: string,
+  id: string,
+  input: { name?: string; isActive?: boolean },
+) =>
+  notifyResult(
+    input.isActive === undefined
+      ? t("tripLines.toast.saved")
+      : input.isActive
+        ? t("tripLines.toast.activated")
+        : t("tripLines.toast.deactivated"),
+    apiSend<TripLine>(`${lineBase(ownerId)}/${id}`, "PATCH", input),
+  );
+
+/**
+ * Replace the line's ordered stops. The server refuses this with
+ * 409 LINE_HAS_TRIPS once the line has trips, so booked and completed
+ * journeys keep their route.
+ */
+export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[]) =>
   notifyResult(
     t("tripLines.toast.stopsSaved"),
-    apiSend<TripLine>(`/api/trip-lines/${lineId}/directions/${directionId}/stops`, "PATCH", { stops }),
+    apiSend<TripLine>(`${lineBase(ownerId)}/${lineId}/stops`, "PATCH", { stops }),
   );
-export const deleteTripLine = (id: string) =>
-  notifyResult(t("tripLines.toast.deleted"), apiSend<null>(`/api/trip-lines/${id}`, "DELETE"));
+
+export const deleteOwnerTripLine = (ownerId: string, id: string) =>
+  notifyResult(t("tripLines.toast.deleted"), apiSend<null>(`${lineBase(ownerId)}/${id}`, "DELETE"));
+
+/** Super-admin cross-owner line index (`GET /fleet-owners/trip-lines`). */
+export const fetchSystemTripLinesPage = (cursor: string | null) => {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet<CursorPage<TripLine>>(`/api/fleet-owners/trip-lines${q}`);
+};
 
 export type { ActionResult };

@@ -8,19 +8,22 @@ import { createBookingSchema } from "@/lib/schemas/p1";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { OwnerPicker } from "@/components/owners/owner-picker";
 import { createBooking, type Booking } from "@/lib/actions/bookings";
-import { apiGet, type CursorPage } from "@/lib/actions/http";
+import { fetchOwnerTripLinesPage, lineEndpoints } from "@/lib/actions/trip-lines";
+import { fetchTripsPage } from "@/lib/actions/trips";
+import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { useFilterStore } from "@/stores/filters";
-import { FleetPicker } from "@/components/fleet-picker";
-import { setFleetScopeCookie } from "@/lib/fleet-scope-cookie";
-import { useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { InlineBlockSkeleton } from "@/components/ui/skeletons";
 import { t as tr } from "@/lib/i18n/t";
 
 type Values = z.input<typeof createBookingSchema>;
-type TripOpt = { id: string; origin: string; destination: string };
 
-/** نافذة حجز جديد — بتفتح في صفحة الحجوزات نفسها من غير تنقل. */
+/**
+ * نافذة حجز جديد — الحجز بيتعمل من غير范围 خط: رحلة موجودة. عشان كده بنختار
+ * الشركة الأول، بعدين الخط، بعدين الرحلة.
+ */
 export function CreateBookingDialog({
   open,
   onCreated,
@@ -28,12 +31,13 @@ export function CreateBookingDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Extra cache hook for callers with their own list (e.g. fleet tab). */
+  /** Extra cache hook for callers with their own list (e.g. owner tab). */
   onCreated?: (booking: Booking) => void;
 }) {
   const queryClient = useQueryClient();
-  const { fleetId: scopedFleetId, setFleetId } = useFilterStore();
-  const [fleetId, setLocalFleetId] = useState(scopedFleetId ?? "");
+  const { ownerId: scopedOwnerId, setOwnerId } = useFilterStore();
+  const [ownerId, setLocalOwnerId] = useState(scopedOwnerId ?? "");
+  const [lineId, setLineId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<Values>({
@@ -41,54 +45,83 @@ export function CreateBookingDialog({
     defaultValues: { tripId: "", passengerName: "", passengerPhone: "" },
   });
 
-  const { data: tripsPage, isLoading: tripsLoading } = useApiQuery<CursorPage<TripOpt>>(
-    ["booking-dialog-trips", fleetId],
-    () => apiGet<CursorPage<TripOpt>>(`/api/fleet-owners/fleets/${fleetId}/trips?limit=100`),
-    { enabled: open && Boolean(fleetId) },
+  const { data: linesPage, isLoading: linesLoading } = useApiQuery(
+    qk.tripLines(ownerId || "none"),
+    () => fetchOwnerTripLinesPage(ownerId, null),
+    { enabled: open && Boolean(ownerId) },
   );
-  const trips = tripsPage?.items ?? [];
+  const { data: tripsPage, isLoading: tripsLoading } = useApiQuery(
+    qk.trips(ownerId || "none", lineId || "none"),
+    () => fetchTripsPage(ownerId, lineId, null),
+    { enabled: open && Boolean(ownerId && lineId) },
+  );
 
   function resetForm() {
+    setLineId("");
     setFormError(null);
     form.reset();
   }
 
   async function onSubmit(values: Values) {
     setFormError(null);
-    if (!fleetId) {
-      setFormError(tr("bookings.createDialog.errors.pickFleet"));
+    if (!ownerId) {
+      setFormError(tr("bookings.createDialog.errors.pickOwner"));
       return;
     }
-    setFleetId(fleetId);
-    setFleetScopeCookie(fleetId);
-    const r = await createBooking(fleetId, values);
+    setOwnerId(ownerId);
+    setOwnerScopeCookie(ownerId);
+    const r = await createBooking(ownerId, values);
     if (!r.ok) {
       setFormError(r.message);
       return;
     }
     // نفضّل كاش الحجوزات — الجدول بيتحدث فورًا من غير إعادة تحميل
-    queryClient.invalidateQueries({ queryKey: ["admin-bookings"] });
+    queryClient.invalidateQueries({ queryKey: qk.adminBookings });
     onCreated?.(r.data);
     resetForm();
     onClose();
   }
 
+  const lines = linesPage?.items ?? [];
+
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={tr("bookings.createDialog.title")} description={tr("bookings.createDialog.description")} size="sm">
       <div>
         <div className="mb-4">
-          <FleetPicker value={fleetId} onChange={(id) => { setLocalFleetId(id); form.setValue("tripId", ""); }} />
+          <OwnerPicker ownerId={ownerId} onOwnerChange={(id) => { setLocalOwnerId(id); setLineId(""); form.setValue("tripId", ""); }} />
         </div>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <label className="block text-sm">
+            <span className="mb-1.5 block font-bold text-[#334454]">{tr("common.fields.tripLine")}</span>
+            {linesLoading ? (
+              <InlineBlockSkeleton className="h-11 w-full" />
+            ) : (
+              <select
+                aria-label={tr("common.fields.tripLine")}
+                value={lineId}
+                onChange={(event) => { setLineId(event.target.value); form.setValue("tripId", ""); }}
+                disabled={!ownerId}
+                className="select-field w-full"
+              >
+                <option value="">{tr("bookings.createDialog.pickLineOption")}</option>
+                {lines.map((line) => {
+                  const ends = lineEndpoints(line);
+                  return <option key={line.id} value={line.id}>{line.name} · {ends.origin ?? "—"} ← {ends.destination ?? "—"}</option>;
+                })}
+              </select>
+            )}
+          </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{tr("bookings.createDialog.tripLabel")}<span className="text-[#dc2626]"> *</span></span>
             {tripsLoading ? (
               <InlineBlockSkeleton className="h-11 w-full" />
             ) : (
-              <select aria-label={tr("bookings.createDialog.pickTrip")} {...form.register("tripId")} className="select-field w-full">
+              <select aria-label={tr("bookings.createDialog.pickTrip")} {...form.register("tripId")} disabled={!lineId} className="select-field w-full">
                 <option value="">{tr("bookings.createDialog.pickTripOption")}</option>
-                {trips.map((t) => (
-                  <option key={t.id} value={t.id}>{t.origin} ← {t.destination}</option>
+                {(tripsPage?.items ?? []).map((trip) => (
+                  <option key={trip.id} value={trip.id}>
+                    {new Date(trip.departAt).toLocaleString("ar-EG")} · {trip.origin ?? "—"} ← {trip.destination ?? "—"}
+                  </option>
                 ))}
               </select>
             )}

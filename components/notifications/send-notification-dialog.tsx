@@ -11,9 +11,8 @@ import {
 } from "@/lib/actions/notifications";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
 import { fetchPromotions, type Promotion } from "@/lib/actions/promotions";
-import { fetchTripsPage, type Trip } from "@/lib/actions/trips";
-import { fetchFleetsPage } from "@/lib/actions/fleets";
-import { useApiQuery, useDataQuery, qk } from "@/lib/queries";
+import { fetchSystemTripsPage, type Trip } from "@/lib/actions/trips";
+import { useApiQuery, qk } from "@/lib/queries";
 import {
   AlertCircle,
   Send,
@@ -25,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { t as tr } from "@/lib/i18n/t";
+import { pushSummaryLines } from "@/lib/i18n/push-summary";
 
 type Props = {
   open: boolean;
@@ -108,21 +108,13 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     () => (promoPage?.items ?? []).filter((promo) => promo.isActive),
     [promoPage],
   );
-  const { data: tripsData, isLoading: tripsLoading } = useDataQuery<Trip[]>(
-    ["notification-trips"],
-    async () => {
-      const fleetsRes = await fetchFleetsPage(null);
-      if (!fleetsRes.ok) throw new Error(fleetsRes.message);
-      const collected: Trip[] = [];
-      for (const fleet of fleetsRes.data.items.slice(0, 5)) {
-        const tRes = await fetchTripsPage(fleet.id, null);
-        if (tRes.ok) collected.push(...tRes.data.items);
-      }
-      return collected;
-    },
+  // The super-admin trip index is already cross-owner, so no fan-out needed.
+  const { data: tripsPage, isLoading: tripsLoading } = useApiQuery(
+    qk.systemTrips,
+    () => fetchSystemTripsPage(null),
     { enabled: open && category === "TRIP" },
   );
-  const trips = tripsData ?? [];
+  const trips: Trip[] = tripsPage?.items ?? [];
 
   // Load initial users when dialog opens
   useEffect(() => {
@@ -238,12 +230,15 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     setSubmitting(false);
 
     if (res.ok) {
-      const msg = res.data.isGlobal
+      const headline = res.data.isGlobal
         ? tr("notifications.send.successGlobal", { value: res.data.sentCount })
         : tr("notifications.send.successDirect");
+      // Inbox rows and Firebase acceptance are reported as separate lines so
+      // the operator never reads "saved" as "delivered".
+      const detail = pushSummaryLines(res.data.push, res.data.sentCount).join(" ");
       resetForm();
       onOpenChange(false);
-      onSuccess(msg);
+      onSuccess(detail ? `${headline} ${detail}` : headline);
     } else {
       setError(res.message);
     }

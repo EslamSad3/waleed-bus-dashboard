@@ -11,16 +11,16 @@ import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
-type BusRow = Bus & { fleetName?: string };
+type BusRow = Bus & { ownerId: string; ownerName?: string };
 
 /** بعد رفع صورة جديدة نجيب الـ row المحدث من السيرفر (الـ PATCH بيرجع الصورة القديمة). */
 async function refetchBusRow(bus: BusRow): Promise<Bus> {
-  const fresh = await fetchBus(bus.fleetId, bus.id);
+  const fresh = await fetchBus(bus.ownerId, bus.id);
   return fresh.ok ? fresh.data : bus;
 }
 
 /**
- * نافذة تعديل عربية — نفس حقول الإضافة من غير رقم التسجيل (ثابت) والأسطول (مش بيتغير).
+ * نافذة تعديل عربية — نفس حقول الإضافة من غير رقم التسجيل (ثابت) والشركة (مش بتتغير).
  * الصورة بتترفع FormData زي الإضافة بالظبط.
  */
 export function EditBusDialog({
@@ -92,7 +92,7 @@ export function EditBusDialog({
     let staged: StagedUpload | null = null;
     if (imageFile) {
       setUploading(true);
-      const s = await stageBusImage(bus.fleetId, imageFile);
+      const s = await stageBusImage(bus.ownerId, imageFile);
       setUploading(false);
       if (!s.ok) {
         setSaving(false);
@@ -101,7 +101,7 @@ export function EditBusDialog({
       }
       staged = s.data;
     }
-    const result = await updateBus(bus.fleetId, bus.id, {
+    const result = await updateBus(bus.ownerId, bus.id, {
       plateNumber: plateNumber.trim(),
       color,
       brandId: brandId || null,
@@ -111,7 +111,7 @@ export function EditBusDialog({
       ...(staged ? { imageUrl: staged.publicUrl } : {}),
     });
     if (!result.ok) {
-      if (staged) await discardBusImage(bus.fleetId, staged);
+      if (staged) await discardBusImage(bus.ownerId, staged);
       setSaving(false);
       setError(result.message);
       return;
@@ -119,8 +119,12 @@ export function EditBusDialog({
     setSaving(false);
     // الصورة بتتحدّث من غير رفريش — نجيب الـ row المحدث ونحطه في الكاش
     const after = imageFile ? await refetchBusRow(bus) : result.data;
-    upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, { ...after, fleetName: bus.fleetName });
-    upsertInCursorList<Bus>(queryClient, qk.fleetBuses(bus.fleetId), after);
+    upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, {
+      ...after,
+      ownerId: bus.ownerId,
+      ownerName: bus.ownerName,
+    });
+    upsertInCursorList<Bus>(queryClient, qk.buses(bus.ownerId), after);
     resetForm();
     onClose();
   }
