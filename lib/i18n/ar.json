@@ -1050,7 +1050,7 @@
       "description": "مؤشرات التشغيل الحالية — كل كارت لينك لصفحته، والأرقام بتتحدث تلقائيًا من الكاش.",
       "bookingsStatusTitle": "حالة الحجوزات",
       "busesSeries": "عربيات",
-      "activeOwners": "شركات شغالة",
+      "activeOwners": "اصحاب العربيات اللي شغالين",
       "busesPerOwnerTitle": "العربيات حسب العربيات",
       "ownersOperatingTitle": "نسبة اصحاب العربيات الشغالة"
     }
