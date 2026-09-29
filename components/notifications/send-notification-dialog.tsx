@@ -25,6 +25,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { t as tr } from "@/lib/i18n/t";
+import { pushSummaryLines } from "@/lib/i18n/push-summary";
 
 type Props = {
   open: boolean;
@@ -238,12 +239,15 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     setSubmitting(false);
 
     if (res.ok) {
-      const msg = res.data.isGlobal
+      const headline = res.data.isGlobal
         ? tr("notifications.send.successGlobal", { value: res.data.sentCount })
         : tr("notifications.send.successDirect");
+      // Inbox rows and Firebase acceptance are reported as separate lines so
+      // the operator never reads "saved" as "delivered".
+      const detail = pushSummaryLines(res.data.push, res.data.sentCount).join(" ");
       resetForm();
       onOpenChange(false);
-      onSuccess(msg);
+      onSuccess(detail ? `${headline} ${detail}` : headline);
     } else {
       setError(res.message);
     }

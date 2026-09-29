@@ -122,3 +122,10 @@ No speckit skills installed — spec → plan → tasks → implement will be mi
 ## Responsiveness + skeleton loading overhaul (2026-09-27)
 
 - Skeleton primitives added (`components/ui/skeleton.tsx` + `components/ui/skeletons.tsx`: Table/CardsGrid/KpiCards/DetailPage/Form/InlineBlock); per-page skeleton loading on every TanStack Query first-load across all 29 dashboard pages (login is the documented no-async-data exception); full responsive pass 360px→1440px over pages, shell (off-canvas drawer) and `components/ui` (dialogs scroll internally); `.page-heading` wraps globally; `pnpm lint` (0 errors), `pnpm typecheck`, and `pnpm build` pass.
+
+## Notification push summary (2026-09-29)
+
+- `POST /platform/notifications` now returns a `push` object alongside the existing `sentCount` / `isGlobal` / `notificationIds`: `{ status, acceptedDeviceCount, failedDeviceCount, skippedUserCount }` (backend `bus_api`, spec 012 FCM integration).
+- `SendNotificationResult` extended with `PushSummary`; `lib/i18n/push-summary.ts` composes the operator copy from the dictionary. Inbox rows saved and Firebase device acceptance are reported as **separate** lines on purpose — the two numbers mean different things and merging them would claim a delivery guarantee FCM does not make. `status: "disabled"` (push off server-side) and `status: "incomplete"` (dispatch stopped early, counts partial) are stated explicitly; `failed` / `skipped` lines only appear when non-zero.
+- The send dialog now renders one composed result banner carrying all of it, and `sendPlatformNotification` passes `notify: false` so the old generic action-wrapper toast (copy `notifications.toast.sentGlobal` / `sentDirect`, no counts) is gone — one success surface, no duplicate. Those two dictionary keys were removed; `pnpm i18n:check` reports 0 unreferenced keys.
+- Mobile-side onboarding (installation id, `bus_notifications` channel, token rotation, account switching, foreground rendering) is documented in `../bus_api/docs/ANDROID_FCM_INTEGRATION.md`. `pnpm i18n:check`, `pnpm typecheck`, `pnpm lint` pass (0 errors; pre-existing RHF compiler warnings remain).
