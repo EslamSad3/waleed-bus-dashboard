@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Eye } from "lucide-react";
+import type { ICellRendererParams } from "ag-grid-community";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActions } from "@/components/ui/row-actions";
@@ -42,6 +43,24 @@ export default function TripLinesPage() {
     { field: "name", headerName: t("tripLines.columns.name"), filter: "agTextColumnFilter" },
     { field: "code", headerName: t("common.fields.code"), filter: "agTextColumnFilter" },
     {
+      field: "isActive",
+      headerName: t("common.fields.status"),
+      filter: "agTextColumnFilter",
+      cellDataType: "text",
+      minWidth: 120,
+      valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")),
+      cellRenderer: (params: ICellRendererParams<TripLine>) =>
+        params.data ? (
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              params.data.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
+            }`}
+          >
+            {params.data.isActive ? t("common.status.active") : t("common.status.inactive")}
+          </span>
+        ) : null,
+    },
+    {
       headerName: t("common.fields.owner"),
       valueGetter: (params) => ownerNames?.get(params.data?.ownerId ?? "") ?? params.data?.ownerId ?? "—",
       filter: "agTextColumnFilter",
@@ -57,7 +76,6 @@ export default function TripLinesPage() {
       valueGetter: (params) => (params.data ? lineEndpoints(params.data).destination ?? "—" : "—"),
     },
     { colId: "stops", headerName: t("tripLines.columns.stops"), valueGetter: (params) => params.data?.stops.length ?? 0, filter: "agNumberColumnFilter" },
-    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")) },
   ];
 
   return (

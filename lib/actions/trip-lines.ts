@@ -48,7 +48,7 @@ export type TripLineStop = {
   stationId: string;
   stopOrder: number;
   estimatedStopMinutes?: number | null;
-  stopType: "BOARDING" | "LANDING" | "BOTH";
+  stopType: "BOARDING" | "LANDING";
   station: Stop;
 };
 
@@ -173,9 +173,9 @@ export const updateOwnerTripLine = (
   );
 
 /**
- * Replace the line's ordered stops. The server refuses this with
- * 409 LINE_HAS_TRIPS once the line has trips, so booked and completed
- * journeys keep their route.
+ * Replace the line's ordered stops. Trips with a confirmed booking, or that
+ * already ran, keep the stops they had (the server freezes them first); every
+ * other trip follows the new stops.
  */
 export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[]) =>
   notifyResult(
