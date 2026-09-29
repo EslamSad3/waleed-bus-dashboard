@@ -27,6 +27,7 @@ export function CreateTripDialog({
   lockedOwnerId,
   lockedLineId,
   lockedBusId,
+  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
@@ -36,6 +37,8 @@ export function CreateTripDialog({
   lockedLineId?: string;
   /** Pre-selected bus (e.g. from the bus detail page). */
   lockedBusId?: string;
+  /** Extra cache hook for callers with their own list (e.g. the owner tab). */
+  onCreated?: (trip: Trip) => void;
 }) {
   const queryClient = useQueryClient();
   const scopedOwnerId = useFilterStore((s) => s.ownerId);
@@ -95,6 +98,7 @@ export function CreateTripDialog({
     if (!result.ok) return setError(result.message);
     // تحديث فوري لجدول الرحلات من غير إعادة تحميل
     upsertInCursorList<Trip>(queryClient, qk.trips(ownerId, lineId), result.data);
+    onCreated?.(result.data);
     resetForm();
     onClose();
   }

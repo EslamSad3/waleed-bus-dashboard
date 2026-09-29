@@ -28,6 +28,8 @@ export type Bus = {
   isActive: boolean;
   /** Mean bus rating across the bus's trips; null when nobody rated it yet. */
   avgRating?: number | null;
+  /** Trips this bus has run, across every line. */
+  tripCount?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -141,6 +143,35 @@ export function fetchBusTripsPage(
 ): Promise<ActionResult<CursorPage<BusTripRow>>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
   return apiGet<CursorPage<BusTripRow>>(`${base(ownerId)}/${busId}/trips${q}`);
+}
+
+/** One passenger's bus rating + comment, with the trip/line/driver context. */
+export type BusRatingRow = {
+  id: string;
+  bookingId: string;
+  passengerName: string | null;
+  passengerPhone: string | null;
+  rating: number | null;
+  comment: string | null;
+  ratedAt: string | null;
+  trip: {
+    id: string;
+    departAt: string;
+    status: string;
+    line: { id: string; name: string; code: string; origin: string | null; destination: string | null };
+    driver: { id: string; name: string | null; nickname?: string | null; picture?: string | null } | null;
+  };
+  bus: { id: string; registrationNumber: string; plateNumber: string | null };
+};
+
+/** Every rating and comment left on this bus, newest first. */
+export function fetchBusRatingsPage(
+  ownerId: string,
+  busId: string,
+  cursor: string | null,
+): Promise<ActionResult<CursorPage<BusRatingRow>>> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
+  return apiGet<CursorPage<BusRatingRow>>(`${base(ownerId)}/${busId}/ratings${q}`);
 }
 
 export const fetchBrands = (includeInactive = false) =>

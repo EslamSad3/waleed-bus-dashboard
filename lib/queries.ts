@@ -75,6 +75,10 @@ export const qk = {
   tripLines: (ownerId: string) => ["trip-lines", ownerId] as const,
   tripLine: (ownerId: string, id: string) => ["trip-line", ownerId, id] as const,
   trips: (ownerId: string, lineId: string) => ["trips", ownerId, lineId] as const,
+  /** Flat trip index: "all", or `owner:<id>`, or `line:<id>`. */
+  tripsIndex: (scope: string) => ["trips-index", scope] as const,
+  /** Line choices for the trips record filter. */
+  tripLineChoices: (ownerId: string) => ["trip-line-choices", ownerId] as const,
   trip: (ownerId: string, lineId: string, id: string) => ["trip", ownerId, lineId, id] as const,
   tripFeedback: (ownerId: string, lineId: string, id: string) =>
     ["trip-feedback", ownerId, lineId, id] as const,

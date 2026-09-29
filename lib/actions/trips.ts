@@ -45,6 +45,9 @@ export type Trip = {
   createdAt: string;
   updatedAt: string;
   line?: TripLineRef & { stops?: TripLineStop[] };
+  /** Present on the flat index, so a row needs no second request to be labelled. */
+  bus?: { id: string; registrationNumber: string; plateNumber?: string | null } | null;
+  driver?: { id: string; name: string | null; nickname?: string | null; picture?: string | null } | null;
 };
 
 export type TripPage = CursorPage<Trip>;
@@ -119,7 +122,17 @@ export async function findTripAcrossLines(
 }
 
 /** Super-admin cross-owner trip index (`GET /fleet-owners/trips`). */
-export function fetchSystemTripsPage(cursor: string | null): Promise<ActionResult<TripPage>> {
-  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<TripPage>(`/api/fleet-owners/trips${q}`);
+/**
+ * Cross-owner trip index. `ownerId` narrows it to one company, which is how the
+ * owner screen lists every trip it ran across all of its lines — trips are
+ * otherwise only listable per line.
+ */
+export function fetchSystemTripsPage(cursor: string | null, ownerId?: string): Promise<ActionResult<TripPage>> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+  if (ownerId) params.set("ownerId", ownerId);
+  return apiGet<TripPage>(`/api/fleet-owners/trips?${params.toString()}`);
 }
+
+/** One row of the owner trip index: a Trip plus the line it runs. */
+export type OwnerTripRow = Trip;

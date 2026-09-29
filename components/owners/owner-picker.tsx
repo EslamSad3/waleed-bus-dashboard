@@ -31,14 +31,13 @@ export function OwnerPicker({
     const matched = needle
       ? rows.filter(
           (owner) =>
-            (owner.companyName ?? "").toLowerCase().includes(needle) ||
             (owner.name ?? "").toLowerCase().includes(needle) ||
             (owner.phoneNumber ?? "").includes(needle),
         )
       : rows;
     return matched.map((owner) => ({
       id: owner.id,
-      label: owner.companyName || owner.name || owner.phoneNumber || owner.id,
+      label: owner.name || owner.nickname || owner.phoneNumber || owner.id,
     }));
   }, [data, search]);
 

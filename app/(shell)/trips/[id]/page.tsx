@@ -13,15 +13,17 @@ import {
   TRIP_STATUS_AR,
   type Trip,
 } from "@/lib/actions/trips";
-import { assignDriver, fetchBus, type Bus } from "@/lib/actions/buses";
+import { fetchBus, type Bus } from "@/lib/actions/buses";
 import { apiGet } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
-import { fetchTripFeedbackPage } from "@/lib/actions/feedback";
+import { fetchTripFeedbackPage, type TripFeedbackRow } from "@/lib/actions/feedback";
+import { CursorList } from "@/components/tables/cursor-list";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { qk, useApiQuery } from "@/lib/queries";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { DetailPageSkeleton, InlineBlockSkeleton } from "@/components/ui/skeletons";
+import { DetailPageSkeleton, InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Trash2 } from "lucide-react";
 import { t } from "@/lib/i18n/t";
 
@@ -50,6 +52,8 @@ export default function TripDetailPage({
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [driverId, setDriverId] = useState("");
   const [busRatingAvg, setBusRatingAvg] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<{ items: TripFeedbackRow[]; nextCursor: string | null } | null>(null);
+  const [feedbackReloadKey, setFeedbackReloadKey] = useState(0);
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
   const [status, setStatus] = useState<Trip["status"]>("SCHEDULED");
@@ -150,15 +154,38 @@ export default function TripDetailPage({
       setError(t("trips.detail.errors.pickDriver"));
       return;
     }
-    const result = await assignDriver(ownerId, trip.busId, { driverUserId: driverId });
+    // This is the TRIP's driver, not the bus's: the API takes it on the trip
+    // and freezes it once the trip departs. Re-read the trip afterwards so the
+    // block below shows the new driver instead of the stale one.
+    const result = await updateTrip(ownerId, lineId, id, { driverUserId: driverId });
     done(result.ok, result.ok ? t("trips.detail.toast.driverAssigned") : result.message);
     if (result.ok) {
-      const refreshed = await apiGet<{ items: DriverRow[] }>(
-        `/api/fleet-owners/${ownerId}/drivers?limit=100`,
-      );
-      if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+      setTrip(result.data);
+      setDriverId("");
     }
   }
+
+  async function unassignTripDriver() {
+    if (!ownerId || !lineId || !trip?.driverUserId) return;
+    const result = await updateTrip(ownerId, lineId, id, { driverUserId: null });
+    done(result.ok, result.ok ? t("trips.detail.toast.driverUnassigned") : result.message);
+    if (result.ok) {
+      setTrip(result.data);
+      setDriverId("");
+    }
+  }
+
+  // Rated bookings for this trip, fetched next to the trip itself so the screen
+  // answers "how did this trip go" without leaving the page.
+  useEffect(() => {
+    if (!ownerId || !lineId) return;
+    let cancelled = false;
+    fetchTripFeedbackPage(ownerId, lineId, id, null).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setFeedback(result.data);
+    });
+    return () => { cancelled = true; };
+  }, [ownerId, lineId, id, feedbackReloadKey]);
 
   if (!ownerId) {
     return (
@@ -174,7 +201,54 @@ export default function TripDetailPage({
   if (foundError && !trip) return <p role="alert" className="text-sm text-red-600">{foundError.message}</p>;
   if (!trip) return <DetailPageSkeleton />;
 
+
+  const feedbackColumns: CommunityColumnDef<TripFeedbackRow>[] = [
+    { field: "passenger.name", headerName: t("feedback.passenger"), valueGetter: (params) => params.data?.passenger.name || t("common.value.withoutName") },
+    { field: "passenger.seats", headerName: t("common.fields.seats"), valueGetter: (params) => params.data?.passenger.seats },
+    {
+      headerName: t("feedback.busFeedback"),
+      cellRenderer: (params: { data: TripFeedbackRow }) => (
+        <div className="flex flex-col">
+          <RatingCell value={params.data.busFeedback.rating} />
+          {params.data.busFeedback.comment ? (
+            <span className="text-xs text-[#606060]">{params.data.busFeedback.comment}</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      headerName: t("feedback.driverFeedback"),
+      cellRenderer: (params: { data: TripFeedbackRow }) => (
+        <div className="flex flex-col">
+          <RatingCell value={params.data.driverFeedback.rating} />
+          {params.data.driverFeedback.comment ? (
+            <span className="text-xs text-[#606060]">{params.data.driverFeedback.comment}</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      colId: "ratedAt",
+      headerName: t("feedback.ratedAt"),
+      valueGetter: (params) => {
+        const at = params.data?.driverFeedback.ratedAt ?? params.data?.busFeedback.ratedAt;
+        return at ? new Date(at).toLocaleString("ar-EG") : "—";
+      },
+    },
+  ];
+
   const snapshottedDriverId = trip.driverUserId;
+  // Departed (or finished) trips have a historical driver: the API refuses a
+  // change, so the controls say so instead of failing on click.
+  const tripFrozen = trip.status !== "SCHEDULED";
+  // What the picker actually changes: the bus's ACTIVE assignment. The trip's
+  // own driverUserId is a departure snapshot and never changes afterwards, so
+  // showing only that made a successful assign look broken.
+  const busDriver = drivers.find((driver) =>
+    (driver.assignments ?? []).some(
+      (assignment) => assignment.busId === trip.busId && assignment.status === "ACTIVE",
+    ),
+  );
 
   return (
     <div className="dashboard-page">
@@ -226,14 +300,31 @@ export default function TripDetailPage({
                 <span className="text-[#606060]">{t("common.fields.busRatingAvg")}</span>
                 <RatingCell value={busRatingAvg} />
               </span>
+              <span className="mt-2 flex items-center gap-2">
+                <span className="text-[#606060]">{t("trips.detail.busCurrentDriver")}</span>
+                {busDriver ? (
+                  <>
+                    <DriverAvatar name={busDriver.name} picture={busDriver.picture} size="sm" />
+                    <strong>{busDriver.name || t("common.value.withoutName")}</strong>
+                  </>
+                ) : (
+                  <strong>{t("common.value.unassigned")}</strong>
+                )}
+              </span>
               <label className="mt-3 block text-sm">
-                <span className="mb-1 block font-medium">{t("trips.detail.assignSameFleetDriver")}</span>
-                <select aria-label={t("trips.detail.assignDriverAria")} value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus}>
+                <span className="mb-1 block font-medium">{t("trips.detail.assignTripDriver")}</span>
+                <select aria-label={t("trips.detail.assignDriverAria")} value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus || tripFrozen}>
                   <option value="">{t("trips.detail.pickDriver")}</option>
                   {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || t("trips.detail.unnamedDriver")}</option>)}
                 </select>
               </label>
-              <AsyncButton type="button" className="mt-2" onClick={assignTripDriver} disabled={!driverId}>{t("trips.detail.assignDriver")}</AsyncButton>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <AsyncButton type="button" onClick={assignTripDriver} disabled={!driverId || tripFrozen}>{t("trips.detail.assignDriver")}</AsyncButton>
+                <AsyncButton type="button" variant="secondary" onClick={unassignTripDriver} disabled={!trip.driverUserId || tripFrozen}>
+                  {t("trips.detail.unassignDriver")}
+                </AsyncButton>
+              </div>
+              {tripFrozen ? <small className="mt-1 block text-xs text-[#687886]">{t("trips.detail.driverFrozenHint")}</small> : null}
             </div>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
               <span className="block text-[#606060]">{t("common.fields.snapshottedDriver")}</span>
@@ -282,6 +373,31 @@ export default function TripDetailPage({
           </Button>
         </div>
       </div>
+
+      <section className="mt-4 space-y-3">
+        <div>
+          <h2 className="section-title">{t("trips.detail.feedback.title")}</h2>
+          <p className="page-description">{t("trips.detail.feedback.description")}</p>
+        </div>
+        {!feedback ? (
+          <TableSkeleton rows={3} columns={feedbackColumns.length} />
+        ) : (
+          <CursorList<TripFeedbackRow>
+            gridId={`trip-feedback-${id}`}
+            key={`${id}-${feedbackReloadKey}`}
+            initialItems={feedback.items}
+            initialCursor={feedback.nextCursor}
+            loadMore={async (cursor) => {
+              const result = await fetchTripFeedbackPage(ownerId, lineId, id, cursor);
+              if (!result.ok) throw new Error(result.message);
+              return result.data;
+            }}
+            keyOf={(row) => row.id}
+            columnDefs={feedbackColumns}
+            emptyMessage={t("trips.detail.feedback.empty")}
+          />
+        )}
+      </section>
     </div>
   );
 }

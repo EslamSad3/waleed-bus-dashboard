@@ -10,6 +10,8 @@
     },
     "listSeparator": "،",
     "fields": {
+      "tripLines": "خطوط السير",
+      "buses": "العربيات",
       "email": "البريد الإلكتروني",
       "password": "كلمة السر",
       "route": "خط السير:",
@@ -29,6 +31,7 @@
       "ac": "مكيّف",
       "modelYear": "سنة الموديل",
       "capacity": "السعة",
+      "tripCount": "عدد الرحلات",
       "driver": "السواق",
       "registrationNumber": "رقم التسجيل",
       "status": "الحالة",
@@ -50,8 +53,7 @@
       "bus": "العربية",
       "maxBookingSeats": "الحد الأقصى لمقاعد الحجز",
       "passenger": "الراكب",
-      "companyName": "اسم الشركة",
-      "owner": "صاحب الشركة",
+      "owner": "صاحب العربيات",
       "tripLine": "خط السير",
       "orderedStops": "المحطات بالترتيب",
       "pickup": "محطة الصعود",
@@ -64,9 +66,7 @@
       "busRating": "تقييم العربية",
       "feedback": "التقييمات",
       "drivers": "السواقين",
-      "members": "الأعضاء",
-      "booking": "الحجز",
-      "report": "البلاغ",
+      "bookings": "الحجوزات",
       "departAt": "موعد الرحلة",
       "fare": "السعر"
     },
@@ -83,11 +83,12 @@
       "withoutName": "بدون اسم",
       "optional": "(اختياري)",
       "unassigned": "غير معيّن",
-      "ownerWithoutName": "صاحب عربيه بدون اسم"
+      "ownerWithoutName": "صاحب عربيه بدون اسم",
+      "unpaid": "غير محدد"
     },
     "notFound": {
       "booking": "الحجز غير موجود",
-      "inOwner": "العنصر ده مش موجود في الشركة دي"
+      "inOwner": "العنصر ده مش موجود في العربيات دي"
     },
     "actions": {
       "deleteConfirmTitle": "تأكيد المسح",
@@ -236,7 +237,8 @@
         "refund": "استرداد مالي (Refund)",
         "override": "تعديل تشغيلي (Override)",
         "reinstate": "استرجاع الحجز (Reinstate)",
-        "forceCancel": "إلغاء إداري (Force Cancel)"
+        "forceCancel": "إلغاء إداري (Force Cancel)",
+        "paymentVerified": "الدفع متأكد ✓"
       },
       "sections": {
         "passenger": "بيانات الراكب المسافر",
@@ -312,7 +314,10 @@
       },
       "audit": {
         "empty": "لا توجد عمليات تدقيق مسجلة حتى الآن."
-      }
+      },
+      "noAccount": "الحجز اتعمل من غير حساب",
+      "bookingStatusLabel": "حالة الحجز",
+      "paymentStatusLabel": "حالة الدفع"
     },
     "list": {
       "deleteConfirm": {
@@ -346,11 +351,10 @@
       "dateTypeCreated": "تاريخ إنشاء الحجز",
       "fromDate": "من تاريخ",
       "toDate": "إلى تاريخ",
-      "allOwners": "كل الشركات"
+      "allOwners": "كل اصحاب العربيات"
     },
     "actions": {
       "errors": {
-        "referenceRequired": "رقم المعاملة الخارجية مطلوب",
         "amountPositive": "المبلغ لازم يكون رقماً موجباً",
         "amountMismatch": "المبلغ المدخل ({amount}) غير مطابق لقيمة الحجز بالظبط ({bookingTotalAmount} ج.م)"
       },
@@ -364,7 +368,8 @@
         "amountLabel": "المبلغ المستلم المؤكد (ج.م) *",
         "amountMismatchWarning": "تنبيه: المبلغ المدخل لا يطابق قيمة الحجز (",
         "notesLabel": "ملاحظات التسوية (اختياري)",
-        "submit": "تأكيد واستلام الدفع"
+        "submit": "تأكيد واستلام الدفع",
+        "noTotalWarning": "الحجز ده مش متسجّل له سعر، فاكتب المبلغ اللي اتحصّل فعليًا."
       },
       "placeholders": {
         "verifyReference": "مثال: VF-9021849 أو رقم إيصال إنستاباي",
@@ -417,16 +422,14 @@
         },
         "seatsRestoredNote": "(وتم تحرير المقاعد للرحلة)",
         "title": "إلغاء الحجز إدارياً (Force Cancel)",
-        "description": "إلغاء فوري للحجز من صلاحيات الإدارة العليا مع التحكم في تحرير المقاعد لركاب آخرين.",
+        "description": "إلغاء فوري للحجز من صلاحيات الإدارة العليا.",
         "reasonLabel": "سبب الإلغاء الإداري *",
-        "restoreSeats": "إرجاع المقاعد لسعة الرحلة المتاحة",
+        "seatsAutomatic": "المقاعد ( {seats} ) بترجع تلقائياً لسعة الرحلة لو الرحلة لسه مابدأتش، ولو بدات مش هترجع.",
         "yesLabel": "تراجع",
         "submit": "تأكيد إلغاء الحجز",
         "success": "تم إلغاء الحجز إدارياً {seatsNote}"
       },
       "reinstate": {
-        "seatsWarningPrefix": "إذا كانت الرحلة مجدولة ولم تتحرك بعد، سيتم زيادة المقاعد المتاحة فوراً بمقدار (",
-        "seatsWarningSuffix": ") مقعد.",
         "errors": {
           "reasonRequired": "سبب استرجاع الحجز إلزامي"
         },
@@ -474,7 +477,7 @@
     },
     "createDialog": {
       "errors": {
-        "pickOwner": "اختار الشركة الأول"
+        "pickOwner": "اختار العربيات الأول"
       },
       "title": "حجز جديد",
       "description": "سجّل بيانات الراكب واربط الحجز بالرحلة المطلوبة.",
@@ -628,12 +631,19 @@
       "seatsUnit": "مقعد",
       "currentDriver": "السواق الحالي",
       "noDriver": "لا يوجد سواق معين",
+      "currentDriverSuffix": "(مسند على العربية دلوقتي)",
       "actions": {
         "reactivate": "إعادة تشغيل",
         "assignDriver": "تعيين سواق",
         "unassignDriver": "إلغاء التعيين"
       },
       "tripsEmpty": "لا توجد رحلات على العربية دي",
+      "ratings": {
+        "title": "تقييمات الركاب للعربية",
+        "description": "كل تقييمات الركاب للعربية دي مع رأيهم في العربيه، والرحلة اللي اتقيّم فيها.",
+        "comment": "رأي الركاب",
+        "empty": "لسه محدش قيّم العربية دي"
+      },
       "editDialog": {
         "title": "تعديل العربية",
         "description": "تحديث بيانات {busRegistrationNumber}."
@@ -652,9 +662,9 @@
       "pickDriverOption": "اختار السواق",
       "assignedElsewhereSuffix": " · معيّن حاليًا على {assignmentRegistrationNumber}",
       "noEligibleDrivers": "لا يوجد سواقون نشطون في هذه العربيه بعد. أضف سواقًا من صفحة السواقين أولًا.",
-      "tripsTitle": "رحلات الأتوبيس",
-      "tripsDescription": "كل الرحلات اللي مشيت على الأتوبيس ده، مع السواق وقت الرحلة ومتوسط تقييم الأتوبيس لكل رحلة.",
-      "noOwnerSelected": "مفيش شركة محددة — افتح العربية من داخل صفحة الشركة أو من قايمة العربيات."
+      "tripsTitle": "رحلات العربيه",
+      "tripsDescription": "كل الرحلات اللي مشيت على العربيه دي",
+      "noOwnerSelected": "مفيش شركة محددة — افتح العربية من داخل صفحة العربيات أو من قايمة العربيات."
     },
     "list": {
       "deleteConfirm": {
@@ -673,7 +683,7 @@
     "createDialog": {
       "errors": {
         "imageRequired": "صورة العربية مطلوبة.",
-        "pickOwner": "اختار الشركة الأول"
+        "pickOwner": "اختار العربيات الأول"
       },
       "title": "عربية جديدة",
       "description": "سجّل العربية داخل عربيهها: اللوحة واللون والصورة مطلوبين — رقم التسجيل بيتولد تلقائيًا.",
@@ -720,11 +730,11 @@
       "fields": {
         "nationalId": "الرقم القومي"
       },
-      "pickOwner": "اختار الشركة",
-      "pickOwnerDescription": "اختار الشركة اللي السواق بيتبعها عشان تشوف بياناته وإدارتها."
+      "pickOwner": "اختار العربيات",
+      "pickOwnerDescription": "اختار العربيات اللي السواق بيتبعها عشان تشوف بياناته وإدارتها."
     },
     "errors": {
-      "pickOwner": "اختار الشركة اللي السواق هيتبعها"
+      "pickOwner": "اختار العربيات اللي السواق هيتبعها"
     },
     "createDialog": {
       "title": "إضافة سواق",
@@ -778,7 +788,7 @@
     "subPages": {
       "assignments": {
         "title": "سجل تعيينات السواق",
-        "description": "كل العربيات اللي اتعين عليها السواق في الشركة دي، بالأقدم الجديد."
+        "description": "كل العربيات اللي اتعين عليها السواق في العربيات دي، بالأقدم الجديد."
       },
       "trips": {
         "title": "رحلات السواق",
@@ -786,7 +796,7 @@
       },
       "ratings": {
         "title": "تقييمات السواق",
-        "description": "كل تقييمات السواق في الشركة دي مع التعليقات."
+        "description": "كل تقييمات السواق في العربيات دي مع التعليقات."
       },
       "empty": "لسه مفيش بيانات"
     }
@@ -798,7 +808,7 @@
       },
       "sections": {
         "account": "بيانات الحساب",
-        "company": "بيانات الشركة"
+        "company": "بيانات المالك"
       },
       "imageAlt": "صورة {ownerName}",
       "editDialog": {
@@ -807,9 +817,9 @@
         "activeAccountShort": "الحساب نشط"
       },
       "tabs": {},
-      "deleteOwner": "حذف الشركة",
+      "deleteOwner": "حذف العربيات",
       "deleteConfirm": {
-        "description": "هيتشال الحساب وكل اللي تحته. لو فيه buses أو رحلات أو حجوزات لسه مرتبطة بالشركة،.API هيرفض العملية ويقولك السبب."
+        "description": "هيتشال الحساب وكل اللي تحته. لو فيه buses أو رحلات أو حجوزات لسه مرتبطة بالعربيات،.API هيرفض العملية ويقولك السبب."
       }
     },
     "editDialog": {
@@ -827,8 +837,7 @@
     "placeholders": {
       "fullName": "أحمد حسن",
       "nickname": "أحمد",
-      "nationalIdDigits": "14 رقم",
-      "companyName": "اسم الشركة"
+      "nationalIdDigits": "14 رقم"
     },
     "errors": {
       "nameRequired": "اكتب الاسم بالكامل."
@@ -1042,8 +1051,8 @@
       "bookingsStatusTitle": "حالة الحجوزات",
       "busesSeries": "عربيات",
       "activeOwners": "شركات شغالة",
-      "busesPerOwnerTitle": "العربيات حسب الشركة",
-      "ownersOperatingTitle": "نسبة الشركات الشغالة"
+      "busesPerOwnerTitle": "العربيات حسب العربيات",
+      "ownersOperatingTitle": "نسبة اصحاب العربيات الشغالة"
     }
   },
   "permissions": {
@@ -1083,12 +1092,12 @@
       "other": "إعدادات إضافية"
     },
     "permissions": {
-      "ownerBuses": "عربيات الشركة",
-      "ownerTrips": "رحلات الشركة",
-      "ownerLines": "خطوط الشركة",
-      "ownerDrivers": "سواقين الشركة",
-      "ownerBookings": "حجوزات الشركة",
-      "ownerReports": "تقارير الشركة"
+      "ownerBuses": "عربيات العربيات",
+      "ownerTrips": "رحلات العربيات",
+      "ownerLines": "خطوط العربيات",
+      "ownerDrivers": "سواقين العربيات",
+      "ownerBookings": "حجوزات العربيات",
+      "ownerReports": "تقارير العربيات"
     },
     "actions": {
       "read": "عرض",
@@ -1180,8 +1189,8 @@
     "empty": "لسه مفيش بلاغات",
     "averageBusRating": "متوسط تقييم العربية",
     "averageDriverRating": "متوسط تقييم السواق",
-    "pickOwner": "اختار الشركة",
-    "pickOwnerHint": "اختار الشركة اللي عايز تشوف تقاريرها"
+    "pickOwner": "اختار العربيات",
+    "pickOwnerHint": "اختار العربيات اللي عايز تشوف تقاريرها"
   },
   "roles": {
     "detail": {
@@ -1335,7 +1344,7 @@
       "routeTitle": "مسار الخط",
       "routeHint": "اختر اتجاهًا لمراجعة التوقفات أو تعديلها بنفس أدوات الإنشاء.",
       "stopsEmpty": "لا توجد توقفات لهذا الاتجاه",
-      "pickOwnerDescription": "اختار الشركة عشان تشوف الخط بتاعها",
+      "pickOwnerDescription": "اختار العربيات عشان تشوف الخط بتاعها",
       "title": "خط الرحلة"
     },
     "activeBadge": "خط نشط",
@@ -1360,7 +1369,9 @@
       "submit": "حفظ التوقفات",
       "editTitle": "تعديل {direction}"
     },
-    "deleteConfirm": {},
+    "deleteConfirm": {
+      "description": "متأكد إنك عايز تمسح الخط ده؟ الرحلات والحجوزات المرتبطة بيه هتتأثر."
+    },
     "columns": {
       "name": "اسم الخط",
       "stops": "نقاط التوقف",
@@ -1377,7 +1388,7 @@
       "errors": {
         "required": "أدخل الاسم والكود وحدد نقطتي توقف على الأقل في كل اتجاه.",
         "minStops": "الخط محتاج محطتين على الأقل",
-        "pickOwner": "اختار الشركة الأول"
+        "pickOwner": "اختار العربيات الأول"
       },
       "title": "إنشاء خط رحلة",
       "description": "أنشئ خطًا واحدًا باتجاهي ذهاب وعودة مستقلين.",
@@ -1417,7 +1428,8 @@
         "pickDriver": "اختار السواق الأول"
       },
       "toast": {
-        "driverAssigned": "اتعين السواق على عربية الرحلة"
+        "driverAssigned": "اتعين السواق على عربية الرحلة",
+        "driverUnassigned": "اتشال سواق الرحلة"
       },
       "description": "تفاصيل الخط والميعاد وحالة الرحلة.",
       "deleteTrip": "مسح الرحلة",
@@ -1432,7 +1444,7 @@
       "fields": {
         "capacityInline": "· السعة"
       },
-      "assignSameFleetDriver": "عيّن سواق من نفس الشركة على العربية",
+      "busCurrentDriver": "السواق المسند على العربية دلوقتي",
       "assignDriverAria": "تعيين سواق الرحلة",
       "pickDriver": "اختار السواق",
       "unnamedDriver": "سواق بدون اسم",
@@ -1441,9 +1453,17 @@
       "viewBookings": "كشف حجوزات الرحلة",
       "driverSnapshotHint": "السواق ده اللي شغّل الرحلة، مش لازم يكون لسه مربوط بالعربية دلوقتي",
       "fallbackTitle": "الرحلة",
-      "pickOwnerDescription": "اختار الشركة اللي الرحلة بتاعتها",
+      "pickOwnerDescription": "اختار العربيات اللي الرحلة بتاعتها",
       "routeFromLineHint": "الوجهة دي جاية من خط الرحلة: {lineName}",
-      "viewFeedback": "تفاصيل التقييمات"
+      "viewFeedback": "تفاصيل التقييمات",
+      "assignTripDriver": "عيّن سواق الرحلة دي",
+      "unassignDriver": "إلغاء تعيين السواق",
+      "driverFrozenHint": "الرحلة مشيت بالفعل، سواقها اتسجّل فيها ومش بيتغيّر.",
+      "feedback": {
+        "title": "تقييمات الركاب للرحلة",
+        "description": "كل الركاب اللي قيّموا العربية أو السواق في الرحلة دي، مع رأيهم.",
+        "empty": "لسه محدش قيّم الرحلة دي"
+      }
     },
     "list": {
       "deleteConfirm": {
@@ -1458,10 +1478,10 @@
     "description": "كل الرحلات في العربيات المسجلة، مع الخط والميعاد وحالة التشغيل.",
     "newTrip": "رحلة جديدة",
     "filters": {
+      "allLines": "كل الخطوط",
       "searchAria": "بحث بالمنشأ أو الوجهة أو العربيه",
       "searchPlaceholder": "من / إلى / العربيه",
-      "allStatuses": "كل الحالات",
-      "pickLine": "اختار خط"
+      "allStatuses": "كل الحالات"
     },
     "empty": "لا توجد رحلات مسجلة في أي عربيه.",
     "createDialog": {
@@ -1469,7 +1489,7 @@
         "pickLine": "عيّن خط رحلة للعربية أولًا من صفحة العربية.",
         "pickBus": "اختار العربية",
         "pickDate": "اختار موعد الرحلة",
-        "pickOwner": "اختار الشركة الأول"
+        "pickOwner": "اختار العربيات الأول"
       },
       "title": "رحلة جديدة",
       "description": "اختار العربية وحدد خط الرحلة وميعاد المغادرة.",
@@ -1492,7 +1512,7 @@
       "saved": "اتحفظت بيانات الرحلة",
       "deleted": "اتمسحت الرحلة"
     },
-    "pickOwnerDescription": "اختار الشركة الأول عشان تشوف رحلاتها"
+    "pickOwnerDescription": "اختار العربيات الأول عشان تشوف رحلاتها"
   },
   "users": {
     "errors": {
@@ -1580,15 +1600,15 @@
     "goBack": "ارجع خطوة للوراء"
   },
   "fleetOwnerPicker": {
-    "label": "صاحب الشركة",
-    "placeholder": "اختار صاحب الشركة",
-    "searchPlaceholder": "دور باسم الشركة أو الاسم أو الموبايل",
+    "label": "صاحب العربيات",
+    "placeholder": "اختار صاحب العربيات",
+    "searchPlaceholder": "دور باسم العربيات أو الاسم أو الموبايل",
     "searchAria": "دور عن صاحب شركة"
   },
   "members": {
     "deleteConfirm": {},
     "columns": {},
-    "empty": "لسه مفيش أعضاء في الشركة دي",
+    "empty": "لسه مفيش أعضاء في العربيات دي",
     "list": {},
     "actions": {},
     "toast": {
@@ -1687,7 +1707,7 @@
       "isActive": "الحالة",
       "status": "الحالة",
       "roleSlug": "الدور",
-      "ownerName": "اسم الشركة",
+      "ownerName": "اسم العربيات",
       "origin": "البداية",
       "destination": "الوجهة",
       "departAt": "موعد الرحلة",
@@ -1815,7 +1835,10 @@
     "REGISTRATION_TAKEN": "رقم التسجيل مستخدم قبل كده",
     "FLEET_REFERENCED": "العربيه مرتبطة بعربيات أو رحلات أو حجوزات و مينفعش يتمسح",
     "MEMBER_EXISTS": "المستخدم ده عضو في العربيه دي قبل كده",
-    "OWNER_LINK": "مشكلة في ربط صاحب العربيات، راجع بيانات المالك"
+    "OWNER_LINK": "مشكلة في ربط صاحب العربيات، راجع بيانات المالك",
+    "TRIP_DRIVER_FROZEN": "الرحلة دي مشيت بالفعل، سواقها اتسجّل فيها ومش بيتغيّر.",
+    "DRIVER_ASSIGNMENT_REQUIRED": "ما فيش سواق للرحلة دي: اسند سواق للرحلة أو للأتوبيس الأول.",
+    "invalidField": "قيمة غير صالحة في هذا الحقل"
   },
   "ordinals": {
     "1": "الأول في القائمه",
@@ -1839,7 +1862,6 @@
     }
   },
   "validation": {
-    "transactionRefRequired": "رقم المعاملة مطلوب",
     "transactionRefMax": "رقم المعاملة بحد أقصى 100 حرف",
     "amountPositive": "المبلغ يجب أن يكون رقماً موجباً",
     "paymentMethodMax": "طريقة الدفع بحد أقصى 20 حرف",
@@ -1885,16 +1907,28 @@
   },
   "owners": {
     "sections": {
-      "aria": "أقسام الشركة"
+      "aria": "أقسام العربيات"
     }
   },
   "feedback": {
     "title": "تقييمات الرحلة",
     "description": "تقييمات الركاب للأتوبيس والسواق في الرحلة دي.",
     "driverFeedback": "تقييم السواق",
-    "busFeedback": "تقييم الأتوبيس",
+    "busFeedback": "تقييم العربيه",
     "passenger": "الراكب",
     "ratedAt": "تاريخ التقييم",
     "empty": "لسه محدش قيّم الرحلة دي"
+  },
+  "dateRange": {
+    "aria": "فترة الميعاد",
+    "anyDate": "كل التواريخ",
+    "openEnded": "…",
+    "clear": "مسح الفترة",
+    "pickStart": "اختار يوم البداية",
+    "pickEnd": "اختار يوم النهاية",
+    "previousMonth": "الشهر اللي فات",
+    "nextMonth": "الشهر اللي جاي",
+    "last7": "آخر ٧ أيام",
+    "last30": "آخر ٣٠ يوم"
   }
 }

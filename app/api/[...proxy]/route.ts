@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { busFetch } from "@/lib/api";
 import { originAllowed } from "@/lib/config";
-import { toArabicError } from "@/lib/errors";
+import { arabiciseDetails, toArabicError } from "@/lib/errors";
 import { findRegistryEntry } from "@/lib/schemas/p1";
 import { t } from "@/lib/i18n/t";
 
@@ -99,7 +99,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
         statusCode: status,
         code: result.code,
         message: toArabicError(result.code, result.status),
-        ...(result.details ? { details: result.details } : {}),
+        ...(result.details ? { details: arabiciseDetails(result.details) } : {}),
       },
       { status },
     );

@@ -55,7 +55,6 @@ export default function FleetOwnerDetailPage({
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
   const [nationalId, setNationalId] = useState("");
-  const [companyName, setCompanyName] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isActive, setIsActive] = useState(true);
 
@@ -70,7 +69,6 @@ export default function FleetOwnerDetailPage({
     setNickname(owner.nickname ?? "");
     setPhone(owner.phoneNumber ?? "");
     setNationalId(owner.nationalId ?? "");
-    setCompanyName(owner.companyName ?? "");
     setImageFile(null);
     setIsActive(owner.isActive);
     setError(null);
@@ -84,7 +82,6 @@ export default function FleetOwnerDetailPage({
       nickname,
       phone,
       nationalId,
-      companyName,
       isActive,
     });
     if (!parsed.success) {
@@ -157,7 +154,7 @@ export default function FleetOwnerDetailPage({
     <div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
-          <h1 className="page-title truncate">{owner.companyName || owner.name}</h1>
+          <h1 className="page-title truncate">{owner.name || owner.nickname || owner.phoneNumber}</h1>
           <p className="page-description">{owner.nickname}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 max-md:w-full">
@@ -220,10 +217,6 @@ export default function FleetOwnerDetailPage({
           <h2 className="section-title">{t("fleetOwners.detail.sections.company")}</h2>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-3">
-              <dt className="text-[#606060]">{t("common.fields.companyName")}</dt>
-              <dd className="min-w-0 truncate">{owner.companyName ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
               <dt className="text-[#606060]">{t("common.fields.owner")}</dt>
               <dd className="min-w-0 truncate">{owner.name ?? "—"}</dd>
             </div>
@@ -248,12 +241,6 @@ export default function FleetOwnerDetailPage({
       >
         <div className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-2 block font-bold text-[#334454]">
-                {t("common.fields.companyName")}
-              </span>
-              <Input value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
-            </label>
             <label className="block text-sm">
               <span className="mb-2 block font-bold text-[#334454]">
                 {t("common.fields.fullName")}

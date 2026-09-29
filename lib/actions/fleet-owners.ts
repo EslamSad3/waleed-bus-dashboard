@@ -4,9 +4,9 @@ import type { CreateFleetOwnerInput, UpdateFleetOwnerInput } from "@/lib/schemas
 import { t } from "@/lib/i18n/t";
 
 /**
- * An owner account IS the company: the payload carries the user, the company
- * fields (`companyName`, `vipTierId`) and the owner's own ACTIVE membership —
- * there is no nested fleet array any more.
+ * An owner account IS the company: the payload carries the user, the VIP tier and
+ * the owner's own ACTIVE membership — there is no nested fleet array and no
+ * separate company name, the owner is identified by their own name.
  */
 export type OwnerMembershipBrief = {
   id: string;
@@ -21,7 +21,6 @@ export type FleetOwnerAccount = {
   phoneNumber: string | null;
   picture: string | null;
   nationalId: string | null;
-  companyName: string | null;
   vipTierId?: string | null;
   isActive: boolean;
   createdAt: string;
@@ -113,19 +112,22 @@ export function fetchUserOptions(): Promise<ActionResult<{ items: UserOption[] }
 }
 
 /**
- * ownerId → company display name, for the cross-owner indexes that only carry
- * the id (buses, trip lines). One small map beats a request per row.
+ * ownerId → owner display name, for the cross-owner indexes that only carry the
+ * id (buses, trip lines). One call beats a request per row.
+ *
+ * Returned as `[id, name]` tuples, NOT a Map: this is a server action, and the
+ * RSC boundary only carries JSON-serialisable values, so a Map reaches the
+ * client as `{}` and every `.get()`/`.keys()` on it throws. Callers rebuild the
+ * Map with useMemo.
  */
-export async function fetchOwnerNameMap(): Promise<ActionResult<Map<string, string>>> {
+export async function fetchOwnerNameMap(): Promise<ActionResult<Array<[string, string]>>> {
   const page = await fetchFleetOwnersPage(null);
   if (!page.ok) return page;
   return {
     ok: true,
-    data: new Map(
-      page.data.items.map((owner) => [
-        owner.id,
-        owner.companyName || owner.name || owner.phoneNumber || owner.id,
-      ]),
-    ),
+    data: page.data.items.map((owner) => [
+      owner.id,
+      owner.name || owner.nickname || owner.phoneNumber || owner.id,
+    ]),
   };
 }

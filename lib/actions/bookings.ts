@@ -65,8 +65,8 @@ export const REPORT_STATUS_AR: Record<string, string> = {
 export type AdminBookingListItem = {
   id: string;
   ownerId: string;
-  /** Company display name, resolved from the owner account. */
-  ownerName: string;
+  /** Company display name, resolved from the owner account. Matches the API's `fleetName` field. */
+  fleetName: string;
   tripId: string;
   passengerName: string;
   passengerPhone?: string | null;

@@ -26,7 +26,8 @@ export default function TripLinesPage() {
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
   const [filters, setFilters] = useState<{ q?: string; ownerId?: string }>({});
 
-  const { data: ownerNames } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
+  const { data: ownerNameEntries } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
+  const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
 
   const query = (filters.q ?? "").trim();
   const ownerFilter = filters.ownerId ?? "";
@@ -101,7 +102,7 @@ export default function TripLinesPage() {
                 <option value="">{t("common.value.all")}</option>
                 {(owners?.items ?? []).map((owner) => (
                   <option key={owner.id} value={owner.id}>
-                    {owner.companyName || owner.name || owner.phoneNumber || owner.id}
+                    {owner.name || owner.nickname || owner.phoneNumber || owner.id}
                   </option>
                 ))}
               </select>

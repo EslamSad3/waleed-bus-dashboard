@@ -31,11 +31,14 @@ export function CreateTripLineDialog({
   open,
   onClose,
   lockedOwnerId,
+  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   /** When set, the owner company is fixed and the picker is hidden. */
   lockedOwnerId?: string;
+  /** Extra cache hook for callers with their own list (e.g. the owner tab). */
+  onCreated?: (line: TripLine) => void;
 }) {
   const queryClient = useQueryClient();
   const [pickedOwnerId, setPickedOwnerId] = useState("");
@@ -109,6 +112,7 @@ export function CreateTripLineDialog({
     if (!result.ok) return setError(result.message);
     // تحديث فوري لجدول الخطوط من غير إعادة تحميل
     upsertInCursorList<TripLine>(queryClient, qk.tripLines(ownerId), result.data);
+    onCreated?.(result.data);
     resetForm();
     onClose();
   }

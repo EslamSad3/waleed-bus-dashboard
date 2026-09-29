@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { ApexOptions } from "apexcharts";
@@ -65,7 +65,10 @@ function KpiCard({ label, value, href, icon: Icon, tint }: Kpi) {
 /** كروت مؤشرات (كل كارت لينك لصفحته) + رسوم ApexCharts ثلاثية الإحساس. */
 export function OverviewInsights() {
   const ownersPageQuery = useApiQuery(["owners", "kpi"], () => fetchFleetOwnersPage(null));
-  const driversQuery = useDataQuery<number>(["drivers", "kpi"], () => fetchCountPage("/api/drivers?limit=100"));
+  // Cross-owner driver roster lives under /fleet-owners/drivers; there is no global /drivers index.
+  const driversQuery = useDataQuery<number>(["drivers", "kpi"], () =>
+    fetchCountPage("/api/fleet-owners/drivers?limit=100"),
+  );
   const ownersQuery = useDataQuery<number>(["fleet-owners", "kpi"], () => fetchCountPage("/api/fleet-owners?limit=100"));
   const usersQuery = useDataQuery<number>(["users", "kpi"], () => fetchCountPage("/api/users?limit=100"));
   const stopsQuery = useApiQuery<Stop[]>(qk.stops, fetchStops);
@@ -82,8 +85,11 @@ export function OverviewInsights() {
   const activeOwners = owners.filter((owner) => owner.isActive).length;
   const totalBuses = busesQuery.data?.items.length ?? 0;
   const totalTrips = tripsQuery.data?.items.length ?? 0;
-  const bookings = bookingsQuery.data ?? [];
-  const statusCount = (status: string) => bookings.filter((booking) => booking.status === status).length;
+  const bookings = useMemo(() => bookingsQuery.data ?? [], [bookingsQuery.data]);
+  const statusCount = useCallback(
+    (status: string) => bookings.filter((booking) => booking.status === status).length,
+    [bookings],
+  );
   // Bar chart: how many buses each company runs, from the cross-owner bus index.
   const busesPerOwner = useMemo(() => {
     const counts = new Map<string, number>();
@@ -92,7 +98,7 @@ export function OverviewInsights() {
     }
     return owners
       .map((owner) => ({
-        name: owner.companyName || owner.name || owner.id,
+        name: owner.name || owner.nickname || owner.id,
         count: counts.get(owner.id) ?? 0,
       }))
       .filter((row) => row.count > 0)
@@ -181,11 +187,26 @@ export function OverviewInsights() {
     [],
   );
 
+  const bookingStatusSlices = useMemo(() => {
+    const catalogue = [
+      { status: "CONFIRMED", label: t("enums.bookingStatus.confirmedChart"), color: "#059ff8" },
+      { status: "COMPLETED", label: t("enums.bookingStatus.completedChart"), color: "#16a34a" },
+      { status: "CANCELLED", label: t("enums.bookingStatus.cancelledChart"), color: "#dc2626" },
+    ];
+    const present = catalogue
+      .map((entry) => ({ ...entry, count: statusCount(entry.status) }))
+      .filter((entry) => entry.count > 0);
+    // Every booking gone (or still loading): keep one slice so the donut renders.
+    return present.length > 0
+      ? present
+      : [{ status: "CONFIRMED", label: catalogue[0].label, color: catalogue[0].color, count: 0 }];
+  }, [statusCount]);
+
   const donutOptions = useMemo<ApexOptions>(
     () => ({
       ...baseOptions,
-      labels: [t("enums.bookingStatus.confirmedChart"), t("enums.bookingStatus.completedChart"), t("enums.bookingStatus.cancelledChart")],
-      colors: ["#059ff8", "#16a34a", "#dc2626"],
+      labels: bookingStatusSlices.map((slice) => slice.label),
+      colors: bookingStatusSlices.map((slice) => slice.color),
       stroke: { width: 0 },
       plotOptions: {
         pie: {
@@ -201,7 +222,7 @@ export function OverviewInsights() {
         },
       },
     }),
-    [baseOptions],
+    [baseOptions, bookingStatusSlices],
   );
 
   const radialOptions = useMemo<ApexOptions>(
@@ -297,7 +318,7 @@ export function OverviewInsights() {
             <ApexChart
               type="donut"
               options={donutOptions}
-              series={[statusCount("CONFIRMED"), statusCount("COMPLETED"), statusCount("CANCELLED")]}
+              series={bookingStatusSlices.map((slice) => slice.count)}
               height={280}
             />
           </div>

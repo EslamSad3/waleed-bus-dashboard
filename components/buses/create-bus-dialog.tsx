@@ -58,7 +58,7 @@ export function CreateBusDialog({
   const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true), { enabled: open });
   const { data: ownersPage } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null), { enabled: open && !lockedOwnerId });
   const ownerName = useMemo(
-    () => (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.companyName ?? "—",
+    () => (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.name ?? "—",
     [ownersPage, ownerId],
   );
 

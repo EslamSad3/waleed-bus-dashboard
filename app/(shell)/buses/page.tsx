@@ -32,7 +32,10 @@ export default function BusesPage() {
     qk.systemBuses,
     () => fetchSystemBusesPage(null),
   );
-  const { data: ownerNames } = useApiQuery(qk.fleetOwners, fetchOwnerNameMap);
+  // qk.ownerNames, not qk.fleetOwners: that key holds the owners CursorPage for
+  // the owners grid, and one key cannot carry two shapes.
+  const { data: ownerNameEntries } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
+  const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
   const [createOpen, setCreateOpen] = useState(false);
   const [busForEdit, setBusForEdit] = useState<BusRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; ownerId?: string }>({});

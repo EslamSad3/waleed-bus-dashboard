@@ -47,7 +47,6 @@ const tripStatus = z.enum(["SCHEDULED", "DEPARTED", "COMPLETED", "CANCELLED"]);
 const bookingStatus = z.enum(["CONFIRMED", "CANCELLED"]);
 
 // ---- Owner account onboarding (platform) ----
-/** The owner user IS the company: `companyName` replaces the old `fleetName`. */
 export const createFleetOwnerSchema = z.object({
   name: name255,
   nickname,
@@ -55,14 +54,12 @@ export const createFleetOwnerSchema = z.object({
   password,
   picture: z.string().max(1024).optional(),
   nationalId,
-  companyName: name255,
   vipTierId: uuid.nullable().optional(),
 });
 export const updateFleetOwnerSchema = z.object({
   name: name255.optional(),
   nickname: nickname.optional(),
   phone: egyptPhone.optional(),
-  companyName: name255.optional(),
   vipTierId: uuid.nullable().optional(),
   picture: z.string().max(1024).optional(),
   nationalId: z.union([z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")), z.literal("")]).optional(),
@@ -144,6 +141,8 @@ export const updateTripSchema = z.object({
   departAt: datetime.optional(),
   fare: z.string().optional(),
   status: tripStatus.optional(),
+  /** The trip's own driver; null clears it. Rejected by the API after departure. */
+  driverUserId: uuid.nullable().optional(),
 });
 
 // ---- Bookings ----

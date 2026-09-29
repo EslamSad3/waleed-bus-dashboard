@@ -2,10 +2,8 @@ import { z } from "zod";
 import { t } from "@/lib/i18n/t";
 
 export const adminVerifyPaymentSchema = z.object({
-  reference: z
-    .string()
-    .min(1, t("validation.transactionRefRequired"))
-    .max(100, t("validation.transactionRefMax")),
+  /** Optional: cash collections have no transaction id. */
+  reference: z.string().max(100, t("validation.transactionRefMax")).optional(),
   amount: z
     .number()
     .positive(t("validation.amountPositive")),
@@ -52,10 +50,6 @@ export const adminForceCancelSchema = z.object({
   reason: z
     .string()
     .min(1, t("validation.forceCancelReasonRequired")),
-  releaseSeats: z
-    .boolean()
-    .optional()
-    .default(true),
 });
 
 export const adminReinstateSchema = z.object({

@@ -16,12 +16,14 @@ import {
   discardBusImage,
   fetchBrands,
   fetchBus,
+  fetchBusRatingsPage,
   fetchBusTripsPage,
   reactivateBus,
   stageBusImage,
   unassignDriver,
   updateBus,
   type Bus,
+  type BusRatingRow,
   type BusTripRow,
   type VehicleBrand,
 } from "@/lib/actions/buses";
@@ -81,6 +83,12 @@ export default function BusDetailPage({
     nextCursor: string | null;
   } | null>(null);
   const [tripsReloadKey, setTripsReloadKey] = useState(0);
+  const [ratingsFirst, setRatingsFirst] = useState<{
+    key: string;
+    items: BusRatingRow[];
+    nextCursor: string | null;
+  } | null>(null);
+  const [ratingsReloadKey, setRatingsReloadKey] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
@@ -132,6 +140,21 @@ export default function BusDetailPage({
       else setError(r.message);
     });
   }, [tab, ownerId, id, tripsReloadKey]);
+
+  // The reviews live beside the trips: both are "what this bus did", and a
+  // rating only makes sense against the trip it was left on.
+  useEffect(() => {
+    if (tab !== "trips" || !ownerId) return;
+    const key = `${ownerId}/${id}/${ratingsReloadKey}`;
+    let cancelled = false;
+    fetchBusRatingsPage(ownerId, id, null).then((r) => {
+      if (cancelled) return;
+      if (r.ok) setRatingsFirst({ key, items: r.data.items, nextCursor: r.data.nextCursor });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, ownerId, id, ratingsReloadKey]);
 
   function onImageFile(file: File | null) {
     if (!file) {
@@ -284,23 +307,47 @@ export default function BusDetailPage({
   const storedColorHex = busColorHex(color);
   const colorMissing = color && !colorPresets.some((preset) => preset.name === color);
 
+  const ratingColumns: CommunityColumnDef<BusRatingRow>[] = [
+    {
+      colId: "rating",
+      headerName: tr("feedback.busFeedback"),
+      cellRenderer: (params: { data: BusRatingRow }) => <RatingCell value={params.data.rating} />,
+    },
+    { field: "passengerName", headerName: tr("feedback.passenger"), valueGetter: (params) => params.data?.passengerName || tr("common.value.withoutName") },
+    { field: "comment", headerName: tr("buses.detail.ratings.comment"), valueGetter: (params) => params.data?.comment || "—" },
+    { field: "trip.line.name", headerName: tr("common.fields.tripLine"), valueGetter: (params) => params.data?.trip.line.name || "—" },
+    { field: "trip.departAt", headerName: tr("common.fields.date"), valueGetter: (params) => (params.data?.trip.departAt ? new Date(params.data.trip.departAt).toLocaleString("ar-EG") : "—") },
+    { field: "ratedAt", headerName: tr("feedback.ratedAt"), valueGetter: (params) => (params.data?.ratedAt ? new Date(params.data.ratedAt).toLocaleString("ar-EG") : "—") },
+  ];
+
   const tripColumns: CommunityColumnDef<BusTripRow>[] = [
     { field: "line.name", headerName: tr("common.fields.tripLine"), valueGetter: (params) => params.data?.line.name },
     { field: "line.origin", headerName: tr("common.fields.origin"), valueGetter: (params) => params.data?.line.origin || "—" },
     { field: "line.destination", headerName: tr("common.fields.destination"), valueGetter: (params) => params.data?.line.destination || "—" },
     { field: "departAt", headerName: tr("common.fields.date"), valueGetter: (params) => new Date(params.data?.departAt ?? 0).toLocaleString("ar-EG") },
     {
+      // The snapshot only exists once the trip departed, so a scheduled trip
+      // would show nobody even when the bus has a driver assigned. Fall back to
+      // the bus's current driver, and say which of the two this is.
       headerName: tr("common.fields.snapshottedDriver"),
-      valueGetter: (params) => params.data?.driver?.name || "—",
-      cellRenderer: (params: { data: BusTripRow }) =>
-        params.data.driver ? (
+      valueGetter: (params) => params.data?.driver?.name ?? currentDriver?.name ?? "",
+      cellRenderer: (params: { data: BusTripRow }) => {
+        const snapshot = params.data.driver;
+        const fallback = currentDriver;
+        const shown = snapshot ?? fallback;
+        if (!shown) return <span>{tr("buses.detail.noDriver")}</span>;
+        return (
           <div className="flex items-center gap-2">
-            <DriverAvatar name={params.data.driver.name} picture={params.data.driver.picture} size="sm" />
-            <span>{params.data.driver.name}</span>
+            <DriverAvatar name={shown.name} picture={shown.picture} size="sm" />
+            <span>
+              {shown.name || tr("common.value.withoutName")}
+              {snapshot ? null : (
+                <span className="ms-1 text-xs text-[#606060]">{tr("buses.detail.currentDriverSuffix")}</span>
+              )}
+            </span>
           </div>
-        ) : (
-          <span>{tr("common.value.withoutName")}</span>
-        ),
+        );
+      },
     },
     { field: "status", headerName: tr("common.fields.status") },
     { field: "passengerCount", headerName: tr("common.fields.passengerCount") },
@@ -315,7 +362,9 @@ export default function BusDetailPage({
       <div className="page-heading">
         <div className="min-w-0 flex-1">
           <h1 className="page-title break-words">
-            <span dir="ltr">{bus.registrationNumber}</span>
+            {/* The plate is what an operator recognises; the registration
+                number is an internal code, so it stays in the overview. */}
+            <span dir="ltr">{bus.plateNumber || bus.registrationNumber}</span>
           </h1>
           <p className="page-description">{tr("buses.detail.description")}</p>
         </div>
@@ -433,6 +482,30 @@ export default function BusDetailPage({
                   {tr("common.actions.viewFeedback")}
                 </Link>
               )}
+            />
+          )}
+
+          {/* Reviews for this bus, under the trips that produced them. */}
+          <div className="pt-4">
+            <h2 className="section-title">{tr("buses.detail.ratings.title")}</h2>
+            <p className="page-description">{tr("buses.detail.ratings.description")}</p>
+          </div>
+          {!ratingsFirst || ratingsFirst.key !== `${ownerId}/${id}/${ratingsReloadKey}` ? (
+            <TableSkeleton rows={4} columns={ratingColumns.length} />
+          ) : (
+            <CursorList<BusRatingRow>
+              gridId={`bus-ratings-${id}`}
+              key={`${ownerId}/${id}/${ratingsReloadKey}`}
+              initialItems={ratingsFirst.items}
+              initialCursor={ratingsFirst.nextCursor}
+              loadMore={async (cursor) => {
+                const r = await fetchBusRatingsPage(ownerId, id, cursor);
+                if (!r.ok) throw new Error(r.message);
+                return r.data;
+              }}
+              keyOf={(row) => row.id}
+              columnDefs={ratingColumns}
+              emptyMessage={tr("buses.detail.ratings.empty")}
             />
           )}
         </section>

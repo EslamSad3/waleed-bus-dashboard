@@ -125,12 +125,12 @@ export default function BookingsPage() {
   const columns: CommunityColumnDef<AdminBookingListItem>[] = [
     { field: "passengerName", headerName: t("bookings.columns.passengerName"), filter: "agTextColumnFilter" },
     { field: "passengerPhone", headerName: t("common.fields.phone"), filter: "agTextColumnFilter" },
-    { field: "ownerName", headerName: t("common.fields.owner"), filter: "agTextColumnFilter" },
+    { field: "fleetName", headerName: t("common.fields.owner"), filter: "agTextColumnFilter" },
     { field: "originName", headerName: t("common.fields.origin") },
     { field: "destinationName", headerName: t("common.fields.destination") },
     { field: "seats", headerName: t("common.fields.seats"), filter: "agNumberColumnFilter" },
     { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
-    { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value },
+    { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value ?? t("common.value.unpaid") },
     { field: "paymentMethod", headerName: t("common.fields.paymentMethod"), valueFormatter: (params) => PAYMENT_METHOD_AR[params.value as keyof typeof PAYMENT_METHOD_AR] ?? params.value },
     { field: "totalAmount", headerName: t("common.fields.total"), filter: "agNumberColumnFilter" },
     { field: "hasReports", headerName: t("bookings.columns.hasReports"), valueFormatter: (params) => params.value ? t("common.value.yes") : t("common.value.no") },
@@ -163,7 +163,7 @@ export default function BookingsPage() {
       <div className="rounded-2xl border border-[#d6eeff] bg-white p-4 shadow-sm space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input aria-label={t("bookings.filters.searchAria")} placeholder={t("bookings.filters.searchPlaceholder")} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-white" />
-          <select aria-label={t("common.fields.owner")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full"><option value="">{t("bookings.filters.allOwners")}</option>{(owners?.items ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.companyName || owner.name || owner.phoneNumber || owner.id}</option>)}</select>
+          <select aria-label={t("common.fields.owner")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full"><option value="">{t("bookings.filters.allOwners")}</option>{(owners?.items ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.name || owner.nickname || owner.phoneNumber || owner.id}</option>)}</select>
           <select aria-label={t("common.fields.bookingStatus")} value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allStatuses")}</option><option value="CONFIRMED">{t("enums.bookingStatus.confirmed")}</option><option value="CANCELLED">{t("enums.bookingStatus.cancelled")}</option><option value="COMPLETED">{t("enums.bookingStatus.completed")}</option></select>
           <select aria-label={t("common.fields.paymentStatus")} value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allPaymentStatuses")}</option><option value="PENDING">{t("enums.paymentStatus.pending")}</option><option value="PAID">{t("enums.paymentStatus.paid")}</option><option value="REFUNDED">{t("enums.paymentStatus.refunded")}</option><option value="FAILED">{t("enums.paymentStatus.failed")}</option></select>
         </div>

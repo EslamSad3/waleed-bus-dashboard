@@ -16,7 +16,8 @@ import {
   type IncidentReport,
   type DropStatus,
 } from "@/lib/actions/bookings";
-import { AlertTriangle, CheckCircle2, RotateCcw, XCircle, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Info, RotateCcw, XCircle, ShieldAlert } from "lucide-react";
+import { ActionErrorAlert, FieldError } from "@/components/bookings/action-error";
 import { t } from "@/lib/i18n/t";
 
 // ---------------------------------------------------------------------------
@@ -34,22 +35,26 @@ export function VerifyPaymentDialog({
   onSuccess: (updatedNote?: string) => void;
 }) {
   const [reference, setReference] = useState(booking.paymentReference ?? "");
-  const [amount, setAmount] = useState(booking.totalAmount);
+  // totalAmount is nullable (a booking can exist before its fare is set), and a
+  // null `value` on a controlled input is a React error, not a blank field.
+  const [amount, setAmount] = useState(booking.totalAmount ?? "");
   const [paymentMethod, setPaymentMethod] = useState(booking.paymentMethod || "VODAFONE_CASH");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   const numAmount = Number(amount);
-  const expectedAmount = Number(booking.totalAmount);
-  const mismatch = !isNaN(numAmount) && !isNaN(expectedAmount) && Math.abs(numAmount - expectedAmount) > 0.001;
+  // A booking created before its fare was set has no total: there is nothing to
+  // match against, so the operator's amount is taken as declared (the API skips
+  // the check the same way). Coercing the missing total to 0 flagged every
+  // amount as a mismatch.
+  const hasTotal = booking.totalAmount !== null && booking.totalAmount !== undefined && booking.totalAmount !== "";
+  const expectedAmount = hasTotal ? Number(booking.totalAmount) : null;
+  const mismatch = expectedAmount !== null && !isNaN(numAmount) && Math.abs(numAmount - expectedAmount) > 0.001;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reference.trim()) {
-      setError(t("bookings.actions.errors.referenceRequired"));
-      return;
-    }
     if (isNaN(numAmount) || numAmount <= 0) {
       setError(t("bookings.actions.errors.amountPositive"));
       return;
@@ -61,8 +66,9 @@ export function VerifyPaymentDialog({
 
     setLoading(true);
     setError(null);
+    setFieldErrors(null);
     const res = await verifyBookingPayment(booking.id, {
-      reference: reference.trim(),
+      reference: reference.trim() || undefined,
       amount: numAmount,
       paymentMethod: paymentMethod || undefined,
       notes: notes.trim() || undefined,
@@ -74,6 +80,7 @@ export function VerifyPaymentDialog({
       onSuccess(t("bookings.actions.verify.success"));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -84,33 +91,31 @@ export function VerifyPaymentDialog({
       title={t("bookings.actions.verify.title")}
       description={t("bookings.actions.verify.description", { value: booking.id.slice(0, 8), value2: booking.passenger?.name ?? "—" })}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-[#5e6b78]">{t("bookings.actions.verify.totalLabel")}</span>
             <span className="font-bold text-[#00134c] text-base" dir="ltr">{booking.totalAmount} EGP</span>
           </div>
-          <p className="mt-1 text-xs text-[#5e6b78]">
-            {t("bookings.actions.verify.exactMatchWarning")}
-          </p>
+          {hasTotal ? (
+            <p className="mt-1 text-xs text-[#5e6b78]">{t("bookings.actions.verify.exactMatchWarning")}</p>
+          ) : (
+            <p className="mt-1 text-xs text-[#5e6b78]">{t("bookings.actions.verify.noTotalWarning")}</p>
+          )}
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.verify.referenceLabel")}</span>
+          <span className="mb-1 block font-medium text-[#1a1a1a]">
+            {t("bookings.actions.verify.referenceLabel")}{" "}
+            <span className="font-normal text-slate-400">{t("common.value.optional")}</span>
+          </span>
           <Input
             placeholder={t("bookings.actions.placeholders.verifyReference")}
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             dir="ltr"
-            required
-            autoFocus
           />
         </label>
 
@@ -123,6 +128,7 @@ export function VerifyPaymentDialog({
             onChange={(e) => setAmount(e.target.value)}
             dir="ltr"
             required
+            autoFocus
           />
           {mismatch && (
             <p className="mt-1 text-xs text-red-600 font-medium">
@@ -189,6 +195,7 @@ export function FailPaymentDialog({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -199,6 +206,7 @@ export function FailPaymentDialog({
 
     setLoading(true);
     setError(null);
+    setFieldErrors(null);
     const res = await failBookingPayment(booking.id, {
       reason: reason.trim(),
       notes: notes.trim() || undefined,
@@ -210,6 +218,7 @@ export function FailPaymentDialog({
       onSuccess(t("bookings.actions.failure.success"));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -220,13 +229,8 @@ export function FailPaymentDialog({
       title={t("bookings.actions.failure.title")}
       description={t("bookings.actions.failure.description")}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.reasonLabel")}</span>
@@ -288,6 +292,7 @@ export function RefundPaymentDialog({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   const enteredAmount = Number(refundAmount);
   const exceeds = enteredAmount > remaining + 0.001;
@@ -313,6 +318,7 @@ export function RefundPaymentDialog({
 
     setLoading(true);
     setError(null);
+    setFieldErrors(null);
     const res = await refundBookingPayment(booking.id, {
       refundReference: refundReference.trim(),
       refundAmount: enteredAmount,
@@ -326,6 +332,7 @@ export function RefundPaymentDialog({
       onSuccess(t("bookings.actions.refund.success", { enteredAmount: enteredAmount }));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -336,13 +343,8 @@ export function RefundPaymentDialog({
       title={t("bookings.actions.refund.title")}
       description={t("bookings.actions.refund.description")}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:grid-cols-3 sm:text-sm">
           <div>
@@ -439,9 +441,9 @@ export function ForceCancelDialog({
   onSuccess: (updatedNote?: string) => void;
 }) {
   const [reason, setReason] = useState("");
-  const [releaseSeats, setReleaseSeats] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -452,10 +454,11 @@ export function ForceCancelDialog({
 
     setLoading(true);
     setError(null);
-    const res = await forceCancelBooking(booking.id, {
-      reason: reason.trim(),
-      releaseSeats,
-    });
+    setFieldErrors(null);
+    // The API has no releaseSeats field: it restores the seats on its own
+    // whenever the departure is still ahead. Sending it was rejected outright
+    // by the validation whitelist.
+    const res = await forceCancelBooking(booking.id, { reason: reason.trim() });
     setLoading(false);
 
     if (res.ok) {
@@ -463,6 +466,7 @@ export function ForceCancelDialog({
       onSuccess(t("bookings.actions.forceCancel.success", { seatsNote: res.data.seatsRestored ? t("bookings.actions.forceCancel.seatsRestoredNote") : "" }));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -473,13 +477,8 @@ export function ForceCancelDialog({
       title={t("bookings.actions.forceCancel.title")}
       description={t("bookings.actions.forceCancel.description")}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.forceCancel.reasonLabel")}</span>
@@ -493,22 +492,11 @@ export function ForceCancelDialog({
             autoFocus
           />
         </label>
+        <FieldError errors={fieldErrors} name="reason" />
 
-        <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={releaseSeats}
-              onChange={(e) => setReleaseSeats(e.target.checked)}
-              className="mt-1 size-4 rounded text-[#059ff8] focus:ring-[#059ff8]"
-            />
-            <div className="text-sm">
-              <span className="font-semibold text-[#1a1a1a] block">{t("bookings.actions.forceCancel.restoreSeats")}</span>
-              <span className="text-xs text-[#5e6b78]">
-                {t("bookings.actions.reinstate.seatsWarningPrefix")}{booking.seats}{t("bookings.actions.reinstate.seatsWarningSuffix")}
-              </span>
-            </div>
-          </label>
+        <div className="flex items-start gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-[#059ff8]" />
+          <span className="text-[#5e6b78]">{t("bookings.actions.forceCancel.seatsAutomatic", { seats: booking.seats })}</span>
         </div>
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 pt-2 border-t border-[#e4ecf2] sm:flex-row">
@@ -542,6 +530,7 @@ export function ReinstateDialog({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -552,6 +541,7 @@ export function ReinstateDialog({
 
     setLoading(true);
     setError(null);
+    setFieldErrors(null);
     const res = await reinstateBooking(booking.id, {
       reason: reason.trim(),
     });
@@ -562,6 +552,7 @@ export function ReinstateDialog({
       onSuccess(t("bookings.actions.reinstate.success"));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -572,13 +563,8 @@ export function ReinstateDialog({
       title={t("bookings.actions.reinstate.title")}
       description={t("bookings.actions.reinstate.description")}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 leading-relaxed">
           <p className="font-semibold mb-1">{t("bookings.actions.reinstate.capacityCheck")}</p>
@@ -633,6 +619,7 @@ export function OperationalOverrideDialog({
   const [justification, setJustification] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -643,6 +630,7 @@ export function OperationalOverrideDialog({
 
     setLoading(true);
     setError(null);
+    setFieldErrors(null);
     const res = await overrideBookingOperational(booking.id, {
       boarded,
       dropStatus: dropStatus ? (dropStatus as DropStatus) : undefined,
@@ -657,6 +645,7 @@ export function OperationalOverrideDialog({
       onSuccess(t("bookings.actions.override.success"));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -667,13 +656,8 @@ export function OperationalOverrideDialog({
       title={t("bookings.actions.override.title")}
       description={t("bookings.actions.override.description")}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 space-y-3">
           <label className="flex items-center gap-3 cursor-pointer">
@@ -768,6 +752,7 @@ export function ResolveReportDialog({
   const [resolutionNote, setResolutionNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   if (!report) return null;
 
@@ -780,6 +765,7 @@ export function ResolveReportDialog({
 
     setLoading(true);
     setError(null);
+    setFieldErrors(null);
     const res = await resolveIncidentReport(bookingId, report!.id, {
       status,
       resolutionNote: resolutionNote.trim(),
@@ -791,6 +777,7 @@ export function ResolveReportDialog({
       onSuccess(status === "RESOLVED" ? t("bookings.actions.report.resolvedSuccess") : t("bookings.actions.report.savedSuccess"));
     } else {
       setError(res.message);
+      setFieldErrors(res.fields ?? null);
     }
   }
 
@@ -801,13 +788,8 @@ export function ResolveReportDialog({
       title={t("bookings.actions.report.title")}
       description={t("bookings.actions.report.description")}
     >
-      <form onSubmit={handleSubmit} className="space-y-4 text-right">
-        {error && (
-          <div role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700 border border-red-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
+        <ActionErrorAlert error={error} fields={fieldErrors} />
 
         <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm">
           <div className="flex items-center gap-2 font-bold text-amber-900 mb-1">

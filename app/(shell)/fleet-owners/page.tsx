@@ -34,7 +34,6 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
   const [nationalId, setNationalId] = useState("");
-  const [companyName, setCompanyName] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -42,7 +41,7 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
   const [error, setError] = useState<string | null>(null);
 
   function resetForm() {
-    setName(""); setNickname(""); setPhone(""); setNationalId(""); setCompanyName("");
+    setName(""); setNickname(""); setPhone(""); setNationalId("");
     setPassword(""); setPasswordConfirmation(""); setImageFile(null);
     setError(null);
   }
@@ -50,7 +49,7 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
   async function submit() {
     setError(null);
     const parsed = createFleetOwnerSchema.safeParse({
-      name, nickname, phone, companyName,
+      name, nickname, phone,
       password,
       nationalId: nationalId || undefined,
       picture: undefined,
@@ -81,7 +80,6 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
       nickname: nickname.trim(),
       phone,
       password,
-      companyName: companyName.trim(),
       nationalId: nationalId || undefined,
       ...(staged ? { picture: staged.publicUrl } : {}),
     });
@@ -105,7 +103,6 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("fleetOwners.placeholders.nickname")} autoComplete="off" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("fleetOwners.placeholders.nationalIdDigits")} autoComplete="off" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.companyName")}</span><Input value={companyName} onChange={(event) => setCompanyName(event.target.value)} placeholder={t("fleetOwners.placeholders.companyName")} autoComplete="organization" /></label>
         <ImagePicker
           label={t("fleetOwners.createDialog.imageLabel")}
           file={imageFile}
@@ -241,7 +238,7 @@ export default function FleetOwnersPage() {
   }
 
   async function removeOwner(owner: FleetOwnerAccount) {
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleetOwners.deleteConfirm.description", { value: owner.companyName || owner.name || owner.phoneNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleetOwners.deleteConfirm.description", { value: owner.name || owner.nickname || owner.phoneNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteFleetOwner(owner.id);
     if (!result.ok) return;
     await refresh();
@@ -249,7 +246,7 @@ export default function FleetOwnersPage() {
 
   const term = query.trim().toLocaleLowerCase("ar-EG");
   const filter = (owner: FleetOwnerAccount) =>
-    !term || [owner.name, owner.nickname, owner.phoneNumber, owner.companyName]
+    !term || [owner.name, owner.nickname, owner.phoneNumber]
       .some((value) => value?.toLocaleLowerCase("ar-EG").includes(term));
 
   const columns: CommunityColumnDef<FleetOwnerAccount>[] = [
@@ -262,7 +259,6 @@ export default function FleetOwnersPage() {
     { field: "phoneNumber", headerName: t("common.fields.phone"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
     // The owner user IS the company, so the company name is a column of its own —
     // there is no second list to expand.
-    { field: "companyName", headerName: t("common.fields.companyName"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || t("common.value.ownerWithoutName") },
   ];
 
   return (

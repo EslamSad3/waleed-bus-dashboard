@@ -13,6 +13,10 @@ export const AR_ERROR_MAP: Record<string, string> = {
   ROLE_CONFIGURATION_INVALID: t("errors.ROLE_CONFIGURATION_INVALID"),
   BUS_ACTION_NOT_ALLOWED: t("errors.BUS_ACTION_NOT_ALLOWED"),
   DRIVER_ASSIGNMENT_NOT_ALLOWED: t("errors.DRIVER_ASSIGNMENT_NOT_ALLOWED"),
+  /** A trip that already left keeps its driver: it is a historical fact. */
+  TRIP_DRIVER_FROZEN: t("errors.TRIP_DRIVER_FROZEN"),
+  /** Departure with no driver on the trip and none on the bus. */
+  DRIVER_ASSIGNMENT_REQUIRED: t("errors.DRIVER_ASSIGNMENT_REQUIRED"),
   RESOURCE_NOT_OWNED: t("errors.RESOURCE_NOT_OWNED"),
   BUS_ACCESS_DENIED: t("errors.BUS_ACCESS_DENIED"),
   NOT_FOUND: t("errors.NOT_FOUND"),
@@ -100,4 +104,32 @@ export function toArabicError(code: string | undefined, status?: number): string
   if (status === 429) return AR_ERROR_MAP.RATE_LIMITED_429;
   if (!code) return AR_ERROR_MAP.UNKNOWN;
   return AR_ERROR_MAP[code] ?? AR_ERROR_MAP.UNKNOWN;
+}
+
+/**
+ * The error code is translated by `toArabicError`, but the backend's per-field
+ * messages are not: our own zod messages are already Arabic, while
+ * class-validator ones ("property releaseSeats should not exist") would reach an
+ * Arabic screen verbatim. Any message with no Arabic letters becomes a generic
+ * Arabic one, so framework internals never leak and the field name still points
+ * at the input that is wrong.
+ */
+/** True when a string contains Arabic script. Used to tell our own translated
+ *  messages apart from raw framework text. */
+const ARABIC_SCRIPT = /\p{Script=Arabic}/u;
+
+export function arabiciseDetails<T extends { fields?: Record<string, string | string[]> }>(
+  details: T,
+): T {
+  if (!details.fields) return details;
+  const fallback = t("errors.invalidField");
+  return {
+    ...details,
+    fields: Object.fromEntries(
+      Object.entries(details.fields).map(([key, value]) => {
+        const message = Array.isArray(value) ? value.join(t("common.listSeparator")) : value;
+        return [key, message && ARABIC_SCRIPT.test(message) ? message : fallback];
+      }),
+    ),
+  };
 }

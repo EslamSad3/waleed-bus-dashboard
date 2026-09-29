@@ -1,45 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { OwnerPicker } from "@/components/owners/owner-picker";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
+import { RowActions } from "@/components/ui/row-actions";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { useFilterStore } from "@/stores/filters";
 import { TableSkeleton } from "@/components/ui/skeletons";
+import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
+import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
+import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
+import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
 import {
   addMember,
   fetchMembersPage,
   fetchRoleOptions,
+  fetchDriversPage,
+  removeDriver,
+  MEMBER_STATUS_AR,
+  type DriverPage,
+  type DriverRow,
   type Member,
 } from "@/lib/actions/members";
-import { fetchOwnerTripLinesPage, lineEndpoints, type TripLine } from "@/lib/actions/trip-lines";
+import {
+  deleteOwnerTripLine,
+  fetchOwnerTripLinesPage,
+  lineEndpoints,
+  type TripLine,
+} from "@/lib/actions/trip-lines";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
-import { fetchAdminBookingsPage, type AdminBookingListItem } from "@/lib/actions/bookings";
+import { deleteTrip, fetchSystemTripsPage, type OwnerTripRow } from "@/lib/actions/trips";
+import { deleteBooking, fetchAdminBookingsPage, type AdminBookingListItem } from "@/lib/actions/bookings";
 import { fetchOwnerReports, type FleetReports } from "@/lib/actions/reports";
-import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
+import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { t } from "@/lib/i18n/t";
 
 export type OwnerSectionKey =
   | "buses"
-  | "members"
+  // "members" is commented out: the owner user IS the company, so there is no
+  // separate member list to manage from this screen. Restore the entry below to
+  // bring the roster back.
+  // | "members"
   | "drivers"
   | "trip-lines"
   | "trips"
-  | "bookings"
-  | "reports";
+  | "bookings";
+// "reports" is commented out for the same reason the owner detail screen has
+// no ratings: a passenger rates and reports a TRIP (its bus and its driver),
+// never the company. That surface lives at /trips/{id}/feedback, so an
+// owner-level aggregate duplicated it under the wrong subject.
+  // | "reports";
 
 const SECTIONS: { key: OwnerSectionKey; label: string }[] = [
-  { key: "buses", label: t("common.fields.bus") },
-  { key: "members", label: t("common.fields.members") },
+  { key: "buses", label: t("common.fields.buses") },
+  // { key: "members", label: t("common.fields.members") },
   { key: "drivers", label: t("common.fields.drivers") },
-  { key: "trip-lines", label: t("common.fields.tripLine") },
+  { key: "trip-lines", label: t("common.fields.tripLines") },
   { key: "trips", label: t("common.fields.trips") },
-  { key: "bookings", label: t("common.fields.booking") },
-  { key: "reports", label: t("common.fields.report") },
+  { key: "bookings", label: t("common.fields.bookings") },
+  // { key: "reports", label: t("common.fields.report") },
 ];
 
 /**
@@ -49,6 +75,13 @@ const SECTIONS: { key: OwnerSectionKey; label: string }[] = [
  */
 export function OwnerSections({ ownerId }: { ownerId: string }) {
   const [section, setSection] = useState<OwnerSectionKey>("buses");
+  const setScopedOwnerId = useFilterStore((state) => state.setOwnerId);
+
+  // This screen IS one company, so publish it as the current scope: the detail
+  // pages it links to (driver, bus, line) read the scope from the store.
+  useEffect(() => {
+    setScopedOwnerId(ownerId);
+  }, [ownerId, setScopedOwnerId]);
 
   return (
     <section className="space-y-4">
@@ -68,12 +101,12 @@ export function OwnerSections({ ownerId }: { ownerId: string }) {
         ))}
       </nav>
       {section === "buses" ? <OwnerBuses ownerId={ownerId} /> : null}
-      {section === "members" ? <OwnerMembers ownerId={ownerId} /> : null}
+      {/* {section === "members" ? <OwnerMembers ownerId={ownerId} /> : null} */}
       {section === "drivers" ? <OwnerDrivers ownerId={ownerId} /> : null}
       {section === "trip-lines" ? <OwnerTripLines ownerId={ownerId} /> : null}
       {section === "trips" ? <OwnerTrips ownerId={ownerId} /> : null}
       {section === "bookings" ? <OwnerBookings ownerId={ownerId} /> : null}
-      {section === "reports" ? <OwnerReports ownerId={ownerId} /> : null}
+      {/* {section === "reports" ? <OwnerReports ownerId={ownerId} /> : null} */}
     </section>
   );
 }
@@ -252,39 +285,97 @@ function OwnerMembersGrid({ ownerId, reloadToken }: { ownerId: string; reloadTok
 // ---------------------------------------------------------------------------
 
 function OwnerBuses({ ownerId }: { ownerId: string }) {
+  const confirm = useConfirm();
   const [page, setPage] = useState<{ items: Bus[]; nextCursor: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState(0);
-  if (token === 0) {
-    setToken(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [busForEdit, setBusForEdit] = useState<Bus | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
     void fetchBusesPage(ownerId, null).then((result) => {
+      if (cancelled) return;
       if (result.ok) setPage(result.data);
       else setError(result.message);
     });
+    return () => { cancelled = true; };
+  }, [ownerId, reloadToken]);
+
+  async function removeBus(bus: Bus) {
+    if (!(await confirm({
+      title: t("common.actions.deleteConfirmTitle"),
+      description: t("buses.list.deleteConfirm.description", { value: bus.plateNumber || bus.registrationNumber }),
+      confirmLabel: t("common.actions.delete"),
+      destructive: true,
+    }))) return;
+    const result = await deleteBus(ownerId, bus.id);
+    if (result.ok) reload();
   }
 
   const columns: CommunityColumnDef<Bus>[] = [
     { field: "registrationNumber", headerName: t("common.fields.registrationNumber") },
     { field: "plateNumber", headerName: t("common.fields.plateNumber") },
     { field: "capacity", headerName: t("common.fields.capacity") },
+    {
+      colId: "tripCount",
+      headerName: t("common.fields.tripCount"),
+      valueGetter: (params) => params.data?.tripCount ?? 0,
+    },
+    {
+      colId: "avgRating",
+      headerName: t("common.fields.busRatingAvg"),
+      cellRenderer: (params: { data: Bus }) => <RatingCell value={params.data.avgRating ?? null} />,
+    },
     { field: "isActive", headerName: t("common.fields.status"), valueGetter: (params) => (params.data?.isActive ? t("common.status.active") : t("common.status.inactive")) },
   ];
 
   if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
-  if (!page) return <TableSkeleton rows={3} columns={4} />;
   return (
-    <CursorList<Bus>
-      initialItems={page.items}
-      initialCursor={page.nextCursor}
-      loadMore={async (cursor) => {
-        const result = await fetchBusesPage(ownerId, cursor);
-        if (!result.ok) throw new Error(result.message);
-        return result.data;
-      }}
-      keyOf={(bus) => bus.id}
-      columnDefs={columns}
-      emptyMessage={t("buses.empty")}
-    />
+    <div className="space-y-3">
+      <SectionAddButton label={t("buses.createDialog.title")} onClick={() => setCreateOpen(true)} />
+      {page ? (
+        <CursorList<Bus>
+          initialItems={page.items}
+          initialCursor={page.nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchBusesPage(ownerId, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(bus) => bus.id}
+          columnDefs={columns}
+          emptyMessage={t("buses.empty")}
+          renderItem={(bus) => (
+            <RowActions
+              label={t("buses.list.rowActions", { value: bus.plateNumber || bus.registrationNumber })}
+              actions={[
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?ownerId=${ownerId}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBus(bus) },
+              ]}
+            />
+          )}
+        />
+      ) : (
+        <TableSkeleton rows={3} columns={6} />
+      )}
+      <CreateBusDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} onCreated={reload} />
+      <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => { setBusForEdit(null); reload(); }} />
+    </div>
+  );
+}
+
+/** The one "add" affordance every owner tab shares. */
+function SectionAddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <div className="flex justify-end">
+      <Button type="button" onClick={onClick}>
+        <Plus className="size-4" /> {label}
+      </Button>
+    </div>
   );
 }
 
@@ -293,40 +384,95 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
 // ---------------------------------------------------------------------------
 
 function OwnerDrivers({ ownerId }: { ownerId: string }) {
-  const [rows, setRows] = useState<Array<{ id: string; userId?: string; name?: string | null; status: string }>>([]);
+  const confirm = useConfirm();
+  const [page, setPage] = useState<DriverPage | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState(0);
-  if (token === 0) {
-    setToken(1);
-    void fetch("/api/fleet-owners/" + ownerId + "/drivers?limit=20")
-      .then((r) => r.json())
-      .then((body: { data?: { items?: typeof rows } }) => setRows(body.data?.items ?? []))
-      .catch(() => setError(t("common.error.unknown")));
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchDriversPage(ownerId, null).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setPage(result.data);
+      else setError(result.message);
+    });
+    return () => { cancelled = true; };
+  }, [ownerId, reloadToken]);
+
+  async function removeDriverRow(driver: DriverRow) {
+    const driverUserId = driver.userId;
+    if (!driverUserId) return;
+    if (!(await confirm({
+      title: t("common.actions.deleteConfirmTitle"),
+      description: t("drivers.list.deleteConfirm.description", { label: driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel"), value: "" }),
+      confirmLabel: t("common.actions.delete"),
+      destructive: true,
+    }))) return;
+    const result = await removeDriver(ownerId, driverUserId);
+    if (result.ok) reload();
   }
 
-  const columns: CommunityColumnDef<(typeof rows)[number]>[] = [
-    { field: "name", headerName: t("common.fields.driver"), valueGetter: (params) => params.data?.name || t("common.value.withoutName") },
-    { field: "status", headerName: t("common.fields.status") },
+  const columns: CommunityColumnDef<DriverRow>[] = [
+    {
+      colId: "driver",
+      headerName: t("common.fields.driver"),
+      valueGetter: (params) => params.data?.name || t("common.value.withoutName"),
+      cellRenderer: (params: { data: DriverRow }) => (
+        <div className="flex items-center gap-2">
+          <DriverAvatar name={params.data.name} picture={params.data.picture} size="sm" />
+          <span>{params.data.name || t("common.value.withoutName")}</span>
+        </div>
+      ),
+    },
+    { field: "phoneNumber", headerName: t("common.fields.phone"), valueGetter: (params) => params.data?.phoneNumber || "—" },
+    { field: "roleSlug", headerName: t("common.fields.role"), valueGetter: (params) => params.data?.roleSlug || "—" },
+    {
+      colId: "rating",
+      headerName: t("drivers.columns.overallRating"),
+      cellRenderer: (params: { data: DriverRow }) => <RatingCell value={params.data.stats?.overallRating ?? null} />,
+    },
+    {
+      field: "status",
+      headerName: t("common.fields.status"),
+      filter: "agTextColumnFilter",
+      valueFormatter: (params) => MEMBER_STATUS_AR[params.value as keyof typeof MEMBER_STATUS_AR] ?? params.value,
+    },
   ];
 
   if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
-  if (token === 1 && rows.length === 0) return <TableSkeleton rows={3} columns={2} />;
   return (
-    <ul className="space-y-2">
-      {rows.length === 0 ? (
-        <li className="panel-card p-4 text-sm text-[#606060]">{t("drivers.empty")}</li>
+    <div className="space-y-3">
+      <SectionAddButton label={t("drivers.createDialog.title")} onClick={() => setCreateOpen(true)} />
+      {page ? (
+        <CursorList<DriverRow>
+          initialItems={page.items}
+          initialCursor={page.nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchDriversPage(ownerId, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(driver) => driver.id}
+          columnDefs={columns}
+          emptyMessage={t("drivers.empty")}
+          renderItem={(driver) => (
+            <RowActions
+              label={t("drivers.list.rowActions", { value: driver.name || t("common.value.withoutName") })}
+              actions={[
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.userId ?? driver.id}`, disabled: !driver.userId },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver), disabled: !driver.userId },
+              ]}
+            />
+          )}
+        />
       ) : (
-        rows.map((driver) => (
-          <li key={driver.id} className="panel-card flex items-center gap-3 p-3">
-            <DriverAvatar name={driver.name} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-bold">{driver.name || t("common.value.withoutName")}</p>
-              <p className="text-xs text-[#606060]">{driver.status}</p>
-            </div>
-          </li>
-        ))
+        <TableSkeleton rows={3} columns={5} />
       )}
-    </ul>
+      <CreateDriverDialog open={createOpen} lockedOwnerId={ownerId} onCreated={reload} onClose={() => setCreateOpen(false)} />
+    </div>
   );
 }
 
@@ -335,16 +481,33 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
 // ---------------------------------------------------------------------------
 
 function OwnerTripLines({ ownerId }: { ownerId: string }) {
+  const confirm = useConfirm();
   const [page, setPage] = useState<{ items: TripLine[]; nextCursor: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [token, setToken] = useState(0);
-  if (token === 0) {
-    setToken(1);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
     void fetchOwnerTripLinesPage(ownerId, null).then((result) => {
+      if (cancelled) return;
       if (result.ok) setPage(result.data);
       else setError(result.message);
     });
+    return () => { cancelled = true; };
+  }, [ownerId, reloadToken]);
+
+  async function removeLine(line: TripLine) {
+    if (!(await confirm({
+      title: t("common.actions.deleteConfirmTitle"),
+      description: t("tripLines.deleteConfirm.description", { value: line.name }),
+      confirmLabel: t("common.actions.delete"),
+      destructive: true,
+    }))) return;
+    const result = await deleteOwnerTripLine(ownerId, line.id);
+    if (result.ok) reload();
   }
 
   const columns: CommunityColumnDef<TripLine>[] = [
@@ -371,11 +534,7 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
   if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button type="button" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" /> {t("tripLines.newLine")}
-        </Button>
-      </div>
+      <SectionAddButton label={t("tripLines.newLine")} onClick={() => setCreateOpen(true)} />
       {page ? (
         <CursorList<TripLine>
           initialItems={page.items}
@@ -389,18 +548,19 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
           columnDefs={columns}
           emptyMessage={t("tripLines.empty")}
           renderItem={(line) => (
-            <Link
-              href={`/trip-lines/${line.id}?ownerId=${ownerId}`}
-              className="text-sm font-medium text-[#059ff8] underline"
-            >
-              {t("common.actions.openDetails")}
-            </Link>
+            <RowActions
+              label={t("tripLines.list.rowActions", { value: line.name })}
+              actions={[
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/trip-lines/${line.id}?ownerId=${ownerId}` },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeLine(line) },
+              ]}
+            />
           )}
         />
       ) : (
         <TableSkeleton rows={3} columns={6} />
       )}
-      <CreateTripLineDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} />
+      <CreateTripLineDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} onCreated={reload} />
     </div>
   );
 }
@@ -410,87 +570,87 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
 // ---------------------------------------------------------------------------
 
 function OwnerTrips({ ownerId }: { ownerId: string }) {
-  const [lineId, setLineId] = useState("");
-  const [lines, setLines] = useState<TripLine[]>([]);
-  const [token, setToken] = useState(0);
-
-  if (token === 0) {
-    setToken(1);
-    void fetchOwnerTripLinesPage(ownerId, null).then((result) => {
-      if (result.ok) {
-        setLines(result.data.items);
-        setLineId(result.data.items[0]?.id ?? "");
-      }
-    });
-  }
-
-  if (token === 1 && lines.length === 0) {
-    return <p className="panel-card p-4 text-sm text-[#606060]">{t("tripLines.empty")}</p>;
-  }
-
-  return (
-    <div className="space-y-3">
-      <label className="block text-sm md:max-w-96">
-        <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.tripLine")}</span>
-        <select className="select-field w-full" value={lineId} onChange={(event) => setLineId(event.target.value)}>
-          {lines.map((line) => {
-            const ends = lineEndpoints(line);
-            return (
-              <option key={line.id} value={line.id}>
-                {line.name} · {ends.origin ?? "—"} ← {ends.destination ?? "—"}
-              </option>
-            );
-          })}
-        </select>
-      </label>
-      {lineId ? <OwnerTripsGrid ownerId={ownerId} lineId={lineId} /> : null}
-    </div>
-  );
-}
-
-function OwnerTripsGrid({ ownerId, lineId }: { ownerId: string; lineId: string }) {
-  const [page, setPage] = useState<{ items: Array<Record<string, unknown>>; nextCursor: string | null } | null>(null);
+  const confirm = useConfirm();
+  const [page, setPage] = useState<{ items: OwnerTripRow[]; nextCursor: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState(0);
-  if (token === 0) {
-    setToken(1);
-    void fetch(
-      `/api/fleet-owners/${ownerId}/trip-lines/${lineId}/trips?limit=20`,
-    )
-      .then((r) => r.json())
-      .then((body: { data?: { items?: Array<Record<string, unknown>>; nextCursor?: string | null } }) =>
-        setPage({ items: body.data?.items ?? [], nextCursor: body.data?.nextCursor ?? null }),
-      )
-      .catch(() => setError(t("common.error.unknown")));
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  // Every trip this company ran, across all of its lines: the index is filtered
+  // by owner instead of nesting a line picker over one line's trips.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchSystemTripsPage(null, ownerId).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setPage(result.data);
+      else setError(result.message);
+    });
+    return () => { cancelled = true; };
+  }, [ownerId, reloadToken]);
+
+  async function removeTrip(trip: OwnerTripRow) {
+    if (!(await confirm({
+      title: t("common.actions.deleteConfirmTitle"),
+      description: t("trips.list.deleteConfirm.description", {
+        tripOrigin: trip.origin || t("common.value.unspecified"),
+        tripDestination: trip.destination || t("common.value.unspecified"),
+      }),
+      confirmLabel: t("common.actions.delete"),
+      destructive: true,
+    }))) return;
+    const result = await deleteTrip(ownerId, trip.lineId, trip.id);
+    if (result.ok) reload();
   }
 
-  type Row = { id: string; origin: string | null; destination: string | null; departAt: string; status: string; driverUserId: string | null };
-  const columns: CommunityColumnDef<Row>[] = [
+  const columns: CommunityColumnDef<OwnerTripRow>[] = [
+    {
+      colId: "line",
+      headerName: t("common.fields.tripLine"),
+      valueGetter: (params) => params.data?.line?.name || "—",
+    },
     { field: "origin", headerName: t("common.fields.pickup"), valueGetter: (params) => params.data?.origin || "—" },
     { field: "destination", headerName: t("common.fields.destination"), valueGetter: (params) => params.data?.destination || "—" },
-    { field: "departAt", headerName: t("common.fields.date"), valueGetter: (params) => (params.data?.departAt ? new Date(params.data.departAt as string).toLocaleString("ar-EG") : "—") },
+    { field: "departAt", headerName: t("common.fields.date"), valueGetter: (params) => (params.data?.departAt ? new Date(params.data.departAt).toLocaleString("ar-EG") : "—") },
     { field: "status", headerName: t("common.fields.status") },
   ];
 
   if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
-  if (!page) return <TableSkeleton rows={3} columns={4} />;
   return (
-    <CursorList<Row>
-      initialItems={page.items as unknown as Row[]}
-      initialCursor={page.nextCursor}
-      loadMore={async (cursor) => {
-        const result = await fetch(
-          `/api/fleet-owners/${ownerId}/trip-lines/${lineId}/trips?limit=20&cursor=${encodeURIComponent(cursor ?? "")}`,
-        ).then((r) => r.json());
-        return {
-          items: (result?.data?.items ?? []) as Row[],
-          nextCursor: (result?.data?.nextCursor ?? null) as string | null,
-        };
-      }}
-      keyOf={(trip) => trip.id}
-      columnDefs={columns}
-      emptyMessage={t("trips.empty")}
-    />
+    <div className="space-y-3">
+      <SectionAddButton label={t("trips.createDialog.title")} onClick={() => setCreateOpen(true)} />
+      {page ? (
+        <CursorList<OwnerTripRow>
+          initialItems={page.items}
+          initialCursor={page.nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchSystemTripsPage(cursor, ownerId);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(trip) => trip.id}
+          columnDefs={columns}
+          emptyMessage={t("trips.empty")}
+          renderItem={(trip) => (
+            <RowActions
+              label={t("trips.list.rowActions", {
+                tripOrigin: trip.origin || t("common.value.unspecified"),
+                tripDestination: trip.destination || t("common.value.unspecified"),
+              })}
+              actions={[
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/trips/${trip.id}?ownerId=${ownerId}&lineId=${trip.lineId}` },
+                { label: t("common.actions.viewFeedback"), icon: Pencil, href: `/trips/${trip.id}/feedback?ownerId=${ownerId}&lineId=${trip.lineId}` },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTrip(trip) },
+              ]}
+            />
+          )}
+        />
+      ) : (
+        <TableSkeleton rows={3} columns={5} />
+      )}
+      <CreateTripDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} onCreated={reload} />
+    </div>
   );
 }
 
@@ -499,15 +659,33 @@ function OwnerTripsGrid({ ownerId, lineId }: { ownerId: string; lineId: string }
 // ---------------------------------------------------------------------------
 
 function OwnerBookings({ ownerId }: { ownerId: string }) {
+  const confirm = useConfirm();
   const [page, setPage] = useState<{ items: AdminBookingListItem[]; nextCursor: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState(0);
-  if (token === 0) {
-    setToken(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
     void fetchAdminBookingsPage({ ownerId }, null).then((result) => {
+      if (cancelled) return;
       if (result.ok) setPage(result.data);
       else setError(result.message);
     });
+    return () => { cancelled = true; };
+  }, [ownerId, reloadToken]);
+
+  async function removeBooking(booking: AdminBookingListItem) {
+    if (!(await confirm({
+      title: t("common.actions.deleteConfirmTitle"),
+      description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || t("common.value.unspecified") }),
+      confirmLabel: t("common.actions.delete"),
+      destructive: true,
+    }))) return;
+    const result = await deleteBooking(ownerId, booking.id);
+    if (result.ok) reload();
   }
 
   const columns: CommunityColumnDef<AdminBookingListItem>[] = [
@@ -519,20 +697,36 @@ function OwnerBookings({ ownerId }: { ownerId: string }) {
   ];
 
   if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
-  if (!page) return <TableSkeleton rows={3} columns={5} />;
   return (
-    <CursorList<AdminBookingListItem>
-      initialItems={page.items}
-      initialCursor={page.nextCursor}
-      loadMore={async (cursor) => {
-        const result = await fetchAdminBookingsPage({ ownerId }, cursor);
-        if (!result.ok) throw new Error(result.message);
-        return result.data;
-      }}
-      keyOf={(booking) => booking.id}
-      columnDefs={columns}
-      emptyMessage={t("bookings.list.empty")}
-    />
+    <div className="space-y-3">
+      <SectionAddButton label={t("bookings.createDialog.title")} onClick={() => setCreateOpen(true)} />
+      {page ? (
+        <CursorList<AdminBookingListItem>
+          initialItems={page.items}
+          initialCursor={page.nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchAdminBookingsPage({ ownerId }, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(booking) => booking.id}
+          columnDefs={columns}
+          emptyMessage={t("bookings.list.empty")}
+          renderItem={(booking) => (
+            <RowActions
+              label={t("bookings.list.rowActions", { value: booking.passengerName || t("common.value.unspecified") })}
+              actions={[
+                { label: t("common.actions.openDetails"), icon: Eye, href: `/bookings/${booking.id}` },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBooking(booking) },
+              ]}
+            />
+          )}
+        />
+      ) : (
+        <TableSkeleton rows={3} columns={5} />
+      )}
+      <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={reload} />
+    </div>
   );
 }
 
