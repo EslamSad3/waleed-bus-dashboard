@@ -13,7 +13,7 @@ import {
   TRIP_STATUS_AR,
   type Trip,
 } from "@/lib/actions/trips";
-import { fetchBus, type Bus } from "@/lib/actions/buses";
+import { assignDriver as assignBusDriver, fetchBus, unassignDriver as unassignBusDriver, type Bus } from "@/lib/actions/buses";
 import { apiGet, type ActionResult } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
@@ -89,6 +89,15 @@ export default function TripDetailPage({
       setLineId(result.data.lineId);
     });
   }, [ownerId, id, lineId]);
+
+  // Roster reload for the bus-assignment actions below: the "current bus
+  // driver" block derives from `drivers`, so it refreshes itself once the
+  // roster is re-read.
+  async function refreshDrivers() {
+    if (!ownerId) return;
+    const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet-owners/${ownerId}/drivers?limit=100`);
+    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+  }
 
   useEffect(() => {
     if (!ownerId || !trip) return;
@@ -207,6 +216,32 @@ export default function TripDetailPage({
       setDriverId("");
       syncTrip(result, "update", result.data);
     }
+  }
+
+  /**
+   * Bus-driver assignment for the trip's bus. Unlike the trip snapshot above,
+   * this is LIVE data: it stays editable after departure and drives the
+   * "current bus driver" block, so it is never gated on `tripFrozen`.
+   */
+  async function assignToBus() {
+    if (!ownerId || !trip || !driverId) {
+      setError(t("trips.detail.errors.pickDriver"));
+      return;
+    }
+    const result = await assignBusDriver(ownerId, trip.busId, { driverUserId: driverId });
+    done(result.ok, result.ok ? t("buses.toast.driverAssigned") : result.message);
+    if (result.ok) {
+      setDriverId("");
+      await refreshDrivers();
+    }
+  }
+
+  async function unassignFromBus() {
+    if (!ownerId || !trip) return;
+    if (!(await confirm({ title: t("buses.detail.unassignConfirm.title"), description: t("buses.detail.unassignConfirm.description"), confirmLabel: t("buses.detail.unassignConfirm.confirmLabel"), destructive: true }))) return;
+    const result = await unassignBusDriver(ownerId, trip.busId);
+    done(result.ok, result.ok ? t("buses.toast.driverUnassigned") : result.message);
+    if (result.ok) await refreshDrivers();
   }
 
   // Rated bookings for this trip, fetched next to the trip itself so the screen
@@ -351,12 +386,18 @@ export default function TripDetailPage({
                 </select>
               </label>
               <div className="mt-2 flex flex-wrap gap-2">
-                <AsyncButton type="button" onClick={assignTripDriver} disabled={!driverId || tripFrozen}>{t("trips.detail.assignDriver")}</AsyncButton>
+                <AsyncButton type="button" onClick={assignTripDriver} disabled={!driverId || tripFrozen}>{t("trips.detail.assignDriverAria")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={unassignTripDriver} disabled={!trip.driverUserId || tripFrozen}>
-                  {t("trips.detail.unassignDriver")}
+                  {t("trips.detail.assignDriverAria")}
                 </AsyncButton>
               </div>
               {tripFrozen ? <small className="mt-1 block text-xs text-[#687886]">{t("trips.detail.driverFrozenHint")}</small> : null}
+              <div className="mt-2 flex flex-wrap gap-2 border-t border-[#e4ecf2] pt-2">
+                <AsyncButton type="button" onClick={assignToBus} disabled={!bus || !driverId}>{t("trips.detail.assignBusDriver")}</AsyncButton>
+                <AsyncButton type="button" variant="secondary" onClick={unassignFromBus} disabled={!bus || !busDriver}>
+                  {t("trips.detail.unassignBusDriver")}
+                </AsyncButton>
+              </div>
             </div>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
               <span className="block text-[#606060]">{t("common.fields.snapshottedDriver")}</span>
