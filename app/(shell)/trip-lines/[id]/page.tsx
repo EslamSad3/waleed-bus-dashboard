@@ -255,7 +255,7 @@ export default function TripLineDetailPage({
                       <small className="block truncate text-xs text-[#687886]">{item.station.address || item.station.governorate?.nameAr}</small>
                     </span>
                     <span className="shrink-0 rounded-full bg-[#eaf4fa] px-2.5 py-1 text-xs font-bold text-[#285778]">
-                      {stopUseLabels[item.stopType === "LANDING" ? "LANDING" : "BOARDING"]}
+                      {stopUseLabels[item.stopType]}
                     </span>
                   </div>
                 </li>
@@ -352,6 +352,7 @@ export default function TripLineDetailPage({
             <br />
             <strong>{editStops.length >= 2 ? `${editStops[0].stop.name} ← ${editStops[editStops.length - 1].stop.name}` : t("tripLines.incomplete")}</strong>
           </div>
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <p className="text-xs text-[#687886]">{t("tripLines.stopsDialog.saveHint")}</p>
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
             <Button variant="secondary" onClick={() => setEditingStops(false)}>{t("common.actions.cancel")}</Button>

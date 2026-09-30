@@ -45,6 +45,8 @@ export const AR_ERROR_MAP: Record<string, string> = {
   MARKAZ_IN_USE: t("errors.MARKAZ_IN_USE"),
   LOCALITY_IN_USE: t("errors.LOCALITY_IN_USE"),
   STOP_IN_USE: t("errors.STOP_IN_USE"),
+  DUPLICATE_STOP: t("errors.DUPLICATE_STOP"),
+  LINE_HAS_TRIPS: t("errors.LINE_HAS_TRIPS"),
   INVALID_BRAND: t("errors.INVALID_BRAND"),
   BRAND_IN_USE: t("errors.BRAND_IN_USE"),
   VIP_TIER_IN_USE: t("errors.VIP_TIER_IN_USE"),
