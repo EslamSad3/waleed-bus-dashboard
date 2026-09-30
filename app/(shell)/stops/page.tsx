@@ -24,7 +24,8 @@ import {
   type Markaz,
   type Stop,
 } from "@/lib/actions/trip-lines";
-import { qk, upsertInList, removeFromList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, referenceImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 function coordinatesFromLink(value: string) {
@@ -160,7 +161,8 @@ function CreateStopDialog({
       isActive: true,
     });
     if (!result.ok) return setError(result.message);
-    upsertInList(queryClient, qk.stops, result.data);
+    // A new stop must reach every trip line's stop picker, not just this table.
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "stops", "insert"), result);
     resetForm();
     onClose();
   }
@@ -266,7 +268,7 @@ export default function StopsPage() {
       longitude: Number(longitude),
     });
     if (!result.ok) return setDialogError(result.message);
-    upsertInList(queryClient, qk.stops, result.data);
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "stops", "update"), result);
     closeDialog();
   }
 
@@ -274,7 +276,7 @@ export default function StopsPage() {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("stops.deleteConfirm.description", { stopName: stop.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteStop(stop.id);
     if (!result.ok) return setDialogError(result.message);
-    removeFromList(queryClient, qk.stops, stop.id);
+    applyMutationCache(queryClient, referenceImpact(stop.id, "stops", "remove"), result);
   }
 
   const columns: CommunityColumnDef<Stop>[] = [

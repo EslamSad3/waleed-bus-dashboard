@@ -56,13 +56,22 @@ export const qk = {
   busTrips: (ownerId: string, busId: string) => ["bus-trips", ownerId, busId] as const,
   fleetOwners: ["fleet-owners"] as const,
   ownerNames: ["fleet-owners", "names"] as const,
+  /**
+   * Searchable owner directory. The search TERM is part of the key, so each
+   * term gets its own cache entry (and its own "load more" cursor) instead of
+   * one shared array being refiltered in place.
+   */
+  ownerOptions: (search: string) => ["fleet-owners", "options", search.trim().toLowerCase()] as const,
   fleetOwner: (id: string) => ["fleet-owner", id] as const,
   myOwner: ["fleet-owners", "me"] as const,
   adminUsers: ["admin-users"] as const,
   roles: ["roles"] as const,
   permissions: ["permissions"] as const,
   role: (id: string) => ["role", id] as const,
-  drivers: ["drivers"] as const,
+  /** Owner-scoped driver roster (`/fleet-owners/:ownerId/drivers`). */
+  ownerDrivers: (ownerId: string) => ["owner-drivers", ownerId] as const,
+  /** Global cross-owner driver roster (`/fleet-owners/drivers`). */
+  drivers: ["drivers", "global"] as const,
   driver: (ownerId: string, id: string) => ["driver", ownerId, id] as const,
   driverAssignments: (ownerId: string, id: string) => ["driver-assignments", ownerId, id] as const,
   driverTripRows: (ownerId: string, id: string) => ["driver-trip-rows", ownerId, id] as const,

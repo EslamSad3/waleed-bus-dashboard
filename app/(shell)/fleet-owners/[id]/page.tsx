@@ -20,7 +20,8 @@ import type { StagedUpload } from "@/lib/actions/http";
 import { updateFleetOwnerSchema } from "@/lib/schemas/p1";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { useFilterStore } from "@/stores/filters";
-import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, ownerImpact } from "@/lib/cache/mutations";
 import { Pencil } from "lucide-react";
 import { DetailPageSkeleton } from "@/components/ui/skeletons";
 import { t } from "@/lib/i18n/t";
@@ -48,7 +49,6 @@ export default function FleetOwnerDetailPage({
   );
 
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
@@ -90,7 +90,6 @@ export default function FleetOwnerDetailPage({
     }
     setSaving(true);
     setError(null);
-    setNote(null);
     // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
     // يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
     let staged: StagedUpload | null = null;
@@ -113,10 +112,12 @@ export default function FleetOwnerDetailPage({
       setError(result.message);
       return;
     }
-    const refreshed = await fetchFleetOwner(id);
-    if (refreshed.ok) patchDetail(queryClient, qk.fleetOwner(id), refreshed.data);
+    // The mutation already returns the whole account, so the screen, the detail
+    // slot, the `/fleet-owners` list and every dependent view are updated from
+    // it — no refetch round trip, and no manual page refresh. Patching only the
+    // detail key is what left the list showing the old name after an edit here.
+    applyMutationCache(queryClient, ownerImpact(result.data, "update"), result);
     setSaving(false);
-    setNote(t("fleetOwners.detail.toast.saved"));
     setEditOpen(false);
   }
 
@@ -137,8 +138,10 @@ export default function FleetOwnerDetailPage({
       setError(result.message);
       return;
     }
+    // Remove it from the list and from the directory BEFORE navigating, so
+    // `/fleet-owners` does not still show a row that no longer exists.
+    applyMutationCache(queryClient, ownerImpact({ id }, "remove"), result);
     router.push("/fleet-owners");
-    router.refresh();
   }
 
   if (fetchError) {
@@ -175,11 +178,6 @@ export default function FleetOwnerDetailPage({
       {error && !editOpen ? (
         <p role="alert" className="text-sm text-red-600">
           {error}
-        </p>
-      ) : null}
-      {note ? (
-        <p role="status" className="text-sm text-green-700">
-          {note}
         </p>
       ) : null}
 

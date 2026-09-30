@@ -12,37 +12,39 @@ import {
   type DriverRow,
   type Member,
 } from "@/lib/actions/members";
-import { useFilterStore } from "@/stores/filters";
+import { driverHref, useDriverOwnerScope } from "@/lib/owner-scope";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { OwnerPicker } from "@/components/owners/owner-picker";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { Pencil, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { fetchDriverTripsPage, type DriverTripRow } from "@/lib/actions/feedback";
+import { TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
 import { t } from "@/lib/i18n/t";
 
 /**
  * Driver detail. The route id IS the driver user id, which is what every
  * driver sub-resource is keyed by. The KPIs are cross-owner aggregates (a
- * driver's overall quality spans all of their owner assignments); the owner
- * picker only decides WHICH owner's scope the editable roster entry comes from.
+ * driver's overall quality spans all of their owner assignments).
+ *
+ * There is NO company selector here: the company's editable roster entry comes
+ * from the link that got the operator here (`?owner=<id>`, written by the
+ * roster), and a bare bookmark resolves the driver's own company from the
+ * cross-owner roster. Asking the operator to pick a company to see the driver
+ * they just clicked was pure friction.
  */
 export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
-  const scopedOwnerId = useFilterStore((s) => s.ownerId);
-  const setOwnerId = useFilterStore((s) => s.setOwnerId);
+  const { ownerId: scopedOwnerId, isExplicit } = useDriverOwnerScope(id);
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [status, setStatus] = useState<Member["status"]>("ACTIVE");
-  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [trips, setTrips] = useState<{ items: DriverTripRow[]; nextCursor: string | null } | null>(null);
@@ -62,13 +64,17 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  // One row per trip for the selected owner; the KPI numbers above come from
-  // the cross-owner detail payload.
+  // One row per trip for the selected company; the KPI numbers above come from
+  // the cross-owner detail payload. A FAILED read is surfaced: an empty grid and
+  // a server that could not answer look identical otherwise, and the operator is
+  // left believing the driver has no trips.
   const [tripsToken, setTripsToken] = useState(0);
+  const [tripsError, setTripsError] = useState<string | null>(null);
   if (scopedOwnerId && tripsToken === 0) {
     setTripsToken(1);
     void fetchDriverTripsPage(scopedOwnerId, id, null).then((result) => {
       if (result.ok) setTrips(result.data);
+      else setTripsError(result.message);
     });
   }
 
@@ -78,15 +84,17 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
       setStatus(fresh.status);
     }
     if (scopedOwnerId) patchDetail(queryClient, qk.driver(scopedOwnerId, id), fresh);
-    setNote(t("common.toast.saved"));
   }
 
   async function remove() {
     if (!scopedOwnerId) return;
     setError(null);
-    setNote(null);
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const r = await removeDriver(scopedOwnerId, id);
+    const r = await removeDriver(scopedOwnerId, id, {
+      // A personal membership is revoked rather than deleted, so the toast
+      // must not claim the record is gone.
+      isIndependent: scopedOwnerId === id,
+    });
     if (!r.ok) {
       setError(r.message);
       return;
@@ -95,26 +103,10 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     router.refresh();
   }
 
-  function selectOwner(nextOwnerId: string) {
-    setOwnerId(nextOwnerId || null);
-    setOwnerScopeCookie(nextOwnerId || null);
-    setTripsToken(0);
-    setTrips(null);
-  }
-
-  if (!scopedOwnerId) {
-    return (
-      <div className="dashboard-page max-w-xl">
-        <div>
-          <h1 className="page-title">{t("drivers.detail.manageTitle")}</h1>
-          <p className="page-description">{t("drivers.detail.pickOwnerDescription")}</p>
-        </div>
-        <div className="panel-card p-5 sm:p-6">
-          <OwnerPicker ownerId="" onOwnerChange={selectOwner} label={t("drivers.detail.pickOwner")} />
-        </div>
-      </div>
-    );
-  }
+  // The company comes from the link, or — for a bare bookmark — from the
+  // driver's own roster row. Until it is known there is no roster entry to
+  // edit, so show the skeleton rather than half a driver.
+  if (!scopedOwnerId) return <DetailPageSkeleton sections={2} />;
   if (fetchFailed) return <p role="alert" className="text-sm text-red-600">{fetchFailed}</p>;
   if (!driver) return <DetailPageSkeleton sections={2} />;
 
@@ -124,9 +116,9 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
     { field: "line.name", headerName: t("common.fields.tripLine"), valueGetter: (params) => params.data?.line.name },
     { field: "line.origin", headerName: t("common.fields.origin"), valueGetter: (params) => params.data?.line.origin || "—" },
     { field: "line.destination", headerName: t("common.fields.destination"), valueGetter: (params) => params.data?.line.destination || "—" },
-    { field: "bus.registrationNumber", headerName: t("common.fields.bus"), valueGetter: (params) => params.data?.bus.registrationNumber },
+    { field: "bus.plateNumber", headerName: t("common.fields.bus"), valueGetter: (params) => params.data?.bus.plateNumber ?? "—" },
     { field: "departAt", headerName: t("common.fields.date"), valueGetter: (params) => (params.data?.departAt ? new Date(params.data.departAt).toLocaleString("ar-EG") : "—") },
-    { field: "status", headerName: t("common.fields.status") },
+    { field: "status", headerName: t("common.fields.status"), valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? String(params.value ?? "—") },
     { field: "passengerCount", headerName: t("common.fields.passengerCount") },
     {
       headerName: t("common.fields.driverRating"),
@@ -152,12 +144,11 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      {note && <p role="status" className="text-sm text-green-700">{note}</p>}
+      {status === "REVOKED" ? (
+        <p className="panel-card p-4 text-sm text-[#606060]">{t("drivers.detail.revokeNotice")}</p>
+      ) : null}
 
       <section className="panel-card p-5 sm:p-6">
-        <div className="max-w-md">
-          <OwnerPicker ownerId={scopedOwnerId} onOwnerChange={selectOwner} label={t("drivers.detail.pickOwner")} />
-        </div>
         <dl className="space-y-2 text-sm">
           <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.nickname")}</dt><dd className="min-w-0 truncate">{driver.nickname ?? "—"}</dd></div>
           <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.phone")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.phoneNumber ?? "—"}</dd></div>
@@ -175,19 +166,24 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
       <section className="space-y-3">
         <h2 className="section-title">{t("drivers.detail.sections.kpis")}</h2>
         <div className="grid gap-3 sm:grid-cols-3">
-          <KpiLink href={`/drivers/${id}/trips`} label={t("drivers.kpi.tripCount")} value={String(stats.tripCount)} />
-          <KpiLink href={`/drivers/${id}/ratings`} label={t("common.rating.average")} value={stats.overallRating === null ? t("common.rating.unrated") : String(Math.round(stats.overallRating * 10) / 10)} />
-          <KpiLink href={`/drivers/${id}/assignments`} label={t("drivers.kpi.uniqueBuses")} value={String(stats.uniqueBusCount)} />
+          <KpiLink href={driverHref(id, scopedOwnerId, "/trips")} label={t("drivers.kpi.tripCount")} value={String(stats.tripCount)} />
+          <KpiLink href={driverHref(id, scopedOwnerId, "/ratings")} label={t("common.rating.average")} value={stats.overallRating === null ? t("common.rating.unrated") : String(Math.round(stats.overallRating * 10) / 10)} />
+          <KpiLink href={driverHref(id, scopedOwnerId, "/assignments")} label={t("drivers.kpi.uniqueBuses")} value={String(stats.uniqueBusCount)} />
         </div>
       </section>
 
       <section className="space-y-3">
         <h2 className="section-title">{t("drivers.detail.sections.trips")}</h2>
-        {tripsToken === 1 && !trips ? (
+        {tripsError ? (
+          <p role="alert" className="panel-card p-4 text-sm text-red-600">
+            {tripsError}
+          </p>
+        ) : tripsToken === 1 && !trips ? (
           <TableSkeleton rows={5} columns={9} />
         ) : (
           <CursorList<DriverTripRow>
             gridId={`driver-trips-${id}`}
+            scopeKey={scopedOwnerId}
             initialItems={trips?.items ?? []}
             initialCursor={trips?.nextCursor ?? null}
             loadMore={async (cursor) => {

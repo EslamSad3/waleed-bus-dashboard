@@ -14,7 +14,8 @@ import { RatingCell } from "@/components/owners/rating-cell";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { qk, removeFromCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 /** The company name comes from the shared id→name map, not from the row. */
@@ -50,7 +51,7 @@ export default function BusesPage() {
       !(await confirm({
         title: t("common.actions.deleteConfirmTitle"),
         description: t("buses.list.deleteConfirm.description", {
-          value: bus.plateNumber || bus.registrationNumber,
+          value: bus.plateNumber ?? t("common.value.withoutName"),
         }),
         confirmLabel: t("common.actions.delete"),
         destructive: true,
@@ -60,7 +61,11 @@ export default function BusesPage() {
     }
     const result = await deleteBus(bus.ownerId, bus.id);
     if (!result.ok) return;
-    removeFromCursorList<BusRow>(queryClient, qk.systemBuses, bus.id);
+    applyMutationCache(
+      queryClient,
+      busImpact({ id: bus.id, ownerId: bus.ownerId }, "remove"),
+      result,
+    );
   }
 
   const query = (listFilters.q ?? "").trim();
@@ -69,14 +74,12 @@ export default function BusesPage() {
   const predicate = (bus: BusRow) =>
     (!ownerFilter || bus.ownerId === ownerFilter) &&
     (!query ||
-      bus.registrationNumber.includes(query) ||
       (bus.plateNumber ?? "").includes(query) ||
       nameOf(bus.ownerId).includes(query)) &&
     (status === "all" || (status === "active" ? bus.isActive : !bus.isActive));
 
   const columns: CommunityColumnDef<BusRow>[] = [
-    { field: "registrationNumber", headerName: t("common.fields.registrationNumber"), filter: "agTextColumnFilter" },
-    { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter" },
+    { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value ?? "—" },
     { field: "ownerId", headerName: t("common.fields.owner"), valueGetter: (params) => nameOf(params.data?.ownerId ?? ""), filter: "agTextColumnFilter" },
     { field: "capacity", headerName: t("common.fields.capacity"), filter: "agNumberColumnFilter" },
     { headerName: t("common.fields.avgBusRating"), cellRenderer: (params: { data: BusRow }) => <RatingCell value={params.data.avgRating ?? null} /> },
@@ -96,7 +99,7 @@ export default function BusesPage() {
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       {isLoading ? (
-        <TableSkeleton rows={9} columns={7} />
+        <TableSkeleton rows={9} columns={6} />
       ) : (
         <CursorList<BusRow>
           gridId="buses"
@@ -145,7 +148,7 @@ export default function BusesPage() {
           emptyMessage={t("buses.empty")}
           renderItem={(bus) => (
             <RowActions
-              label={t("buses.list.rowActions", { value: bus.plateNumber || bus.registrationNumber })}
+              label={t("buses.list.rowActions", { value: bus.plateNumber ?? t("common.value.withoutName") })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?ownerId=${bus.ownerId}` },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },

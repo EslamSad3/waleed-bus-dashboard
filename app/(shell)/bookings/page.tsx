@@ -23,7 +23,8 @@ import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { qk, removeFromCursorList, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, bookingImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 export default function BookingsPage() {
@@ -104,7 +105,13 @@ export default function BookingsPage() {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || booking.passengerPhone }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBooking(booking.ownerId, booking.id);
     if (!result.ok) return;
-    removeFromCursorList<AdminBookingListItem>(queryClient, qk.adminBookingsParams(filterParams), booking.id);
+    // The visible list is one FILTERED variant; the helper also drops every
+    // other variant and the owner-scoped views, which a single-key removal missed.
+    applyMutationCache(
+      queryClient,
+      bookingImpact(booking.ownerId ?? null, booking, "remove"),
+      result,
+    );
   }
 
   function resetFilters() {

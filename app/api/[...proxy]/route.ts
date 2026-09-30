@@ -98,13 +98,24 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
       {
         statusCode: status,
         code: result.code,
+        // TRANSLATION BOUNDARY: the API's `message` is English by contract and
+        // is deliberately dropped here. `code` is what gets translated, so raw
+        // server text can never reach the Arabic UI.
         message: toArabicError(result.code, result.status),
         ...(result.details ? { details: arabiciseDetails(result.details) } : {}),
+        ...(result.retryAfter ? { retryAfter: result.retryAfter } : {}),
       },
       { status },
     );
   }
-  return NextResponse.json({ statusCode: result.status, data: result.data });
+  // A mutation's action-specific API message is carried through (still English)
+  // so a server component can log or branch on it; the client shows the
+  // dashboard's own Arabic success copy from lib/actions/toast.ts.
+  return NextResponse.json({
+    statusCode: result.status,
+    data: result.data ?? null,
+    ...(result.message ? { message: result.message } : {}),
+  });
 }
 
 export function GET(req: NextRequest, ctx: Ctx) {

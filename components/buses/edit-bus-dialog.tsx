@@ -9,6 +9,7 @@ import { discardBusImage, fetchBrands, fetchBus, stageBusImage, updateBus, type 
 import type { StagedUpload } from "@/lib/actions/http";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 type BusRow = Bus & { ownerId: string; ownerName?: string };
@@ -119,6 +120,7 @@ export function EditBusDialog({
     setSaving(false);
     // الصورة بتتحدّث من غير رفريش — نجيب الـ row المحدث ونحطه في الكاش
     const after = imageFile ? await refetchBusRow(bus) : result.data;
+    applyMutationCache(queryClient, busImpact({ id: bus.id, ownerId: bus.ownerId }, "update"), result);
     upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, {
       ...after,
       ownerId: bus.ownerId,
@@ -130,7 +132,7 @@ export function EditBusDialog({
   }
 
   return (
-    <Dialog open={open && Boolean(bus)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.editDialog.title")} description={bus ? t("buses.editDialog.description", { busRegistrationNumber: bus.registrationNumber }) : undefined} size="sm">
+    <Dialog open={open && Boolean(bus)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.editDialog.title")} description={bus ? t("buses.editDialog.description", { plateNumber: bus.plateNumber ?? t("common.value.withoutName") }) : undefined} size="sm">
       <div className="space-y-4">
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.plateNumber")}</span>

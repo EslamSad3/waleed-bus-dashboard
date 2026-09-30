@@ -57,7 +57,6 @@ export const arabicGridHeaders: Record<string, string> = {
   picture: t("agGrid.fields.picture"),
   email: t("common.fields.email"),
   phoneNumber: t("agGrid.fields.phoneNumber"),
-  registrationNumber: t("agGrid.fields.registrationNumber"),
   plateNumber: t("agGrid.fields.plateNumber"),
   capacity: t("agGrid.fields.capacity"),
   isActive: t("agGrid.fields.isActive"),

@@ -13,7 +13,8 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { createVipTier, deleteVipTier, fetchVipTiers, updateVipTier, type VipTier } from "@/lib/actions/vip-tiers";
 import { rankOrdinalAr } from "@/lib/ordinals";
-import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, referenceImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 export default function VipTiersPage() {
@@ -58,23 +59,27 @@ export default function VipTiersPage() {
       ? await updateVipTier(editing.id, { name: name.trim(), rank: Number(rank) })
       : await createVipTier({ name: name.trim(), rank: Number(rank) });
     if (!result.ok) return setDialogError(result.message);
-    // Instant cache write → الجدول بيتحدث في نفس اللحظة.
-    upsertInList(queryClient, qk.vipTiers, result.data);
-    queryClient.invalidateQueries({ queryKey: qk.vipTiers });
+    // Instant cache write → الجدول بيتحدث في نفس اللحظة، ومعاه أي شاشة
+    // بتعرض المستوى ده (دليل أصحاب العربيات).
+    applyMutationCache(
+      queryClient,
+      referenceImpact(result.data.id, "vip-tiers", editing ? "update" : "insert"),
+      result,
+    );
     closeDialog();
   }
 
   async function toggleActive(tier: VipTier) {
     const result = await updateVipTier(tier.id, { isActive: !tier.isActive });
     if (!result.ok) return setDialogError(result.message);
-    upsertInList(queryClient, qk.vipTiers, result.data);
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "vip-tiers", "update"), result);
   }
 
   async function removeTier(tier: VipTier) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("vipTiers.deleteConfirm.description", { tierName: tier.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteVipTier(tier.id);
     if (!result.ok) return setDialogError(result.message);
-    removeFromList<VipTier>(queryClient, qk.vipTiers, tier.id);
+    applyMutationCache(queryClient, referenceImpact(tier.id, "vip-tiers", "remove"), result);
   }
 
   const dialogOpen = creating || editing !== null;

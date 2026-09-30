@@ -1,6 +1,6 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
-import type { AddMemberInput, AddDriverInput } from "@/lib/schemas/p1";
+import type { AddDriverInput, AddMemberInput, CreateDriverAccountInput } from "@/lib/schemas/p1";
 import type { DriverRatingRow, DriverTripRow, TripFeedbackRow } from "@/lib/actions/feedback";
 import { fetchDriverRatingsPage, fetchDriverTripsPage } from "@/lib/actions/feedback";
 import { t } from "@/lib/i18n/t";
@@ -27,6 +27,12 @@ export const MEMBER_STATUS_AR: Record<Member["status"], string> = {
   ACTIVE: t("enums.memberStatus.active"),
   SUSPENDED: t("enums.memberStatus.suspended"),
   REVOKED: t("enums.memberStatus.revoked"),
+};
+
+/** Bus assignment lifecycle (API validates ACTIVE | ENDED). */
+export const ASSIGNMENT_STATUS_AR: Record<string, string> = {
+  ACTIVE: t("enums.assignmentStatus.active"),
+  ENDED: t("enums.assignmentStatus.ended"),
 };
 
 /** Driver stats embedded by the roster detail endpoint. */
@@ -63,6 +69,14 @@ export type DriverRow = {
 
 /** Cross-owner roster row: the driver membership plus its company and active bus. */
 export type SystemDriverRow = DriverRow & {
+  /** Owner user id the membership belongs to — a driver's own company. */
+  ownerId: string;
+  /**
+   * A personal membership (`userId === ownerId`): the driver is their own
+   * company, so the grid shows "Independent" instead of pretending they belong
+   * to some company. Sent by the API since the dashboard cannot infer it.
+   */
+  isIndependent: boolean;
   owner: { id: string; name: string | null; phoneNumber: string | null };
   assignedBus: { id: string; registrationNumber: string; plateNumber: string | null } | null;
 };
@@ -130,6 +144,28 @@ export function inviteDriver(ownerId: string, input: AddDriverInput): Promise<Ac
   );
 }
 
+/**
+ * Platform driver account creation (`POST /fleet-owners/drivers`).
+ *
+ * The OPERATOR chooses the account shape, not the driver: `INDEPENDENT` makes
+ * the new user their own company, `OWNER` files them under the company the
+ * operator picked. The server assigns the role, so the request carries no
+ * `roleSlug`. `ownerLabel` is only used to make the success toast specific.
+ */
+export function createDriverAccount(
+  input: CreateDriverAccountInput,
+  ownerLabel?: string,
+): Promise<ActionResult<SystemDriverRow>> {
+  return notifyResult(
+    input.mode === "OWNER" && ownerLabel
+      ? t("drivers.createDialog.createdUnderOwner", { owner: ownerLabel })
+      : input.mode === "OWNER"
+        ? t("drivers.createDialog.created")
+        : t("drivers.createDialog.createdIndependent"),
+    apiSend<SystemDriverRow>("/api/fleet-owners/drivers", "POST", input),
+  );
+}
+
 export function fetchDriver(ownerId: string, driverUserId: string): Promise<ActionResult<DriverRow>> {
   return apiGet<DriverRow>(`${ownerBase(ownerId)}/drivers/${driverUserId}`);
 }
@@ -160,9 +196,27 @@ export function updateDriver(
   );
 }
 
-export function removeDriver(ownerId: string, driverUserId: string): Promise<ActionResult<null>> {
+/**
+ * Removes a driver from a company.
+ *
+ * The API treats the two shapes differently: an owner-associated driver loses
+ * the membership row, while an INDEPENDENT driver's personal membership is
+ * REVOKED (deleting it would let their next login re-provision it and silently
+ * undo the removal). Both keep the user and the trip history, so the toast says
+ * "access revoked" for the independent case rather than pretending a record was
+ * erased.
+ */
+export function removeDriver(
+  ownerId: string,
+  driverUserId: string,
+  context?: { isIndependent?: boolean; ownerLabel?: string | null },
+): Promise<ActionResult<null>> {
   return notifyResult(
-    t("members.toast.driverDeleted"),
+    context?.isIndependent
+      ? t("drivers.list.removedIndependent")
+      : t("drivers.list.removedFromOwner", {
+          owner: context?.ownerLabel || t("drivers.list.independentOwner"),
+        }),
     apiSend<null>(`${ownerBase(ownerId)}/drivers/${driverUserId}`, "DELETE"),
   );
 }

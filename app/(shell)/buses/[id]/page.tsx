@@ -36,6 +36,7 @@ import { RatingCell } from "@/components/owners/rating-cell";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { BUS_COLORS, busColorHex } from "@/lib/colors";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
 import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2, UserPlus } from "lucide-react";
@@ -172,9 +173,14 @@ export default function BusDetailPage({
     setImageFile(file);
   }
 
+  /**
+   * Page-level outcome: the persistent ERROR alert next to the control that
+   * failed. Success is NOT repeated here — the action wrapper's toast is the one
+   * notice for the action (two success lines for one save is noise).
+   */
   function note(ok: boolean, msg: string, updated?: Bus) {
     setError(ok ? null : msg);
-    setStatus(ok ? msg : null);
+    setStatus(ok ? null : null);
     if (ok && updated) {
       patchDetail(queryClient, qk.bus(ownerId ?? "unknown", id), updated);
     }
@@ -239,12 +245,16 @@ export default function BusDetailPage({
     if (!ownerId) return;
     const r = await disableBus(ownerId, id);
     note(r.ok, r.ok ? tr("buses.detail.toast.disabled") : r.message, r.ok ? r.data : undefined);
+    // A bus taken out of service must disappear from every trip and booking
+    // choice that lists available buses, or the operator can still pick it.
+    applyMutationCache(queryClient, busImpact({ id, ownerId }, "update"), r);
   }
 
   async function reactivate() {
     if (!ownerId) return;
     const r = await reactivateBus(ownerId, id);
     note(r.ok, r.ok ? tr("buses.detail.toast.enabled") : r.message, r.ok ? r.data : undefined);
+    applyMutationCache(queryClient, busImpact({ id, ownerId }, "update"), r);
   }
 
   const refreshDrivers = async () => {
@@ -362,9 +372,8 @@ export default function BusDetailPage({
       <div className="page-heading">
         <div className="min-w-0 flex-1">
           <h1 className="page-title break-words">
-            {/* The plate is what an operator recognises; the registration
-                number is an internal code, so it stays in the overview. */}
-            <span dir="ltr">{bus.plateNumber || bus.registrationNumber}</span>
+            {/* The plate is what an operator recognises. */}
+            <span dir="ltr">{bus.plateNumber ?? "—"}</span>
           </h1>
           <p className="page-description">{tr("buses.detail.description")}</p>
         </div>
@@ -411,7 +420,7 @@ export default function BusDetailPage({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={bus.imageUrl}
-                    alt={tr("buses.detail.imageAlt", { busRegistrationNumber: bus.registrationNumber })}
+                    alt={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
                     className="mb-3 h-32 w-full rounded-xl object-cover"
                   />
                 ) : null}
@@ -463,6 +472,7 @@ export default function BusDetailPage({
           ) : (
             <CursorList<BusTripRow>
               gridId={`bus-trips-${id}`}
+              scopeKey={ownerId ?? null}
               key={`${ownerId}/${id}`}
               initialItems={tripsFirst.items}
               initialCursor={tripsFirst.nextCursor}
@@ -495,6 +505,7 @@ export default function BusDetailPage({
           ) : (
             <CursorList<BusRatingRow>
               gridId={`bus-ratings-${id}`}
+              scopeKey={ownerId ?? null}
               key={`${ownerId}/${id}/${ratingsReloadKey}`}
               initialItems={ratingsFirst.items}
               initialCursor={ratingsFirst.nextCursor}
@@ -511,7 +522,7 @@ export default function BusDetailPage({
         </section>
       )}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen} title={tr("buses.detail.editDialog.title")} description={tr("buses.detail.editDialog.description", { busRegistrationNumber: bus.registrationNumber })} size="sm">
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title={tr("buses.detail.editDialog.title")} description={tr("buses.detail.editDialog.description", { plateNumber: bus.plateNumber ?? "—" })} size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.plateNumber")}</span>
@@ -589,7 +600,7 @@ export default function BusDetailPage({
                   const assignedElsewhere = assignment && assignment.busId !== id;
                   return (
                     <option key={d.id} value={d.userId ?? d.id}>
-                      {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? tr("buses.detail.assignedElsewhereSuffix", { assignmentRegistrationNumber: assignment.registrationNumber }) : ""}
+                      {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? tr("buses.detail.assignedElsewhereSuffix", { plateNumber: assignment.plateNumber ?? "—" }) : ""}
                     </option>
                   );
                 })}

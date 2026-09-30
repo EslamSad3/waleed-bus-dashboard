@@ -18,11 +18,23 @@ function safeCsvValue(value: unknown): string {
   return /^[+\-=@\t\r]/.test(text) ? `'${text}` : text;
 }
 
+/**
+ * The AG Grid surface: fully CONTROLLED.
+ *
+ * It used to keep its own copy of the rows, and reset that copy whenever the
+ * `rows` prop changed identity. Combined with a parent that rebuilt the first
+ * page on every render, that threw away every page the operator had loaded on
+ * each re-render — and a single-row edit anywhere in the list wiped the rest.
+ *
+ * `CursorList` now owns the accumulated pages and hands them down here, so this
+ * component only renders, filters, exports, and asks its parent for the next
+ * page. One owner, one source of truth.
+ */
 export function AgGridTable<T>({
   gridId,
-  rows: initialRows,
+  rows,
   columnDefs,
-  nextCursor: initialCursor = null,
+  nextCursor = null,
   loadMore,
   loading = false,
   errorMessage,
@@ -32,23 +44,10 @@ export function AgGridTable<T>({
   getRowId,
   exportOptions,
 }: AgGridTableProps<T>) {
-  const [rows, setRows] = useState(initialRows);
-  const [cursor, setCursor] = useState(initialCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [quickFilterText, setQuickFilterText] = useState("");
   const [gridApi, setGridApi] = useState<GridApi<T> | null>(null);
-
-  // Sync with fresh prop data (cache writes after dialog mutations) so the
-  // grid updates instantly — no remount, no loading state.
-  const [seenRows, setSeenRows] = useState(initialRows);
-  const [seenCursor, setSeenCursor] = useState(initialCursor);
-  if (seenRows !== initialRows || seenCursor !== initialCursor) {
-    setSeenRows(initialRows);
-    setSeenCursor(initialCursor);
-    setRows(initialRows);
-    setCursor(initialCursor);
-  }
 
   function onGridReady(event: GridReadyEvent<T>) {
     setGridApi(event.api);
@@ -70,13 +69,11 @@ export function AgGridTable<T>({
   }
 
   async function loadNextPage() {
-    if (!cursor || !loadMore || loadingMore) return;
+    if (!nextCursor || !loadMore || loadingMore) return;
     setLoadingMore(true);
     setLoadError(null);
     try {
-      const page = await loadMore(cursor);
-      setRows((current) => [...current, ...page.items]);
-      setCursor(page.nextCursor);
+      await loadMore(nextCursor);
     } catch {
       setLoadError(t("common.error.unknown"));
     } finally {
@@ -148,7 +145,7 @@ export function AgGridTable<T>({
         </div>
       ) : null}
 
-      {cursor && loadMore ? (
+      {nextCursor && loadMore ? (
         <button type="button" onClick={() => void loadNextPage()} disabled={loadingMore} className="ag-grid-load-more">
           <span className="inline-flex items-center gap-2">
             {loadingMore ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}

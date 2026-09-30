@@ -23,7 +23,8 @@ import {
   type PromotionUsage,
 } from "@/lib/actions/promotions";
 import { fetchTargetOptions, type TargetOption } from "@/lib/actions/users";
-import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, promotionImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 export default function PromotionsPage() {
@@ -124,7 +125,7 @@ export default function PromotionsPage() {
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         });
     if (!result.ok) return setError(result.message);
-    upsertInCursorList(queryClient, qk.promotions, result.data);
+    applyMutationCache(queryClient, promotionImpact(result.data, "update"), result);
     setEditing(null);
     setCreating(false);
     setError(null);
@@ -133,14 +134,14 @@ export default function PromotionsPage() {
   async function expire(promo: Promotion) {
     const result = await expirePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    upsertInCursorList(queryClient, qk.promotions, result.data);
+    applyMutationCache(queryClient, promotionImpact(result.data, "update"), result);
   }
 
   async function removePromo(promo: Promotion) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("promotions.deleteConfirm.description", { promoCode: promo.code }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deletePromotion(promo.id);
     if (!result.ok) return setError(result.message);
-    removeFromCursorList<Promotion>(queryClient, qk.promotions, promo.id);
+    applyMutationCache(queryClient, promotionImpact(promo, "remove"), result);
   }
 
   async function openUsages(promo: Promotion) {

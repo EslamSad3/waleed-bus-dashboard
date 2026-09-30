@@ -14,6 +14,7 @@ import {
 import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
 
@@ -96,6 +97,14 @@ export function CreateTripDialog({
     });
     setSaving(false);
     if (!result.ok) return setError(result.message);
+    // One impact declaration covers the global `all` index, the owner index, the
+    // line index and the detail slot — patching only `qk.trips(owner, line)`
+    // left the global list missing the new trip until something else refetched.
+    applyMutationCache(
+      queryClient,
+      tripImpact({ trip: { id: result.data.id, ownerId: result.data.ownerId, lineId }, mode: "insert" }),
+      result,
+    );
     // تحديث فوري لجدول الرحلات من غير إعادة تحميل
     upsertInCursorList<Trip>(queryClient, qk.trips(ownerId, lineId), result.data);
     onCreated?.(result.data);
@@ -164,7 +173,7 @@ export function CreateTripDialog({
             <option value="">{t("trips.createDialog.pickBus")}</option>
             {buses.map((bus) => (
               <option key={bus.id} value={bus.id}>
-                {bus.plateNumber ?? bus.registrationNumber}
+                {bus.plateNumber ?? t("common.value.withoutName")}
               </option>
             ))}
           </select>

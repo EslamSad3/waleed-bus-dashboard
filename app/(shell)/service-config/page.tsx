@@ -11,6 +11,7 @@ import {
   type ServiceConfigEntryInput,
 } from "@/lib/actions/service-config";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, serviceConfigImpact } from "@/lib/cache/mutations";
 import { FormSkeleton } from "@/components/ui/skeletons";
 import { t } from "@/lib/i18n/t";
 
@@ -84,6 +85,13 @@ export default function ServiceConfigPage() {
     );
     setSaving(false);
     if (!result.ok) return setError(result.message);
+    // A replace-everything write: the cached list must be the server's new
+    // ordering, and every screen that reads customer-service entries refetched.
+    applyMutationCache(
+      queryClient,
+      serviceConfigImpact(result.data[0] ?? { id: "service-config" }),
+      result,
+    );
     setRows(
       result.data
         .slice()

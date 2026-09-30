@@ -22,7 +22,8 @@ import {
   type Locality,
   type Markaz,
 } from "@/lib/actions/trip-lines";
-import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, referenceImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 const TYPE_LABEL: Record<string, string> = { CITY: t("enums.localityType.city"), VILLAGE: t("enums.localityType.village") };
@@ -103,7 +104,7 @@ export default function LocalitiesPage() {
       }
       const result = await updateLocality(editing!.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
       if (!result.ok) return setDialogError(result.message);
-      upsertInList(queryClient, qk.localitiesAll({}), result.data);
+      applyMutationCache(queryClient, referenceImpact(result.data.id, "localities", "update"), result);
       closeDialog();
       return;
     }
@@ -118,21 +119,21 @@ export default function LocalitiesPage() {
       nameEn: nameEn.trim(),
     });
     if (!result.ok) return setDialogError(result.message);
-    upsertInList(queryClient, qk.localitiesAll({}), result.data);
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "localities", "insert"), result);
     closeDialog();
   }
 
   async function toggleActive(locality: Locality) {
     const result = await updateLocality(locality.id, { isActive: !locality.isActive });
     if (!result.ok) return setDialogError(result.message);
-    upsertInList(queryClient, qk.localitiesAll({}), result.data);
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "localities", "update"), result);
   }
 
   async function removeLocality(locality: Locality) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("localities.deleteConfirm.description", { localityNameAr: locality.nameAr }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteLocality(locality.id);
     if (!result.ok) return setDialogError(result.message);
-    removeFromList<Locality>(queryClient, qk.localitiesAll({}), locality.id);
+    applyMutationCache(queryClient, referenceImpact(locality.id, "localities", "remove"), result);
   }
 
   const dialogOpen = creating || editing !== null;

@@ -13,6 +13,7 @@ import {
   type TripLine,
 } from "@/lib/actions/trip-lines";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 type StopUse = "BOARDING" | "LANDING";
@@ -110,7 +111,9 @@ export function CreateTripLineDialog({
     });
     setSaving(false);
     if (!result.ok) return setError(result.message);
-    // تحديث فوري لجدول الخطوط من غير إعادة تحميل
+    // تحديث فوري لجدول الخطوط من غير إعادة تحميل — ومعاه سطور الرحلة
+    // والاختيارات اللي بتقرأ نفس السطر، عشان تظهر الرحلة الجديدة على طول.
+    applyMutationCache(queryClient, tripLineImpact(ownerId, result.data, "insert"), result);
     upsertInCursorList<TripLine>(queryClient, qk.tripLines(ownerId), result.data);
     onCreated?.(result.data);
     resetForm();

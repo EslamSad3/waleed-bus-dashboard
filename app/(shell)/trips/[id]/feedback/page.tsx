@@ -60,7 +60,7 @@ export default function TripFeedbackPage({ params }: { params: Promise<{ id: str
     { field: "passenger.name", headerName: t("feedback.passenger"), valueGetter: (params) => params.data?.passenger.name },
     { field: "passenger.seats", headerName: t("common.fields.seats"), valueGetter: (params) => params.data?.passenger.seats },
     { field: "trip.line.name", headerName: t("common.fields.tripLine"), valueGetter: (params) => params.data?.trip.line.name },
-    { field: "trip.bus.registrationNumber", headerName: t("common.fields.bus"), valueGetter: (params) => params.data?.trip.bus.registrationNumber },
+    { field: "trip.bus.plateNumber", headerName: t("common.fields.bus"), valueGetter: (params) => params.data?.trip.bus.plateNumber ?? "—" },
     {
       headerName: t("common.fields.snapshottedDriver"),
       valueGetter: (params) => params.data?.trip.driver?.name || "—",
@@ -125,6 +125,9 @@ export default function TripFeedbackPage({ params }: { params: Promise<{ id: str
       ) : (
         <CursorList<TripFeedbackRow>
           gridId={`trip-feedback-${tripId}`}
+          // The feedback belongs to one (owner, line, trip); a different scope
+          // means the loaded pages are a different result set.
+          scopeKey={scopedOwnerId && lineId ? `${scopedOwnerId}:${lineId}` : null}
           initialItems={rows}
           initialCursor={cursor}
           loadMore={async (next) => {

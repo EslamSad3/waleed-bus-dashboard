@@ -11,10 +11,12 @@ import { fetchPermissionCatalog, type Permission } from "@/lib/actions/permissio
 import { fetchRole, replaceRolePermissions, updateRole, type RoleDetail } from "@/lib/actions/roles";
 import { presentPermission } from "@/lib/permission-presentation";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, roleImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 export default function RoleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const queryClient = useQueryClient();
   const [role, setRole] = useState<RoleDetail | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -22,7 +24,6 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
   const [description, setDescription] = useState("");
   const [active, setActive] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // TanStack cache: تفاصيل الدور والمهام بيتجابوا عبر طبقة الكاش
@@ -62,21 +63,23 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
 
   async function saveDetails() {
     if (!role) return;
-    setSaving(true); setError(null); setNote(null);
+    setSaving(true); setError(null);
     const result = await updateRole(role.id, { name: name.trim(), description: description.trim(), isActive: active });
     setSaving(false);
     if (!result.ok) { setError(result.message); return; }
     setRole({ ...role, ...result.data });
-    setNote(t("roles.detail.toast.saved"));
+    // The list behind this page must show the new name/description without a
+    // manual refresh.
+    applyMutationCache(queryClient, roleImpact(result.data, "update"), result);
   }
 
   async function savePermissions() {
     if (!role) return;
-    setSaving(true); setError(null); setNote(null);
+    setSaving(true); setError(null);
     const result = await replaceRolePermissions(role.id, selected);
     setSaving(false);
     if (!result.ok) { setError(result.message); return; }
-    setNote(t("roles.detail.toast.permissionsSaved"));
+    applyMutationCache(queryClient, roleImpact(role, "update"), result);
     reload();
   }
 
@@ -94,7 +97,6 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
       <div className="page-heading"><div className="min-w-0 flex-1"><h1 className="page-title">{role.name}</h1><p className="page-description">{t("roles.detail.description")}</p></div>{role.isSystem ? <span className="max-md:self-start rounded-full bg-[#fff7e3] px-3 py-1 text-sm font-bold text-[#8a6515]">{t("roles.detail.systemBadge")}</span> : null}</div>
       {role.isSystem ? <p className="mb-5 rounded-xl bg-[#fff7e3] p-4 text-sm text-[#725314]">{t("roles.detail.systemNotice")}</p> : null}
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {note ? <p role="status" className="mb-4 rounded-xl bg-green-50 p-4 text-sm text-green-700">{note}</p> : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
         <section className="panel-card p-5 sm:p-6"><h2 className="section-title mb-4">{t("roles.detail.sections.about")}</h2><div className="space-y-4"><label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.detail.fields.name")}</span><Input value={name} onChange={(event) => setName(event.target.value)} disabled={!isEditable} /></label><label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.detail.fields.description")}</span><Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("roles.detail.placeholders.description")} disabled={!isEditable} /></label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} disabled={!isEditable} className="size-4 accent-[#059ff8]" />{t("roles.detail.activeHint")}</label>{isEditable ? <Button type="button" onClick={saveDetails} loading={saving}>{t("roles.detail.actions.saveInfo")}</Button> : null}</div></section>

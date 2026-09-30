@@ -11,7 +11,8 @@ import { CursorList } from "@/components/tables/cursor-list";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { createRole, deleteRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
-import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, roleImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 type FirstPage = { items: Role[]; nextCursor: string | null };
@@ -35,7 +36,7 @@ export default function RolesPage() {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("roles.deleteConfirm.description", { roleName: role.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteRole(role.id);
     if (!result.ok) return setError(result.message);
-    removeFromCursorList<Role>(queryClient, qk.roles, role.id);
+    applyMutationCache(queryClient, roleImpact(role, "remove"), result);
   }
 
   async function save() {
@@ -51,7 +52,7 @@ export default function RolesPage() {
       setError(result.message);
       return;
     }
-    upsertInCursorList(queryClient, qk.roles, result.data);
+    applyMutationCache(queryClient, roleImpact(result.data, "insert"), result);
     setOpen(false);
     router.push(`/roles/${result.data.id}`);
   }

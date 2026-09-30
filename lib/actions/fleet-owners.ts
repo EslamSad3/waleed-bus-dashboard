@@ -73,6 +73,41 @@ export function fetchMyOwner(): Promise<ActionResult<MyOwner>> {
 }
 
 /**
+ * One row of the searchable owner directory (`GET /fleet-owners/options`).
+ * Only ACTIVE owner companies are ever returned, and the server pre-joins
+ * `label` so the picker never has to invent a display format.
+ */
+export type OwnerOption = {
+  id: string;
+  name: string | null;
+  nickname: string | null;
+  phoneNumber: string | null;
+  label: string;
+};
+
+export type OwnerOptionPage = CursorPage<OwnerOption>;
+
+/**
+ * Search the owner directory ACROSS THE WHOLE DATABASE, server-side.
+ *
+ * The old picker fetched one page of `/fleet-owners` and filtered it in the
+ * browser, so any company past the first 20 was unsearchable. Here the term
+ * goes to the API (`q`) and the cursor comes back with the page, so "load more"
+ * walks real results instead of an already-exhausted array.
+ */
+export function fetchOwnerOptions(
+  search: string,
+  cursor: string | null,
+): Promise<ActionResult<OwnerOptionPage>> {
+  const params = new URLSearchParams();
+  const term = search.trim();
+  if (term) params.set("q", term);
+  if (cursor) params.set("cursor", cursor);
+  params.set("limit", "20");
+  return apiGet<OwnerOptionPage>(`/api/fleet-owners/options?${params.toString()}`);
+}
+
+/**
  * Stage an owner picture via direct browser→Supabase upload (Vercel-safe).
  * Link `staged.publicUrl` as `picture` on create/update, and call
  * `discardFleetOwnerPicture` when the user cancels or the record write fails.

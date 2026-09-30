@@ -21,6 +21,7 @@ import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { createBusSchema } from "@/lib/schemas/p1";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { OwnerPicker } from "@/components/owners/owner-picker";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
@@ -134,7 +135,8 @@ export function CreateBusDialog({
       setFormError(r.message);
       return;
     }
-    // تحديث فوري للجداول من غير إعادة تحميل
+    // تحديث فوري للجداول من غير إعادة تحميل — ومعاه عرض العربية ورحلاتها
+    applyMutationCache(queryClient, busImpact({ id: r.data.id, ownerId }, "insert"), r);
     upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, { ...r.data, ownerId, ownerName });
     onCreated?.(r.data);
     resetForm();

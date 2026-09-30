@@ -1,22 +1,48 @@
 import { conflictMessage, type ConflictKey } from "@/lib/errors";
 import { t } from "@/lib/i18n/t";
 
+export const RECORD_MUTATED_EVENT = "dashboard:record-mutated";
+
+function announceRecordMutation(path: string): void {
+  // Upload staging, login and validation do not change dashboard records.
+  if (typeof window === "undefined" || /\/api\/(auth|uploads)(\/|$)/.test(path) ||
+      path.includes("/uploads/") || path.endsWith("/promotions/validate")) return;
+  window.dispatchEvent(new Event(RECORD_MUTATED_EVENT));
+}
+
 /**
  * Client-callable BFF action helpers (P0 login precedent: client fetch to
  * same-origin `/api/*`; cookies httpOnly auto-attach, Origin checked
  * server-side). The proxy already returns Arabic `message`s; these helpers add
  * typing + per-screen bare-409 `CONFLICT` context (research R3).
  */
+/**
+ * The one result shape every call site in `lib/actions` returns.
+ *
+ * On success `message` carries the API's action-specific English text (a hint
+ * for logging/branching — the UI shows the dashboard's own Arabic copy from
+ * `toast.ts`). `data` is `T`, and a successful `DELETE` legitimately yields
+ * `data: null`, which is why success is keyed on `ok` rather than on data being
+ * present.
+ */
 export type ActionResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; message: string; code?: string; fields?: Record<string, string> };
+  | { ok: true; data: T; message?: string }
+  | {
+      ok: false;
+      message: string;
+      code?: string;
+      fields?: Record<string, string>;
+      /** Seconds the client should wait before retrying (429s). */
+      retryAfter?: number;
+    };
 
 type ApiEnvelope<T> = {
   statusCode: number;
   code?: string;
   message?: string;
-  data?: T;
+  data?: T | null;
   details?: { fields?: Record<string, string | string[]> };
+  retryAfter?: number;
 };
 
 function normalizeFields(raw: Record<string, string | string[]> | undefined): Record<string, string> | undefined {
@@ -26,19 +52,34 @@ function normalizeFields(raw: Record<string, string | string[]> | undefined): Re
   );
 }
 
+/**
+ * JSON, multipart, and no-content responses all land on the SAME shape: an
+ * ok-status is a success even when `data` is `null` (DELETE), and a failure
+ * always carries the proxy's Arabic message plus the code and field errors the
+ * caller needs.
+ */
 async function parse<T>(res: Response, conflictKey?: ConflictKey): Promise<ActionResult<T>> {
   const payload = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
-  if (res.ok && payload && "data" in payload && payload.data !== undefined) {
-    return { ok: true, data: payload.data as T };
+  if (res.ok) {
+    return {
+      ok: true,
+      // A 200 with no body is still a success; `data: null` is a valid payload.
+      data: (payload && "data" in payload ? payload.data : null) as T,
+      ...(typeof payload?.message === "string" ? { message: payload.message } : {}),
+    };
   }
-  // DELETE-style 200s may carry data: null — treat ok-status as success.
-  if (res.ok) return { ok: true, data: null as T };
   const code = payload?.code;
   const message =
     code === "CONFLICT" && conflictKey
       ? conflictMessage(conflictKey)
       : (payload?.message ?? t("common.error.unknown"));
-  return { ok: false, message, code, fields: normalizeFields(payload?.details?.fields) };
+  return {
+    ok: false,
+    message,
+    code,
+    fields: normalizeFields(payload?.details?.fields),
+    ...(typeof payload?.retryAfter === "number" ? { retryAfter: payload.retryAfter } : {}),
+  };
 }
 
 export async function apiGet<T>(path: string, ownerId?: string | null): Promise<ActionResult<T>> {
@@ -69,7 +110,9 @@ export async function apiSend<T>(
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    return parse<T>(res, conflictKey);
+    const result = await parse<T>(res, conflictKey);
+    if (result.ok) announceRecordMutation(path);
+    return result;
   } catch {
     return { ok: false, message: t("common.error.network"), code: "NETWORK_ERROR" };
   }
@@ -176,7 +219,9 @@ export async function apiSendFile<T>(
     const form = new FormData();
     form.append(fieldName, file);
     const res = await fetch(path, { method: "POST", body: form });
-    return parse<T>(res);
+    const result = await parse<T>(res);
+    if (result.ok) announceRecordMutation(path);
+    return result;
   } catch {
     return { ok: false, message: t("common.error.network"), code: "NETWORK_ERROR" };
   }

@@ -11,6 +11,8 @@ import { fetchDriver, updateDriver, MEMBER_STATUS_AR, type DriverRow, type Membe
 import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
 import type { StagedUpload } from "@/lib/actions/http";
 import { t } from "@/lib/i18n/t";
+import { useQueryClient } from "@/lib/queries";
+import { applyMutationCache, driverImpact } from "@/lib/cache/mutations";
 
 const REVOKE_WARNING = t("common.confirm.revokeSessions");
 
@@ -31,6 +33,7 @@ export function EditDriverDialog({
   onSaved?: (fresh: DriverRow) => void;
 }) {
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [phone, setPhone] = useState("");
@@ -103,9 +106,18 @@ export function EditDriverDialog({
       setError(r.message);
       return;
     }
-    const refreshed = await fetchDriver(ownerId, driverUserId);
+    // The list, the roster and the detail are updated from the returned row, so
+    // closing the dialog never needs a page refresh.
+    applyMutationCache(
+      queryClient,
+      driverImpact({
+        driver: { id: r.data.id, ownerId, userId: driverUserId },
+        mode: "update",
+      }),
+      r,
+    );
     setSaving(false);
-    if (refreshed.ok) onSaved?.(refreshed.data);
+    onSaved?.(r.data);
     resetForm();
     onClose();
   }

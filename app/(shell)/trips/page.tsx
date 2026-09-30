@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ import { fetchDriversPage } from "@/lib/actions/members";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 import { EditTripDialog } from "@/components/trips/edit-trip-dialog";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
-import { qk, removeFromCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
 
@@ -48,7 +49,10 @@ export default function TripsPage() {
   );
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
   const { data: driversPage } = useApiQuery(
-    qk.drivers,
+    // The OWNER roster, deliberately not `qk.drivers` (the global one): the two
+    // lists used to share a key, so opening /trips replaced the /drivers cache
+    // and vice versa.
+    qk.ownerDrivers(scopedOwnerId ?? "none"),
     () => fetchDriversPage(scopedOwnerId!, null),
     { enabled: Boolean(scopedOwnerId) },
   );
@@ -62,19 +66,49 @@ export default function TripsPage() {
 
   const { data: trips, isLoading, error } = useApiQuery<TripPage>(qk.tripsIndex("all"), () => fetchSystemTripsPage(null));
 
-  const withLabels = (trip: Trip): TripRow => ({
-    ...trip,
-    busName: trip.bus?.plateNumber || trip.bus?.registrationNumber || trip.busId.slice(0, 8),
-    driverName: trip.driverUserId
-      ? (driversPage?.items.find((driver) => driver.userId === trip.driverUserId)?.name ?? t("common.value.withoutName"))
-      : (trip.driver?.name ?? t("common.value.unassigned")),
-  });
+  /** Stable `id → name` map, so a driver lookup is not a scan per trip. */
+  const driverNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const driver of driversPage?.items ?? []) {
+      const id = driver.userId ?? driver.id;
+      map.set(id, driver.name || driver.nickname || driver.phoneNumber || t("common.value.withoutName"));
+    }
+    return map;
+  }, [driversPage]);
+
+  /**
+   * The derived rows MUST be memoized on the data, not rebuilt per render.
+   * `CursorList` reconciles by row identity; handing it a brand-new array on
+   * every render made each render look like a fresh first page, which is what
+   * silently discarded every page loaded through "load more".
+   */
+  const withLabels = useCallback(
+    (trip: Trip): TripRow => ({
+      ...trip,
+      busName: trip.bus?.plateNumber ?? trip.busId.slice(0, 8),
+      driverName: trip.driverUserId
+        ? (driverNameById.get(trip.driverUserId) ?? t("common.value.withoutName"))
+        : (trip.driver?.name ?? t("common.value.unassigned")),
+    }),
+    [driverNameById],
+  );
+
+  const firstPage = useMemo(
+    () => (trips?.items ?? []).map(withLabels),
+    [trips, withLabels],
+  );
 
   async function removeTrip(trip: TripRow) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.list.deleteConfirm.description", { tripOrigin: trip.origin ?? "—", tripDestination: trip.destination ?? "—" }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteTrip(trip.ownerId, trip.lineId, trip.id);
     if (!result.ok) return;
-    removeFromCursorList<TripRow>(queryClient, qk.tripsIndex("all"), trip.id);
+    // The trip's OWN owner/line — not the page's filter, which the operator may
+    // have changed while the confirm dialog was open.
+    applyMutationCache(
+      queryClient,
+      tripImpact({ trip: { id: trip.id, ownerId: trip.ownerId, lineId: trip.lineId }, mode: "remove" }),
+      result,
+    );
   }
 
   const query = (listFilters.q ?? "").trim();
@@ -130,7 +164,10 @@ export default function TripsPage() {
       ) : (
         <CursorList<TripRow>
           gridId="trips-all"
-          initialItems={(trips?.items ?? []).map(withLabels)}
+          // The query scope is the SAME flat index for every filter here (the
+          // company/line pickers are record filters), so no scope key: a save
+          // must reconcile the loaded pages, not throw them away.
+          initialItems={firstPage}
           initialCursor={trips?.nextCursor ?? null}
           loadMore={async (cursor) => {
             const result = await fetchSystemTripsPage(cursor);

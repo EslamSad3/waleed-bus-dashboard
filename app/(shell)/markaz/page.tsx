@@ -20,7 +20,8 @@ import {
   type Governorate,
   type Markaz,
 } from "@/lib/actions/trip-lines";
-import { qk, removeFromList, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, referenceImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 export default function MarkazPage() {
@@ -74,7 +75,7 @@ export default function MarkazPage() {
       }
       const result = await updateMarkaz(editing!.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
       if (!result.ok) return setDialogError(result.message);
-      upsertInList(queryClient, qk.markazAll, result.data);
+      applyMutationCache(queryClient, referenceImpact(result.data.id, "markaz", "update"), result);
       closeDialog();
       return;
     }
@@ -89,21 +90,21 @@ export default function MarkazPage() {
       nameEn: nameEn.trim(),
     });
     if (!result.ok) return setDialogError(result.message);
-    upsertInList(queryClient, qk.markazAll, result.data);
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "markaz", "insert"), result);
     closeDialog();
   }
 
   async function toggleActive(markaz: Markaz) {
     const result = await updateMarkaz(markaz.id, { isActive: !markaz.isActive });
     if (!result.ok) return setDialogError(result.message);
-    upsertInList(queryClient, qk.markazAll, result.data);
+    applyMutationCache(queryClient, referenceImpact(result.data.id, "markaz", "update"), result);
   }
 
   async function removeMarkaz(markaz: Markaz) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("markaz.deleteConfirm.description", { markazNameAr: markaz.nameAr }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteMarkaz(markaz.id);
     if (!result.ok) return setDialogError(result.message);
-    removeFromList<Markaz>(queryClient, qk.markazAll, markaz.id);
+    applyMutationCache(queryClient, referenceImpact(markaz.id, "markaz", "remove"), result);
   }
 
   const dialogOpen = creating || editing !== null;

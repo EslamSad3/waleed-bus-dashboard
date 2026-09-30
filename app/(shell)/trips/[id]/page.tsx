@@ -14,14 +14,15 @@ import {
   type Trip,
 } from "@/lib/actions/trips";
 import { fetchBus, type Bus } from "@/lib/actions/buses";
-import { apiGet } from "@/lib/actions/http";
+import { apiGet, type ActionResult } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { fetchTripFeedbackPage, type TripFeedbackRow } from "@/lib/actions/feedback";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { qk, useApiQuery } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { DetailPageSkeleton, InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Trash2 } from "lucide-react";
@@ -42,11 +43,11 @@ export default function TripDetailPage({
   const { id } = use(params);
   const { ownerId: scopeOwnerId, lineId: scopeLineId } = use(searchParams);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [ownerId, setOwnerId] = useState(scopeOwnerId ?? "");
   const [lineId, setLineId] = useState(scopeLineId ?? "");
   const [trip, setTrip] = useState<Trip | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bus, setBus] = useState<Bus | null>(null);
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
@@ -110,10 +111,38 @@ export default function TripDetailPage({
     });
   }, [ownerId, lineId, id]);
 
+  /**
+   * Writes a successful trip mutation into the cache BEFORE navigating away.
+   *
+   * This is the bug the whole feature is about: `router.refresh()` re-renders
+   * the server tree but never touches TanStack's client cache, so returning to
+   * `/trips` re-rendered the STALE list — a saved fare, a cancelled status, or a
+   * deleted trip simply did not appear until something else invalidated the
+   * key by luck.
+   *
+   * The scope comes from the trip's OWN `ownerId`, never from a global owner
+   * filter that may have been changed while the operator was on this page.
+   */
+  function syncTrip(
+    result: ActionResult<unknown>,
+    mode: "insert" | "update" | "remove",
+    subject: Pick<Trip, "id" | "ownerId" | "lineId">,
+  ) {
+    if (!result.ok) return;
+    applyMutationCache(queryClient, tripImpact({ trip: subject, mode }), result);
+  }
+
+  /**
+   * Page-level outcome: the persistent ERROR alert beside the controls. The
+   * success is left to the action wrapper's toast, so one save produces exactly
+   * one notice, and the cache is reconciled before any navigation.
+   */
   function done(ok: boolean, msg: string, updated?: Trip) {
     setError(ok ? null : msg);
-    setNote(ok ? msg : null);
-    if (ok && updated) setTrip(updated);
+    if (ok && updated) {
+      setTrip(updated);
+      syncTrip({ ok: true, data: updated }, "update", updated);
+    }
   }
 
   async function save() {
@@ -138,13 +167,16 @@ export default function TripDetailPage({
   }
 
   async function remove() {
-    if (!ownerId || !lineId) return;
+    if (!ownerId || !lineId || !trip) return;
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const r = await deleteTrip(ownerId, lineId, id);
     if (!r.ok) {
       done(false, r.message);
       return;
     }
+    // Remove the row from every list BEFORE navigating, so the trip is already
+    // gone from `/trips` by the time the operator gets there.
+    syncTrip(r, "remove", trip);
     router.push("/trips");
     router.refresh();
   }
@@ -162,6 +194,7 @@ export default function TripDetailPage({
     if (result.ok) {
       setTrip(result.data);
       setDriverId("");
+      syncTrip(result, "update", result.data);
     }
   }
 
@@ -172,6 +205,7 @@ export default function TripDetailPage({
     if (result.ok) {
       setTrip(result.data);
       setDriverId("");
+      syncTrip(result, "update", result.data);
     }
   }
 
@@ -264,7 +298,6 @@ export default function TripDetailPage({
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      {note && <p role="status" className="text-sm text-green-700">{note}</p>}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel-card p-5 sm:p-6">
@@ -293,8 +326,7 @@ export default function TripDetailPage({
             <p className="text-xs text-[#687886]">{t("trips.detail.routeFromLineHint", { lineName: trip.line?.name ?? "—" })}</p>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
               <span className="block text-[#606060]">{t("trips.detail.bus")}</span>
-              {bus ? <strong>{bus.registrationNumber}</strong> : <InlineBlockSkeleton className="h-5 w-36" />}
-              {bus?.plateNumber ? <span className="ms-2 text-[#606060]" dir="ltr">{bus.plateNumber}</span> : null}
+              {bus ? <strong dir="ltr">{bus.plateNumber ?? "—"}</strong> : <InlineBlockSkeleton className="h-5 w-36" />}
               <span className="ms-2 text-[#606060]">{t("trips.detail.fields.capacityInline")} {bus?.capacity ?? "—"}</span>
               <span className="mt-2 flex items-center gap-2">
                 <span className="text-[#606060]">{t("common.fields.busRatingAvg")}</span>
@@ -385,6 +417,7 @@ export default function TripDetailPage({
           <CursorList<TripFeedbackRow>
             gridId={`trip-feedback-${id}`}
             key={`${id}-${feedbackReloadKey}`}
+            scopeKey={`${ownerId}:${lineId}`}
             initialItems={feedback.items}
             initialCursor={feedback.nextCursor}
             loadMore={async (cursor) => {

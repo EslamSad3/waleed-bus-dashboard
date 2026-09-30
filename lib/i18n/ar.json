@@ -33,7 +33,6 @@
       "capacity": "السعة",
       "tripCount": "عدد الرحلات",
       "driver": "السواق",
-      "registrationNumber": "رقم التسجيل",
       "status": "الحالة",
       "createdAt": "تاريخ الإنشاء",
       "nickname": "اسم الشهرة",
@@ -263,7 +262,7 @@
         "departureAt": "موعد الإقلاع:",
         "seatPriceTotal": "سعر المقعد / الإجمالي:",
         "busVehicle": "العربية / المركبة:",
-        "registrationNumberInline": "رقم التسجيل:",
+        "plateNumberInline": "رقم اللوحة:",
         "capacityInline": "· السعة:",
         "availableSeats": "المقاعد المتاحة حالياً بالرحلة:",
         "assignedDriver": "السائق المسؤول:",
@@ -571,6 +570,10 @@
       "active": "نشط",
       "suspended": "موقوف",
       "revoked": "ملغي الصلاحية"
+    },
+    "assignmentStatus": {
+      "active": "ساري",
+      "ended": "منتهي"
     }
   },
   "brands": {
@@ -627,7 +630,7 @@
         "details": "البيانات",
         "statusAndDriver": "الحالة والسواق"
       },
-      "imageAlt": "صورة العربية {busRegistrationNumber}",
+      "imageAlt": "صورة العربية {plateNumber}",
       "seatsUnit": "مقعد",
       "currentDriver": "السواق الحالي",
       "noDriver": "لا يوجد سواق معين",
@@ -646,7 +649,7 @@
       },
       "editDialog": {
         "title": "تعديل العربية",
-        "description": "تحديث بيانات {busRegistrationNumber}."
+        "description": "تحديث بيانات {plateNumber}."
       },
       "pickColor": "اختار اللون…",
       "imageLabel": "صورة العربية",
@@ -660,7 +663,7 @@
       },
       "pickDriver": "اختار السواق",
       "pickDriverOption": "اختار السواق",
-      "assignedElsewhereSuffix": " · معيّن حاليًا على {assignmentRegistrationNumber}",
+      "assignedElsewhereSuffix": " · معيّن حاليًا على {plateNumber}",
       "noEligibleDrivers": "لا يوجد سواقون نشطون في هذه العربيه بعد. أضف سواقًا من صفحة السواقين أولًا.",
       "tripsTitle": "رحلات العربيه",
       "tripsDescription": "كل الرحلات اللي مشيت على العربيه دي",
@@ -676,8 +679,8 @@
     "description": "كل العربيات في العربيات المسجلة، مع حالتها وبيانات تشغيلها.",
     "newBus": "عربية جديدة",
     "filters": {
-      "searchAria": "بحث برقم التسجيل أو اللوحة أو العربيه",
-      "searchPlaceholder": "رقم التسجيل أو اللوحة أو العربيه"
+      "searchAria": "بحث برقم اللوحة أو العربيه",
+      "searchPlaceholder": "رقم اللوحة أو العربيه"
     },
     "empty": "لا توجد عربيات مسجلة في أي عربيه.",
     "createDialog": {
@@ -686,7 +689,7 @@
         "pickOwner": "اختار العربيات الأول"
       },
       "title": "عربية جديدة",
-      "description": "سجّل العربية داخل عربيهها: اللوحة واللون والصورة مطلوبين — رقم التسجيل بيتولد تلقائيًا.",
+      "description": "سجّل العربية داخل عربيهها: اللوحة واللون والصورة مطلوبين.",
       "submit": "إضافة العربية"
     },
     "placeholders": {
@@ -700,7 +703,7 @@
         "modelYearRange": "سنة الموديل لازم تكون بين 1980 و 2100."
       },
       "title": "تعديل عربية",
-      "description": "رقم التسجيل {busRegistrationNumber} — بيانات التشغيل بس هي اللي بتتعدل.",
+      "description": "رقم اللوحة {plateNumber} — بيانات التشغيل بس هي اللي بتتعدل.",
       "imageLabel": "صورة العربية (اختياري)",
       "imageHint": "لو رفعت صورة جديدة هتتبعت مكان القديمة."
     },
@@ -720,6 +723,7 @@
       "deleteConfirm": {
         "description": "الإجراء ده هيقفل جلسات المستخدم فورا — تمسح السواق (بينهي العضوية والتعيين النشط)؟"
       },
+      "revokeNotice":"ملاحظة الإلغاء",
       "manageTitle": "إدارة السواق",
       "description": "بيانات الحساب وعضوية العربيه وسجل تعيينات العربيات.",
       "deleteDriver": "حذف السواق",
@@ -1701,7 +1705,6 @@
       "nickname": "الاسم المختصر",
       "picture": "الصورة",
       "phoneNumber": "الموبايل",
-      "registrationNumber": "رقم التسجيل",
       "plateNumber": "رقم اللوحة",
       "capacity": "السعة",
       "isActive": "الحالة",

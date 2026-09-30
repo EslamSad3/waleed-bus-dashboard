@@ -4,8 +4,16 @@ import { busApiUrl } from "./config";
 import type { BackendFailure } from "./errors";
 
 export type BusResult<T> =
-  | { ok: true; status: number; data: T }
-  | { ok: false; status: number; code: string; details?: BackendFailure["details"] };
+  | { ok: true; status: number; data: T; message?: string }
+  | {
+      ok: false;
+      status: number;
+      code: string;
+      /** Raw English API text — for logs only, never for the UI. */
+      rawMessage?: string;
+      details?: BackendFailure["details"];
+      retryAfter?: number;
+    };
 
 type BusFetchOptions = {
   method?: string;
@@ -93,10 +101,20 @@ export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Pro
       ok: false,
       status: res.status,
       code,
+      // Kept for server logs and debugging only: the proxy translates `code`
+      // into Egyptian Arabic, so this English text never reaches the UI.
+      rawMessage: failure.message,
       details: failure.details,
+      retryAfter: failure.retryAfter,
     };
   }
 
-  const envelope = (payload ?? {}) as { data?: T };
-  return { ok: true, status: res.status, data: envelope.data as T };
+  const envelope = (payload ?? {}) as { data?: T; message?: string };
+  return {
+    ok: true,
+    status: res.status,
+    data: envelope.data as T,
+    // The API's action-specific success message (mutations only; GETs omit it).
+    message: envelope.message,
+  };
 }

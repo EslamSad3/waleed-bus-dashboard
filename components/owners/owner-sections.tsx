@@ -41,6 +41,8 @@ import { deleteBooking, fetchAdminBookingsPage, type AdminBookingListItem } from
 import { fetchOwnerReports, type FleetReports } from "@/lib/actions/reports";
 import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { t } from "@/lib/i18n/t";
+import { useQueryClient } from "@/lib/queries";
+import { applyMutationCache, memberImpact } from "@/lib/cache/mutations";
 
 export type OwnerSectionKey =
   | "buses"
@@ -130,6 +132,7 @@ function OwnerMembers({ ownerId }: { ownerId: string }) {
  * existing Arabic validation and duplicate-member errors are surfaced as-is.
  */
 function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => void }) {
+  const queryClient = useQueryClient();
   const [userId, setUserId] = useState("");
   const [roleSlug, setRoleSlug] = useState("");
   const [users, setUsers] = useState<{ id: string; label: string }[]>([]);
@@ -181,6 +184,7 @@ function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => v
       setError(result.message);
       return;
     }
+    applyMutationCache(queryClient, memberImpact(ownerId, result.data, "insert"), result);
     setUserId("");
     onAdded();
   }
@@ -307,7 +311,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
   async function removeBus(bus: Bus) {
     if (!(await confirm({
       title: t("common.actions.deleteConfirmTitle"),
-      description: t("buses.list.deleteConfirm.description", { value: bus.plateNumber || bus.registrationNumber }),
+      description: t("buses.list.deleteConfirm.description", { value: bus.plateNumber ?? t("common.value.withoutName") }),
       confirmLabel: t("common.actions.delete"),
       destructive: true,
     }))) return;
@@ -316,8 +320,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
   }
 
   const columns: CommunityColumnDef<Bus>[] = [
-    { field: "registrationNumber", headerName: t("common.fields.registrationNumber") },
-    { field: "plateNumber", headerName: t("common.fields.plateNumber") },
+    { field: "plateNumber", headerName: t("common.fields.plateNumber"), valueFormatter: (params) => params.value ?? "—" },
     { field: "capacity", headerName: t("common.fields.capacity") },
     {
       colId: "tripCount",
@@ -350,7 +353,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
           emptyMessage={t("buses.empty")}
           renderItem={(bus) => (
             <RowActions
-              label={t("buses.list.rowActions", { value: bus.plateNumber || bus.registrationNumber })}
+              label={t("buses.list.rowActions", { value: bus.plateNumber ?? t("common.value.withoutName") })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?ownerId=${ownerId}` },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
@@ -360,7 +363,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
           )}
         />
       ) : (
-        <TableSkeleton rows={3} columns={6} />
+        <TableSkeleton rows={3} columns={5} />
       )}
       <CreateBusDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} onCreated={reload} />
       <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => { setBusForEdit(null); reload(); }} />

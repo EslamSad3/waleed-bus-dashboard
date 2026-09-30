@@ -5,22 +5,27 @@ import { use, useState } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { OwnerPicker } from "@/components/owners/owner-picker";
 import { RatingCell } from "@/components/owners/rating-cell";
-import { useFilterStore } from "@/stores/filters";
+import { driverHref, useDriverOwnerScope } from "@/lib/owner-scope";
 import {
   fetchDriverAssignmentsPage,
   fetchDriverRatingRowsPage,
   fetchDriverTripRowsPage,
+  ASSIGNMENT_STATUS_AR,
   type DriverAssignmentRow,
 } from "@/lib/actions/members";
+import { TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import type { DriverRatingRow, DriverTripRow } from "@/lib/actions/feedback";
 import { t } from "@/lib/i18n/t";
 
 /**
  * Shared shell for the three driver sub-pages (assignments / trips / ratings).
- * Each one is a complete, cursor-paginated history; the owner picker decides
+ * Each one is a complete, cursor-paginated history; the owner scope decides
  * which company's slice is shown, and the numbers stay honest about that scope.
+ *
+ * The scope comes from `?owner=` (the roster link writes the row's own company)
+ * before the saved global filter, and a bare bookmark resolves it from the
+ * driver's own roster row — so there is NO company selector on these screens.
  */
 function DriverSubPage({
   driverId,
@@ -37,8 +42,7 @@ function DriverSubPage({
   emptyMessage: string;
   load: (ownerId: string, driverId: string, cursor: string | null) => Promise<{ items: never[]; nextCursor: string | null }>;
 }) {
-  const scopedOwnerId = useFilterStore((s) => s.ownerId);
-  const setOwnerId = useFilterStore((s) => s.setOwnerId);
+  const { ownerId: scopedOwnerId } = useDriverOwnerScope(driverId);
   const [page, setPage] = useState<{ items: never[]; nextCursor: string | null } | null>(null);
   const [token, setToken] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -59,19 +63,15 @@ function DriverSubPage({
           <p className="page-description">{description}</p>
         </div>
         <Link
-          href={`/drivers/${driverId}`}
+          href={driverHref(driverId, scopedOwnerId ?? "")}
           className="text-sm font-medium text-[#059ff8] underline"
         >
           {t("common.actions.backTo", { value: t("common.fields.driver") })}
         </Link>
       </div>
 
-      <div className="max-w-md">
-        <OwnerPicker ownerId={scopedOwnerId ?? ""} onOwnerChange={(id) => { setOwnerId(id || null); setToken(0); setPage(null); }} />
-      </div>
-
       {!scopedOwnerId ? (
-        <p className="panel-card p-4 text-sm text-[#606060]">{t("drivers.detail.pickOwnerDescription")}</p>
+        <TableSkeleton rows={6} columns={columns.length} />
       ) : error ? (
         <p role="alert" className="text-sm text-red-600">{error}</p>
       ) : !page ? (
@@ -79,6 +79,9 @@ function DriverSubPage({
       ) : (
         <CursorList<never>
           gridId={`driver-sub-${title}`}
+          // The company's slice is the query scope: a link that changes
+          // `?owner=` must discard the pages loaded for the previous one.
+          scopeKey={scopedOwnerId}
           initialItems={page.items}
           initialCursor={page.nextCursor}
           loadMore={async (cursor) => load(scopedOwnerId, driverId, cursor)}
@@ -94,9 +97,8 @@ function DriverSubPage({
 export function DriverAssignmentsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const columns: CommunityColumnDef<DriverAssignmentRow>[] = [
-    { field: "registrationNumber", headerName: t("common.fields.registrationNumber") },
-    { field: "plateNumber", headerName: t("common.fields.plateNumber"), valueFormatter: (params) => params.value || "—" },
-    { field: "status", headerName: t("common.fields.status") },
+    {field:"plateNumber",headerName:t("common.fields.plateNumber"),valueFormatter:(params)=>params.value||"—"},
+    { field: "status", headerName: t("common.fields.status"), valueFormatter: (params) => ASSIGNMENT_STATUS_AR[String(params.value)] ?? String(params.value ?? "—") },
     { field: "createdAt", headerName: t("common.fields.createdAt"), valueFormatter: (params) => new Date(params.value).toLocaleDateString("ar-EG") },
     { field: "endedAt", headerName: t("drivers.columns.endedAt"), valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
   ];
@@ -122,9 +124,9 @@ export function DriverTripsPage({ params }: { params: Promise<{ id: string }> })
     { field: "line.name", headerName: t("common.fields.tripLine"), valueGetter: (params) => params.data?.line.name },
     { field: "line.origin", headerName: t("common.fields.origin"), valueGetter: (params) => params.data?.line.origin || "—" },
     { field: "line.destination", headerName: t("common.fields.destination"), valueGetter: (params) => params.data?.line.destination || "—" },
-    { field: "bus.registrationNumber", headerName: t("common.fields.bus"), valueGetter: (params) => params.data?.bus.registrationNumber },
+    {field:"bus.plateNumber",headerName:t("common.fields.plateNumber"),valueGetter:(params)=>params.data?.bus.plateNumber||"—"},
     { field: "departAt", headerName: t("common.fields.date"), valueGetter: (params) => new Date(params.data?.departAt ?? 0).toLocaleString("ar-EG") },
-    { field: "status", headerName: t("common.fields.status") },
+    { field: "status", headerName: t("common.fields.status"), valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? String(params.value ?? "—") },
     { field: "passengerCount", headerName: t("common.fields.passengerCount") },
     { headerName: t("common.fields.driverRating"), cellRenderer: (params: { data: DriverTripRow }) => <RatingCell value={params.data.driverRatingAvg} /> },
     { headerName: t("common.fields.busRating"), cellRenderer: (params: { data: DriverTripRow }) => <RatingCell value={params.data.busRatingAvg} /> },

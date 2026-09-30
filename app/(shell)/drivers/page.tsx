@@ -1,37 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, History, Pencil, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { OwnerPicker } from "@/components/owners/owner-picker";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
 import {
   fetchSystemDriversPage,
-  inviteDriver,
   removeDriver,
   MEMBER_STATUS_AR,
   type DriverRow,
   type SystemDriverRow,
 } from "@/lib/actions/members";
-import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
-import type { StagedUpload } from "@/lib/actions/http";
-import { driverFreshSchema } from "@/lib/schemas/p1";
-import { qk, removeFromCursorList, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
+import { driverHref } from "@/lib/owner-scope";
+import { applyMutationCache, driverImpact } from "@/lib/cache/mutations";
+import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
 import { t } from "@/lib/i18n/t";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
 
+/**
+ * Global (cross-owner) driver roster.
+ *
+ * There is deliberately NO page-level owner selector here: the list spans every
+ * company, and filtering it to one would contradict what the screen is for. A
+ * row still carries its own `ownerId`, which is what its detail/history links
+ * use so opening a driver lands on THAT driver's company instead of a stale
+ * global filter.
+ */
 export default function DriversPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -42,10 +46,45 @@ export default function DriversPage() {
 
   async function removeDriverRow(driver: SystemDriverRow) {
     const label = driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel");
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.list.deleteConfirm.description", { label: label, value: driver.owner?.name ?? "" }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const result = await removeDriver(driver.owner.id, driver.userId ?? driver.id);
+    if (
+      !(await confirm({
+        title: t("common.actions.deleteConfirmTitle"),
+        description: t("drivers.list.deleteConfirm.description", {
+          label,
+          value: driver.isIndependent
+            ? t("drivers.list.independentOwner")
+            : driver.owner?.name ?? "",
+        }),
+        confirmLabel: t("common.actions.delete"),
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    const result = await removeDriver(driver.owner.id, driver.userId ?? driver.id, {
+      isIndependent: driver.isIndependent,
+      ownerLabel: driver.owner?.name ?? null,
+    });
     if (!result.ok) return;
-    removeFromCursorList<SystemDriverRow>(queryClient, qk.drivers, driver.id);
+    // One impact declaration for the global roster, the owner roster, the detail
+    // slot and the dependent histories — and it runs ONLY on success, so a
+    // failed removal can never leave a phantom row behind.
+    applyMutationCache(
+      queryClient,
+      driverImpact({
+        driver: {
+          id: driver.id,
+          ownerId: driver.owner.id,
+          userId: driver.userId ?? driver.id,
+        },
+        mode: "remove",
+        // A removed independent driver is REVOKED, not deleted: keep the row in
+        // the cached page with its new status so an administrator can review or
+        // reactivate it instead of watching it vanish.
+        revoked: driver.isIndependent,
+      }),
+      result,
+    );
   }
 
   // بعد الحفظ من نافذة التعديل — الـ row المحدث يوصل الكاش فورًا من غير رفريش
@@ -65,8 +104,22 @@ export default function DriversPage() {
       ),
     },
     { field: "phoneNumber", headerName: t("common.fields.phone") },
-    { field: "owner.name", headerName: t("common.fields.owner"), valueGetter: (params) => params.data?.owner?.name || t("common.value.ownerWithoutName") },
-    { field: "assignedBus.registrationNumber", headerName: t("drivers.columns.assignedBus"), valueGetter: (params) => params.data?.assignedBus?.registrationNumber || t("drivers.list.notAssigned") },
+    {
+      // A personal membership has no company behind it — showing the driver's
+      // own name in the "owner" column would present a solo driver as a fleet
+      // owner, which is exactly the confusion this column exists to prevent.
+      field: "owner.name",
+      headerName: t("common.fields.owner"),
+      valueGetter: (params) =>
+        params.data?.isIndependent ? t("drivers.list.independentOwner") : params.data?.owner?.name || t("common.value.ownerWithoutName"),
+    },
+    {
+      // Plate number is what the operator recognises.
+      field: "assignedBus.plateNumber",
+      headerName: t("drivers.columns.assignedBus"),
+      valueGetter: (params) =>
+        params.data?.assignedBus?.plateNumber ?? t("drivers.list.notAssigned"),
+    },
     {
       headerName: t("drivers.columns.overallRating"),
       cellRenderer: (params: { data: SystemDriverRow }) => <RatingCell value={params.data.stats?.overallRating ?? null} />,
@@ -105,21 +158,34 @@ export default function DriversPage() {
           keyOf={(driver) => driver.id}
           columnDefs={columns}
           emptyMessage={t("drivers.empty")}
-          renderItem={(driver) => (
-            <RowActions
-              label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
-              actions={[
-                // Detail links use the DRIVER USER id, which is stable across
-                // membership churn and keys every driver sub-resource.
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.userId ?? driver.id}` },
-                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver) },
-              ]}
-            />
-          )}
+          renderItem={(driver) => {
+            const driverUserId = driver.userId ?? driver.id;
+            return (
+              <RowActions
+                label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
+                actions={[
+                  // Detail links use the DRIVER USER id (stable across membership
+                  // churn) and carry THIS row's company, so opening a driver
+                  // never lands on an unrelated global owner filter.
+                  { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) },
+                  { label: t("drivers.subPages.trips.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/trips") },
+                  { label: t("drivers.subPages.assignments.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/assignments") },
+                  { label: t("drivers.subPages.ratings.title"), icon: Star, href: driverHref(driverUserId, driver.owner.id, "/ratings") },
+                  { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
+                  { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver) },
+                ]}
+              />
+            );
+          }}
         />
       )}
-      <CreateDriverDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateDriverDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(driver) =>
+          upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, driver)
+        }
+      />
       <EditDriverDialog
         open={Boolean(driverForEdit)}
         driver={driverForEdit}

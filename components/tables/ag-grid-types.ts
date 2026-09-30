@@ -15,10 +15,16 @@ export type CursorPage<T> = {
 
 export type AgGridTableProps<T> = {
   gridId: string;
+  /** The ACCUMULATED rows. The grid is fully controlled: it never keeps a copy. */
   rows: T[];
   columnDefs: CommunityColumnDef<T>[];
   nextCursor?: string | null;
-  loadMore?: (cursor: string) => Promise<CursorPage<T>>;
+  /**
+   * Asks the owner (CursorList) for the next page. Resolves once the owner has
+   * appended it; the return value is ignored because the owner is the one that
+   * holds the accumulated rows.
+   */
+  loadMore?: (cursor: string) => Promise<void> | void;
   scopeKey?: string | null;
   loading?: boolean;
   errorMessage?: string | null;

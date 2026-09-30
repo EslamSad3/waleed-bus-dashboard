@@ -112,6 +112,7 @@ export type TripDetails = {
   bus?: {
     id: string;
     registrationNumber: string;
+    plateNumber?: string | null;
     capacity: number;
   } | null;
   driver?: {
@@ -250,6 +251,8 @@ export function verifyBookingPayment(
   return notifyResult(
     t("bookings.toast.paymentVerified"),
     apiSend(`/api/admin/bookings/${id}/payment/verify`, "POST", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 
@@ -260,6 +263,8 @@ export function failBookingPayment(
   return notifyResult(
     t("bookings.toast.paymentFailed"),
     apiSend(`/api/admin/bookings/${id}/payment/fail`, "POST", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 
@@ -280,6 +285,8 @@ export function refundBookingPayment(
   return notifyResult(
     t("bookings.toast.refunded"),
     apiSend(`/api/admin/bookings/${id}/payment/refund`, "POST", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 
@@ -299,6 +306,8 @@ export function forceCancelBooking(
   return notifyResult(
     t("bookings.toast.cancelled"),
     apiSend(`/api/admin/bookings/${id}/cancel`, "POST", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 
@@ -309,6 +318,8 @@ export function reinstateBooking(
   return notifyResult(
     t("bookings.toast.reinstated"),
     apiSend(`/api/admin/bookings/${id}/reinstate`, "POST", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 
@@ -327,6 +338,8 @@ export function overrideBookingOperational(
   return notifyResult(
     t("bookings.toast.boardingUpdated"),
     apiSend(`/api/admin/bookings/${id}/operational`, "PATCH", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 
@@ -338,6 +351,8 @@ export function resolveIncidentReport(
   return notifyResult(
     t("bookings.toast.reportClosed"),
     apiSend(`/api/admin/bookings/${bookingId}/reports/${reportId}`, "PATCH", input),
+    // The dialog renders `fields` through ActionErrorAlert; a toast would repeat it.
+    { rendersFieldErrors: true },
   );
 }
 

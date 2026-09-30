@@ -439,7 +439,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               <span className="font-semibold text-[#1a1a1a]">
                 {booking.trip.bus ? (
                   <>
-                    {t("bookings.detail.fields.registrationNumberInline")} <span className="font-bold" dir="ltr">{booking.trip.bus.registrationNumber}</span> {t("bookings.detail.fields.capacityInline")} {booking.trip.bus.capacity} {t("bookings.detail.seatsUnitPlural")}
+                    {t("bookings.detail.fields.plateNumberInline")} <span className="font-bold" dir="ltr">{booking.trip.bus.plateNumber ?? "—"}</span> {t("bookings.detail.fields.capacityInline")} {booking.trip.bus.capacity} {t("bookings.detail.seatsUnitPlural")}
                   </>
                 ) : (
                   t("bookings.detail.noBusAssigned")

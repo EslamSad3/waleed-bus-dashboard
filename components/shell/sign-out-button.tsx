@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { clearUserCache } from "@/lib/cache/mutations";
+import { useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
 export function SignOutButton() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
   async function signOut() {
@@ -19,6 +22,10 @@ export function SignOutButton() {
     } catch {
       toast.error(t("common.error.somethingWentWrong"), { description: t("common.error.network"), duration: 6000 });
     } finally {
+      // The whole cache is per-SESSION data (rows fetched as this operator, the
+      // chosen owner scope, the derived trip labels). Signing out must not leave
+      // any of it for whoever signs in next on this browser.
+      clearUserCache(queryClient);
       router.push("/login");
       router.refresh();
     }

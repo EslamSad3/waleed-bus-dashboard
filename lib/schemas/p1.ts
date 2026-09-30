@@ -193,6 +193,44 @@ export const driverFreshSchema = z.object({
 });
 /** Backend: either userId OR phone+name+password (else 422). */
 export const addDriverSchema = z.union([driverFromUser, driverFreshSchema]);
+
+/**
+ * Platform driver creation (`POST /fleet-owners/drivers`).
+ *
+ * The OPERATOR picks the account shape, not the request: `INDEPENDENT` makes
+ * the driver their own company and forbids `ownerId`; `OWNER` requires it. The
+ * server owns the role, so `roleSlug` is not part of this contract at all —
+ * a strict zod object rejects it at the proxy boundary with a field error
+ * instead of forwarding a privilege-escalation attempt.
+ */
+const createDriverAccountBase = z.object({
+  mode: z.enum(["INDEPENDENT", "OWNER"], t("validation.driverModeRequired")),
+  ownerId: uuid.optional(),
+  name: z.string(t("validation.required")).min(1, t("validation.required")).max(255),
+  nickname,
+  phone: egyptPhone,
+  password,
+  picture: z.string().max(1024).optional(),
+  nationalId,
+});
+export const createDriverAccountSchema = createDriverAccountBase.superRefine(
+  (value, ctx) => {
+    if (value.mode === "OWNER" && !value.ownerId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ownerId"],
+        message: t("validation.ownerRequired"),
+      });
+    }
+    if (value.mode === "INDEPENDENT" && value.ownerId !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ownerId"],
+        message: t("validation.ownerForbidden"),
+      });
+    }
+  },
+);
 export const updateDriverSchema = z.object({
   roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
   status: memberStatus.optional(),
@@ -309,6 +347,10 @@ export const P1_REGISTRY: RegistryEntry[] = [
   // ---- Owner driver roster ----
   { method: "POST", pattern: new RegExp(`${OWNER}/drivers$`), schema: addDriverSchema, conflictKey: "MEMBER_EXISTS" },
   { method: "PATCH", pattern: new RegExp(`${OWNER}/drivers/${SEG}$`), schema: updateDriverSchema },
+  // Platform driver account creation. Declared BEFORE the owner-scoped entry is
+  // unnecessary (the patterns cannot both match) but kept adjacent to the roster
+  // for readability.
+  { method: "POST", pattern: /^\/fleet-owners\/drivers$/, schema: createDriverAccountSchema },
   // ---- Platform catalog ----
   { method: "POST", pattern: /^\/brands$/, schema: createBrandSchema },
   { method: "PATCH", pattern: new RegExp(`^/brands/${SEG}$`), schema: updateBrandSchema },
@@ -347,3 +389,4 @@ export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 export type AssignDriverInput = z.infer<typeof assignDriverSchema>;
 export type AddDriverInput = z.infer<typeof addDriverSchema>;
+export type CreateDriverAccountInput = z.infer<typeof createDriverAccountSchema>;

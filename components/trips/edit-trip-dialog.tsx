@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { updateTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { useFilterStore } from "@/stores/filters";
 import { qk, upsertInCursorList, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 type TripRow = Trip & { busName?: string; driverName?: string };
@@ -51,13 +52,17 @@ export function EditTripDialog({
   }
 
   async function submit() {
-    if (!trip || !ownerId) return;
+    if (!trip) return;
+    // The trip's OWN owner, not the global filter: the dialog can be open while
+    // the operator has already switched the page-level company.
+    const tripOwnerId = trip.ownerId || ownerId;
+    if (!tripOwnerId) return;
     if (!departAt) {
       setError(t("trips.editDialog.errors.required"));
       return;
     }
     setSaving(true);
-    const result = await updateTrip(ownerId, lineId, trip.id, {
+    const result = await updateTrip(tripOwnerId, lineId, trip.id, {
       departAt: new Date(departAt).toISOString(),
       fare: fare.trim(),
       status,
@@ -67,7 +72,16 @@ export function EditTripDialog({
       setError(result.message);
       return;
     }
-    upsertInCursorList<TripRow>(queryClient, qk.trips(ownerId, lineId), {
+    // The global `all` index was left stale before, so an edit made from a
+    // detail page or from a different owner view only showed up on the owner/line
+    // key. One impact declaration now patches the index, the owner list, the
+    // line list, and the detail slot together.
+    applyMutationCache(
+      queryClient,
+      tripImpact({ trip: { id: trip.id, ownerId: tripOwnerId, lineId }, mode: "update" }),
+      result,
+    );
+    upsertInCursorList<TripRow>(queryClient, qk.trips(tripOwnerId, lineId), {
       ...result.data,
       busName: trip.busName,
       driverName: trip.driverName,
