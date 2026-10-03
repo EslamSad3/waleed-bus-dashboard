@@ -9,7 +9,6 @@ export type DriverChoice = {
   userId: string;
   label: string;
   searchText: string;
-  assignedBusId: string | null;
 };
 
 /**
@@ -18,18 +17,15 @@ export type DriverChoice = {
  * Pages the real cursor until the API returns no next cursor (never a
  * first-page or fixed-page cutoff), searches over the LOADED choices, and
  * keeps a chosen driver selected even when a new search hides it. Final
- * eligibility stays backend-enforced; rows already driving another bus are
- * marked, not hidden.
+ * eligibility stays backend-enforced. A driver may drive several buses at
+ * once, so no "assigned elsewhere" marker is shown.
  */
 export function DriverPicker({
   ownerId,
-  busId,
   value,
   onChange,
 }: {
   ownerId: string;
-  /** The bus being assigned — its own active assignment is not "elsewhere". */
-  busId: string;
   /** Selected driver user id. */
   value: string;
   onChange: (driverUserId: string) => void;
@@ -92,15 +88,13 @@ export function DriverPicker({
         .map((row) => {
           const userId = row.userId ?? row.id;
           const name = row.name || row.nickname || row.phoneNumber || userId.slice(0, 8);
-          const assignment = row.assignments?.find((item) => item.status === "ACTIVE") ?? null;
           return {
             userId,
             label: row.phoneNumber ? `${name} · ${row.phoneNumber}` : name,
             searchText: `${row.name ?? ""} ${row.nickname ?? ""} ${row.phoneNumber ?? ""}`,
-            assignedBusId: assignment && assignment.busId !== busId ? assignment.busId : null,
           };
         }),
-    [rows, busId],
+    [rows],
   );
 
   const needle = query.trim();
@@ -146,7 +140,6 @@ export function DriverPicker({
           {visible.map((choice) => (
             <option key={choice.userId} value={choice.userId}>
               {choice.label}
-              {choice.assignedBusId ? t("buses.detail.assignedElsewhereSuffix", { plateNumber: choice.assignedBusId.slice(0, 8) }) : ""}
             </option>
           ))}
         </select>

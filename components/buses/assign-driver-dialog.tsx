@@ -99,7 +99,7 @@ export function AssignDriverDialog({
     >
       <div className="space-y-4">
         {bus ? (
-          <DriverPicker ownerId={bus.ownerId} busId={bus.id} value={driverUserId} onChange={(id) => { setDriverUserId(id); setError(null); }} />
+          <DriverPicker ownerId={bus.ownerId} value={driverUserId} onChange={(id) => { setDriverUserId(id); setError(null); }} />
         ) : null}
         <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t("buses.assign.reassignNotice")}</p>
         {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}

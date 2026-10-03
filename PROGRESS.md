@@ -143,6 +143,12 @@ level under a fleet owner any more, and a trip line is **one direction**.
 - Promotions: the audience editor (global vs named targets) and `maxTotalUses` (blank = unlimited, now stated in the hint) are validated at the trust boundary — `createPromotionSchema` / `updatePromotionSchema` are registered in `lib/schemas/p1.ts` for `/platform/promotions`, which previously passed through unvalidated — and the window is checked for `startsAt < expiresAt`.
 - i18n: 66 fleet-era keys removed, copy reworded to company wording, `common.notFound.inFleet` → `inOwner`. Gates: `i18n:check` (1351 keys, 0 unreferenced), `typecheck`, `lint` (0 errors; 2 pre-existing RHF compiler warnings), `build`.
 
+## Multi-bus driver assignments (2026-10-03)
+
+- Backend (`bus_api` migration `20261003000000_multi_bus_assignments`) drops the per-driver single-active guard: a driver may hold several ACTIVE assignments at once. Assigning ends only the bus's prior row; gaining a bus no longer revokes the driver's sessions (unassign/removal still do).
+- Assignment dialogs updated: the "reassignment ends previous assignments + re-login" notice now states a driver can drive several buses at once; the driver picker no longer marks "assigned elsewhere".
+- Gates: `lint`, `typecheck`, `i18n:check`, `build`.
+
 ## Back button replaces breadcrumbs (2026-10-03)
 
 - The breadcrumb trails are gone: one `BackButton` (`components/shell/back-button.tsx`) is mounted in `(shell)/layout.tsx` above page content and goes back exactly one history step; a direct landing with no history falls back to the overview. Removed `components/shell/breadcrumbs.tsx`, `lib/breadcrumbs.ts`, `scripts/check-routes.mjs`, the `routes:check` script, and the `breadcrumbs` dictionary section (label from `common.actions.back`).
