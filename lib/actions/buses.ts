@@ -64,10 +64,11 @@ export function fetchBus(ownerId: string, id: string): Promise<ActionResult<Bus>
   return apiGet<Bus>(`${base(ownerId)}/${id}`);
 }
 
-export function createBus(ownerId: string, input: CreateBusInput): Promise<ActionResult<Bus>> {
+export function createBus(ownerId: string, input: CreateBusInput, opts?: NotifyOptions): Promise<ActionResult<Bus>> {
   return notifyResult(
     t("buses.toast.created"),
     apiSend<Bus>(base(ownerId), "POST", input, "REGISTRATION_TAKEN"),
+    opts,
   );
 }
 
@@ -122,10 +123,16 @@ export function reactivateBus(ownerId: string, busId: string): Promise<ActionRes
   );
 }
 
-export function assignDriver(ownerId: string, busId: string, input: AssignDriverInput): Promise<ActionResult<unknown>> {
+export function assignDriver(
+  ownerId: string,
+  busId: string,
+  input: AssignDriverInput,
+  opts?: NotifyOptions,
+): Promise<ActionResult<unknown>> {
   return notifyResult(
     t("buses.toast.driverAssigned"),
     apiSend(`${base(ownerId)}/${busId}/driver`, "POST", input),
+    opts,
   );
 }
 

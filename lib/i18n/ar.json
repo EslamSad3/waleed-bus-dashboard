@@ -191,6 +191,22 @@
       "average": "متوسط التقييم"
     }
   },
+  "breadcrumbs": {
+    "aria": "مسار التنقل",
+    "detail": {
+      "fleetOwner": "بيانات المالك",
+      "bus": "بيانات العربية",
+      "booking": "بيانات الحجز",
+      "role": "بيانات الدور",
+      "tripLine": "بيانات خط السير",
+      "trip": "بيانات الرحلة",
+      "tripFeedback": "تقييمات الرحلة",
+      "driver": "بيانات السواق",
+      "driverAssignments": "تعيينات السواق",
+      "driverRatings": "تقييمات السواق",
+      "driverTrips": "رحلات السواق"
+    }
+  },
   "auth": {
     "login": {
       "invalidCredentials": "بيانات الدخول غير صحيحة",
@@ -609,11 +625,7 @@
       "toast": {
         "disabled": "اتوقفت العربية",
         "enabled": "اشتغلت العربية",
-        "driverAssigned": "اتعين السواق",
         "driverUnassigned": "اتلغى التعيين"
-      },
-      "errors": {
-        "pickDriver": "اختار السواق الأول"
       },
       "unassignConfirm": {
         "title": "تأكيد إلغاء التعيين",
@@ -657,23 +669,33 @@
       "noBrand": "بدون ماركة…",
       "brandInactiveSuffix": "(موقوفة)",
       "capacityRange": "السعة (1–300)",
-      "assignDialog": {
-        "title": "تعيين سواق",
-        "description": "اختار السواق لتشغيل العربية. لو هو معيّن على عربية أخرى، هيتنقل هنا تلقائيًا."
-      },
-      "pickDriver": "اختار السواق",
       "pickDriverOption": "اختار السواق",
       "assignedElsewhereSuffix": " · معيّن حاليًا على {plateNumber}",
-      "noEligibleDrivers": "لا يوجد سواقون نشطون في هذه العربيه بعد. أضف سواقًا من صفحة السواقين أولًا.",
       "tripsTitle": "رحلات العربيه",
       "tripsDescription": "كل الرحلات اللي مشيت على العربيه دي",
       "noOwnerSelected": "مفيش عربيه محددة — افتح العربية من داخل صفحة العربيات أو من قايمة العربيات."
+    },
+    "assign": {
+      "title": "تعيين سواق على العربية",
+      "description": "العربية {bus} ثابتة — اختار سواق نشط من نفس العربيه.",
+      "driverLabel": "السواق",
+      "searchPlaceholder": "دوّر بالاسم أو الموبايل",
+      "searchAria": "بحث في السواقين",
+      "loadMore": "عرض المزيد من السواقين",
+      "loadingMore": "جاري تحميل المزيد…",
+      "resultCount": "المعروض {count} سواق",
+      "loading": "جاري تحميل السواقين…",
+      "empty": "لا يوجد سواقون نشطون في العربيه دي.",
+      "reassignNotice": "إعادة التعيين بتنهي التعيين السابق للسواق، والسواق هيحتاج يسجّل دخول تاني.",
+      "pickRequired": "اختار السواق الأول."
     },
     "list": {
       "deleteConfirm": {
         "description": "الإجراء ده مينفعش يتراجع — تمسح العربية «{value}»؟ لازم تكون من غير رحلات أو تعيينات سواق."
       },
-      "rowActions": "إجراءات عربية {value}"
+      "rowActions": "إجراءات عربية {value}",
+      "assignDriver": "تعيين سواق",
+      "unknownOwner": "مالك غير معروف"
     },
     "title": "العربيات",
     "description": "كل العربيات في العربيات المسجلة، مع حالتها وبيانات تشغيلها.",
@@ -690,7 +712,21 @@
       },
       "title": "عربية جديدة",
       "description": "سجّل العربية داخل عربيهها: اللوحة واللون والصورة مطلوبين.",
-      "submit": "إضافة العربية"
+      "submit": "إضافة العربية",
+      "ownershipLabel": "ملكية العربية",
+      "modeFleetOwner": "تابعة لصاحب عربيه",
+      "modeFleetOwnerHint": "اختار العربيه اللي هتتسجل فيها العربية",
+      "modeIndependentDriver": "سواق مستقل",
+      "modeIndependentDriverHint": "اختار السواق المستقل صاحب العربية",
+      "independentDriverLabel": "السواق المستقل",
+      "independentDriverSearchPlaceholder": "دوّر بالاسم أو الموبايل",
+      "independentDriverSearchAria": "بحث في السواقين المستقلين",
+      "independentDriverRequired": "اختار السواق المستقل صاحب العربية.",
+      "independentDriverEmpty": "لا يوجد سواقون مستقلون نشطون.",
+      "fixedDriverNote": "العربية هتتسجل في عربيه {owner} وتتعين على السواق {driver} فورًا.",
+      "createdAndAssigned": "اتضافت العربية واتعين السواق",
+      "partialSuccess": "اتحفظت العربية، لكن التعيين فشل: {reason}",
+      "retryAssignment": "إعادة محاولة التعيين"
     },
     "placeholders": {
       "plateNumber": "أ ب ج 1234"
@@ -761,6 +797,29 @@
       "nationalIdDigits": "14 رقم",
       "keepPasswordEmpty": "اتركها فاضية من غير تغيير"
     },
+    "assignBus": {
+      "title": "تعيين عربية للسواق",
+      "description": "السواق {driver} ثابت — اختار عربية نشطة من نفس العربيه.",
+      "busLabel": "العربية",
+      "searchPlaceholder": "دوّر برقم اللوحة",
+      "searchAria": "بحث في العربيات",
+      "loadMore": "عرض المزيد من العربيات",
+      "loadingMore": "جاري تحميل المزيد…",
+      "resultCount": "المعروض {count} عربية",
+      "loading": "جاري تحميل العربيات…",
+      "empty": "لا توجد عربيات نشطة في العربيه دي.",
+      "reassignNotice": "إعادة التعيين بتنهي التعيين السابق للسواق، والسواق هيحتاج يسجّل دخول تاني.",
+      "pickRequired": "اختار العربية الأول."
+    },
+    "addBus": {
+      "title": "إضافة عربية للسواق",
+      "description": "السواق {driver} ثابت — اختار عربية موجودة أو أنشئ واحدة جديدة وتتعين عليه فورًا.",
+      "modeLabel": "طريقة الإضافة",
+      "modeExisting": "اختار عربية موجودة",
+      "modeExistingHint": "تعيين فوري من عربيه السواق",
+      "modeCreate": "إنشاء عربية جديدة",
+      "modeCreateHint": "تتسجل في نفس العربيه وتتعين على السواق"
+    },
     "list": {
       "rowLabel": "السواق ده",
       "deleteConfirm": {
@@ -770,7 +829,9 @@
       "rowActions": "إجراءات السواق {value}",
       "independentOwner": "حساب مستقل",
       "removedIndependent": "تم إلغاء صلاحية السواق المستقل",
-      "removedFromOwner": "اتمسح السواق من {owner}"
+      "removedFromOwner": "اتمسح السواق من {owner}",
+      "assignBus": "تعيين عربية",
+      "addBus": "إضافة عربية"
     },
     "columns": {
       "assignedBus": "العربية المعيّنة",

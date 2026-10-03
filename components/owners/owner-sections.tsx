@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bus as BusIcon, Eye, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
@@ -15,6 +15,9 @@ import { useFilterStore } from "@/stores/filters";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { AssignDriverDialog } from "@/components/buses/assign-driver-dialog";
+import { AssignBusDialog, type AssignDriverRef } from "@/components/drivers/assign-bus-dialog";
+import { AddBusDialog } from "@/components/drivers/add-bus-dialog";
 import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { CreateTripDialog } from "@/components/trips/create-trip-dialog";
 import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
@@ -294,6 +297,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [busForEdit, setBusForEdit] = useState<Bus | null>(null);
+  const [busForAssign, setBusForAssign] = useState<Bus | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
@@ -356,6 +360,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
               label={t("buses.list.rowActions", { value: bus.plateNumber ?? t("common.value.withoutName") })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?ownerId=${ownerId}` },
+                { label: t("buses.list.assignDriver"), icon: UserPlus, onSelect: () => setBusForAssign(bus) },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBus(bus) },
               ]}
@@ -367,6 +372,12 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
       )}
       <CreateBusDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} onCreated={reload} />
       <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => { setBusForEdit(null); reload(); }} />
+      <AssignDriverDialog
+        open={Boolean(busForAssign)}
+        bus={busForAssign ? { id: busForAssign.id, ownerId, plateNumber: busForAssign.plateNumber } : null}
+        onClose={() => setBusForAssign(null)}
+        onAssigned={reload}
+      />
     </div>
   );
 }
@@ -391,6 +402,9 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
   const [page, setPage] = useState<DriverPage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [driverForAssign, setDriverForAssign] = useState<DriverRow | null>(null);
+  const [driverForAddBus, setDriverForAddBus] = useState<DriverRow | null>(null);
+  const [createBusForDriver, setCreateBusForDriver] = useState<AssignDriverRef | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
@@ -466,6 +480,8 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
               label={t("drivers.list.rowActions", { value: driver.name || t("common.value.withoutName") })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.userId ?? driver.id}`, disabled: !driver.userId },
+                { label: t("drivers.list.assignBus"), icon: BusIcon, onSelect: () => setDriverForAssign(driver), disabled: !driver.userId },
+                { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver), disabled: !driver.userId },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver), disabled: !driver.userId },
               ]}
             />
@@ -475,6 +491,29 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
         <TableSkeleton rows={3} columns={5} />
       )}
       <CreateDriverDialog open={createOpen} lockedOwnerId={ownerId} onCreated={reload} onClose={() => setCreateOpen(false)} />
+      <AssignBusDialog
+        open={Boolean(driverForAssign)}
+        driver={driverForAssign?.userId ? { userId: driverForAssign.userId, ownerId, name: driverForAssign.name ?? driverForAssign.nickname ?? driverForAssign.phoneNumber } : null}
+        onClose={() => setDriverForAssign(null)}
+        onAssigned={reload}
+      />
+      <AddBusDialog
+        open={Boolean(driverForAddBus)}
+        driver={driverForAddBus?.userId ? { userId: driverForAddBus.userId, ownerId, name: driverForAddBus.name ?? driverForAddBus.nickname ?? driverForAddBus.phoneNumber } : null}
+        onClose={() => setDriverForAddBus(null)}
+        onAssigned={reload}
+        onCreateNew={(fixed) => setCreateBusForDriver(fixed)}
+      />
+      <CreateBusDialog
+        open={Boolean(createBusForDriver)}
+        fixedDriver={createBusForDriver ? {
+          userId: createBusForDriver.userId,
+          ownerId: createBusForDriver.ownerId,
+          driverLabel: createBusForDriver.name,
+        } : null}
+        onClose={() => setCreateBusForDriver(null)}
+        onCreated={reload}
+      />
     </div>
   );
 }

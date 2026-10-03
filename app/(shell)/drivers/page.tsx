@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, History, Pencil, Star, Trash2 } from "lucide-react";
+import { Bus, Eye, History, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -23,6 +23,9 @@ import { applyMutationCache, driverImpact } from "@/lib/cache/mutations";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
+import { AssignBusDialog, type AssignDriverRef } from "@/components/drivers/assign-bus-dialog";
+import { AddBusDialog } from "@/components/drivers/add-bus-dialog";
+import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { t } from "@/lib/i18n/t";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
@@ -41,8 +44,21 @@ export default function DriversPage() {
   const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [driverForEdit, setDriverForEdit] = useState<SystemDriverRow | null>(null);
+  const [driverForAssign, setDriverForAssign] = useState<SystemDriverRow | null>(null);
+  const [driverForAddBus, setDriverForAddBus] = useState<SystemDriverRow | null>(null);
+  const [createBusForDriver, setCreateBusForDriver] = useState<AssignDriverRef | null>(null);
   const { data: page, isLoading, error } = useApiQuery<DriverPage>(qk.drivers, () => fetchSystemDriversPage(null));
   const drivers = page?.items ?? [];
+
+  // The assignment dialogs fix the driver and work in its own company scope.
+  function assignRef(driver: SystemDriverRow): AssignDriverRef {
+    return {
+      userId: driver.userId ?? driver.id,
+      ownerId: driver.owner.id,
+      name: driver.name ?? driver.nickname ?? driver.phoneNumber,
+      ownerName: driver.owner.name,
+    };
+  }
 
   async function removeDriverRow(driver: SystemDriverRow) {
     const label = driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel");
@@ -171,6 +187,8 @@ export default function DriversPage() {
                   { label: t("drivers.subPages.trips.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/trips") },
                   { label: t("drivers.subPages.assignments.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/assignments") },
                   { label: t("drivers.subPages.ratings.title"), icon: Star, href: driverHref(driverUserId, driver.owner.id, "/ratings") },
+                  { label: t("drivers.list.assignBus"), icon: Bus, onSelect: () => setDriverForAssign(driver) },
+                  { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver) },
                   { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
                   { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver) },
                 ]}
@@ -191,6 +209,27 @@ export default function DriversPage() {
         driver={driverForEdit}
         onClose={() => setDriverForEdit(null)}
         onSaved={onDriverSaved}
+      />
+      <AssignBusDialog
+        open={Boolean(driverForAssign)}
+        driver={driverForAssign ? assignRef(driverForAssign) : null}
+        onClose={() => setDriverForAssign(null)}
+      />
+      <AddBusDialog
+        open={Boolean(driverForAddBus)}
+        driver={driverForAddBus ? assignRef(driverForAddBus) : null}
+        onClose={() => setDriverForAddBus(null)}
+        onCreateNew={(fixed) => setCreateBusForDriver(fixed)}
+      />
+      <CreateBusDialog
+        open={Boolean(createBusForDriver)}
+        fixedDriver={createBusForDriver ? {
+          userId: createBusForDriver.userId,
+          ownerId: createBusForDriver.ownerId,
+          ownerLabel: createBusForDriver.ownerName,
+          driverLabel: createBusForDriver.name,
+        } : null}
+        onClose={() => setCreateBusForDriver(null)}
       />
     </div>
   );

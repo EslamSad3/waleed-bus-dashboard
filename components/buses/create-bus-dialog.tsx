@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import {
+  assignDriver,
   createBus,
   discardBusImage,
   fetchBrands,
@@ -18,10 +20,11 @@ import {
 } from "@/lib/actions/buses";
 import { validateImageFile, type StagedUpload } from "@/lib/actions/http";
 import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
+import { fetchSystemDriversPage, type SystemDriverRow } from "@/lib/actions/members";
 import { createBusSchema } from "@/lib/schemas/p1";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
-import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
+import { applyMutationCache, busImpact, evictImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { OwnerPicker } from "@/components/owners/owner-picker";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
@@ -32,15 +35,37 @@ type BusRow = Bus & { ownerId: string; ownerName: string };
 
 type CreateValues = z.input<typeof createBusSchema>;
 
+export type FixedBusDriver = {
+  userId: string;
+  ownerId: string;
+  ownerLabel?: string | null;
+  driverLabel?: string | null;
+};
+
+type OwnershipMode = "OWNER" | "INDEPENDENT";
+
+type IndependentChoice = {
+  userId: string;
+  ownerId: string;
+  label: string;
+  searchText: string;
+};
+
 /**
  * نافذة إضافة عربية — من غير رقم تسجيل (بيتولد تلقائيًا) واللون قايمة بمعاينة.
  * تُستخدم في صفحة العربيات وفي تبويب عربيات الشركة (lockedOwnerId يثبّت الشركة).
+ *
+ * وضعان للملكية (صفحة العربيات فقط): تابعة لصاحب عربيه (الافتراضي، مع منتقي
+ * العربيات الحالي) أو سواق مستقل (يشتق النطاق الشخصي من صف السواق ويعيّن
+ * العربية عليه فورًا). fixedDriver يثبّت النطاق على عربيه سواق معيّن
+ * (إضافة عربية من صف السواق) ويعيّن العربية الجديدة عليه في نفس الخطوة.
  */
 export function CreateBusDialog({
   open,
   onClose,
   onCreated,
   lockedOwnerId,
+  fixedDriver,
 }: {
   open: boolean;
   onClose: () => void;
@@ -48,20 +73,54 @@ export function CreateBusDialog({
   onCreated?: (bus: Bus) => void;
   /** When set, the owner company is fixed and the picker is hidden. */
   lockedOwnerId?: string;
+  /** When set, the owner scope is fixed to the driver's scope and the new bus is assigned to them. */
+  fixedDriver?: FixedBusDriver | null;
 }) {
   const queryClient = useQueryClient();
   const { ownerId: scopedOwnerId, setOwnerId } = useFilterStore();
-  const [ownerId, setLocalOwnerId] = useState(lockedOwnerId ?? scopedOwnerId ?? "");
+  const [ownershipMode, setOwnershipMode] = useState<OwnershipMode>("OWNER");
+  const [localOwnerId, setLocalOwnerId] = useState(lockedOwnerId ?? scopedOwnerId ?? "");
+  const [independent, setIndependent] = useState<IndependentChoice | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** A bus saved while its follow-up assignment failed — retry assigns only, never recreates. */
+  const [createdBus, setCreatedBus] = useState<Bus | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  const fixedKey = fixedDriver ? `${fixedDriver.ownerId}/${fixedDriver.userId}` : "";
+  // Reset everything when the dialog opens for another row or another mode
+  // context — in render phase (no setState-in-effect).
+  const contextKey = open ? `open|${lockedOwnerId ?? ""}|${fixedKey}` : "closed";
+  const [seenContext, setSeenContext] = useState("closed");
+  if (seenContext !== contextKey) {
+    setSeenContext(contextKey);
+    setOwnershipMode("OWNER");
+    setLocalOwnerId(lockedOwnerId ?? scopedOwnerId ?? "");
+    setIndependent(null);
+    setImageFile(null);
+    setUploading(false);
+    setBusy(false);
+    setFormError(null);
+    setCreatedBus(null);
+    setAssignError(null);
+  }
 
   const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true), { enabled: open });
-  const { data: ownersPage } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null), { enabled: open && !lockedOwnerId });
+  const showOwnerPicker = !lockedOwnerId && !fixedDriver && ownershipMode === "OWNER";
+  const { data: ownersPage } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null), { enabled: open && showOwnerPicker });
   const ownerName = useMemo(
-    () => (ownersPage?.items ?? []).find((owner) => owner.id === ownerId)?.name ?? "—",
-    [ownersPage, ownerId],
+    () => (ownersPage?.items ?? []).find((owner) => owner.id === localOwnerId)?.name ?? "—",
+    [ownersPage, localOwnerId],
   );
+
+  // The effective tenant: locked company, the fixed driver's scope, or the
+  // ownership-mode choice. It is form state only — never sent as an API field.
+  const effectiveOwnerId =
+    lockedOwnerId ?? fixedDriver?.ownerId ?? (ownershipMode === "OWNER" ? localOwnerId : (independent?.ownerId ?? ""));
+  const assignTargetUserId =
+    fixedDriver?.userId ?? (ownershipMode === "INDEPENDENT" ? (independent?.userId ?? null) : null);
 
   const form = useForm<CreateValues>({
     resolver: zodResolver(createBusSchema),
@@ -80,7 +139,26 @@ export function CreateBusDialog({
   function resetForm() {
     setImageFile(null);
     setFormError(null);
+    setCreatedBus(null);
+    setAssignError(null);
     form.reset();
+  }
+
+  function requestClose() {
+    // A save in flight must finish first: closing mid-write would orphan the
+    // staged image handling and hide the outcome of a bus already created.
+    if (busy || uploading) return;
+    resetForm();
+    onClose();
+  }
+
+  function changeOwnershipMode(next: OwnershipMode) {
+    if (ownershipMode === next || busy) return;
+    setOwnershipMode(next);
+    // Incompatible picks must never leak across modes.
+    setLocalOwnerId("");
+    setIndependent(null);
+    setFormError(null);
   }
 
   function onFileSelect(file: File | null) {
@@ -102,10 +180,23 @@ export function CreateBusDialog({
     form.setValue("imageUrl", "https://upload.pending/placeholder", { shouldValidate: true });
   }
 
+  function publishCreatedBus(bus: Bus, ownerLabel: string) {
+    // تحديث فوري للجداول من غير إعادة تحميل — ومعاه عرض العربية ورحلاتها
+    applyMutationCache(queryClient, busImpact({ id: bus.id, ownerId: bus.ownerId }, "insert"), { ok: true, data: bus });
+    upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, { ...bus, ownerId: bus.ownerId, ownerName: ownerLabel });
+    onCreated?.(bus);
+  }
+
   async function onSubmit(values: CreateValues) {
+    if (busy) return;
     setFormError(null);
+    const ownerId = effectiveOwnerId;
     if (!ownerId) {
-      setFormError(t("buses.createDialog.errors.pickOwner"));
+      setFormError(
+        ownershipMode === "INDEPENDENT" && !lockedOwnerId && !fixedDriver
+          ? t("buses.createDialog.independentDriverRequired")
+          : t("buses.createDialog.errors.pickOwner"),
+      );
       return;
     }
     if (!imageFile) {
@@ -114,31 +205,82 @@ export function CreateBusDialog({
     }
     setOwnerId(ownerId);
     setOwnerScopeCookie(ownerId);
+    setBusy(true);
     setUploading(true);
     const stagedResult = await stageBusImage(ownerId, imageFile);
     if (!stagedResult.ok) {
       setUploading(false);
+      setBusy(false);
       setFormError(stagedResult.message);
       return;
     }
     const staged: StagedUpload = stagedResult.data;
+    const ownerLabel =
+      fixedDriver?.ownerLabel ?? (ownershipMode === "INDEPENDENT" ? (independent?.label ?? "—") : ownerName);
+    // The composed flow owns its single outcome message, so the individual
+    // steps stay silent and only the combined result is announced.
+    const silent = assignTargetUserId ? { notify: false as const } : undefined;
     const r = await createBus(ownerId, {
       ...values,
       imageUrl: staged.publicUrl,
       registrationNumber: values.registrationNumber || undefined,
       brandId: values.brandId || null,
       modelYear: values.modelYear ?? undefined,
-    });
+    }, silent);
     setUploading(false);
     if (!r.ok) {
       await discardBusImage(ownerId, staged);
+      setBusy(false);
       setFormError(r.message);
       return;
     }
-    // تحديث فوري للجداول من غير إعادة تحميل — ومعاه عرض العربية ورحلاتها
-    applyMutationCache(queryClient, busImpact({ id: r.data.id, ownerId }, "insert"), r);
-    upsertInCursorList<BusRow>(queryClient, qk.busesAggregate, { ...r.data, ownerId, ownerName });
-    onCreated?.(r.data);
+    publishCreatedBus(r.data, ownerLabel);
+    if (!assignTargetUserId) {
+      setBusy(false);
+      resetForm();
+      onClose();
+      return;
+    }
+    const assigned = await assignDriver(ownerId, r.data.id, { driverUserId: assignTargetUserId }, { notify: false });
+    setBusy(false);
+    if (!assigned.ok) {
+      // Partial success: the bus and its image are saved and already visible;
+      // only the assignment is retried — never a second bus.
+      setCreatedBus(r.data);
+      setAssignError(t("buses.createDialog.partialSuccess", { reason: assigned.message }));
+      return;
+    }
+    applyMutationCache(
+      queryClient,
+      evictImpact(["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"]),
+      { ok: true, data: null },
+    );
+    toast.success(t("buses.createDialog.createdAndAssigned"));
+    resetForm();
+    onClose();
+  }
+
+  async function retryAssignment() {
+    if (!createdBus || busy) return;
+    setBusy(true);
+    setAssignError(null);
+    const target = fixedDriver?.userId ?? independent?.userId;
+    if (!target) {
+      setBusy(false);
+      return;
+    }
+    const result = await assignDriver(createdBus.ownerId, createdBus.id, { driverUserId: target }, { notify: false });
+    setBusy(false);
+    if (!result.ok) {
+      setAssignError(t("buses.createDialog.partialSuccess", { reason: result.message }));
+      return;
+    }
+    applyMutationCache(
+      queryClient,
+      evictImpact(["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"]),
+      { ok: true, data: null },
+    );
+    toast.success(t("buses.createDialog.createdAndAssigned"));
     resetForm();
     onClose();
   }
@@ -146,13 +288,82 @@ export function CreateBusDialog({
   const color = form.watch("color");
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
-      <div>
-        {lockedOwnerId ? null : (
-          <div className="mb-4">
-            <OwnerPicker ownerId={ownerId} onOwnerChange={setLocalOwnerId} />
+    <Dialog open={open} onOpenChange={(next) => { if (!next) requestClose(); }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
+      {createdBus ? (
+        <div className="space-y-4">
+          <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{assignError}</p>
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="danger" onClick={requestClose} disabled={busy}>
+              {t("common.actions.cancel")}
+            </Button>
+            <Button type="button" variant="success" onClick={() => void retryAssignment()} loading={busy}>
+              {t("buses.createDialog.retryAssignment")}
+            </Button>
           </div>
+        </div>
+      ) : (
+      <div>
+        {lockedOwnerId || fixedDriver ? null : (
+          <fieldset className="mb-4">
+            <legend className="mb-1.5 block text-sm font-bold text-[#334454]">
+              {t("buses.createDialog.ownershipLabel")}
+            </legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label
+                className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
+                  ownershipMode === "OWNER" ? "border-[#1f6f8b] bg-[#f2f8fb]" : "border-[#e4ecf2]"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="bus-ownership-mode"
+                  className="mt-0.5"
+                  checked={ownershipMode === "OWNER"}
+                  onChange={() => changeOwnershipMode("OWNER")}
+                />
+                <span>
+                  <span className="block font-bold text-[#334454]">{t("buses.createDialog.modeFleetOwner")}</span>
+                  <span className="block text-xs text-[#6b7c8c]">{t("buses.createDialog.modeFleetOwnerHint")}</span>
+                </span>
+              </label>
+              <label
+                className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
+                  ownershipMode === "INDEPENDENT" ? "border-[#1f6f8b] bg-[#f2f8fb]" : "border-[#e4ecf2]"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="bus-ownership-mode"
+                  className="mt-0.5"
+                  checked={ownershipMode === "INDEPENDENT"}
+                  onChange={() => changeOwnershipMode("INDEPENDENT")}
+                />
+                <span>
+                  <span className="block font-bold text-[#334454]">{t("buses.createDialog.modeIndependentDriver")}</span>
+                  <span className="block text-xs text-[#6b7c8c]">{t("buses.createDialog.modeIndependentDriverHint")}</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
         )}
+        {fixedDriver ? (
+          <p className="mb-4 rounded-xl bg-[#f2f8fb] p-3 text-sm text-[#334454]">
+            {t("buses.createDialog.fixedDriverNote", {
+              owner: fixedDriver.ownerLabel ?? fixedDriver.ownerId.slice(0, 8),
+              driver: fixedDriver.driverLabel ?? fixedDriver.userId.slice(0, 8),
+            })}
+          </p>
+        ) : null}
+        {showOwnerPicker ? (
+          <div className="mb-4">
+            <OwnerPicker ownerId={localOwnerId} onOwnerChange={setLocalOwnerId} />
+          </div>
+        ) : null}
+        {!lockedOwnerId && !fixedDriver && ownershipMode === "INDEPENDENT" ? (
+          <div className="mb-4">
+            <IndependentDriverPicker value={independent} onChange={(choice) => { setIndependent(choice); setFormError(null); }} />
+          </div>
+        ) : null}
         <form
           onSubmit={(event) => {
             if (!imageFile) {
@@ -249,13 +460,155 @@ export function CreateBusDialog({
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
-            <Button type="submit" variant="success" loading={form.formState.isSubmitting || uploading}>
+            <Button type="button" variant="danger" onClick={requestClose} disabled={busy || uploading}>{t("common.actions.cancel")}</Button>
+            <Button type="submit" variant="success" loading={form.formState.isSubmitting || uploading || busy}>
               {form.formState.isSubmitting ? t("common.loading.saving") : t("buses.createDialog.submit")}
             </Button>
           </div>
         </form>
       </div>
+      )}
     </Dialog>
+  );
+}
+
+/**
+ * ACTIVE independent-driver picker for the ownership mode. The personal
+ * owner scope is derived from the chosen roster row (`row.owner.id`), and
+ * the new bus is assigned to that driver immediately after creation.
+ */
+function IndependentDriverPicker({
+  value,
+  onChange,
+}: {
+  value: IndependentChoice | null;
+  onChange: (choice: IndependentChoice | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<SystemDriverRow[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [started, setStarted] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchSystemDriversPage(null).then((result) => {
+      if (cancelled) return;
+      setStarted(true);
+      if (!result.ok) {
+        setLoadError(result.message);
+        return;
+      }
+      setRows(result.data.items);
+      setCursor(result.data.nextCursor);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    setLoadError(null);
+    const result = await fetchSystemDriversPage(cursor);
+    setLoadingMore(false);
+    if (!result.ok) {
+      setLoadError(result.message);
+      return;
+    }
+    setRows((current) => {
+      const seen = new Set(current.map((row) => row.id));
+      return [...current, ...result.data.items.filter((row) => !seen.has(row.id))];
+    });
+    setCursor(result.data.nextCursor);
+  }
+
+  const choices = useMemo<IndependentChoice[]>(
+    () =>
+      rows
+        .filter((row) => row.isIndependent && row.status === "ACTIVE")
+        .map((row) => {
+          const userId = row.userId ?? row.id;
+          const name = row.name || row.nickname || row.phoneNumber || userId.slice(0, 8);
+          return {
+            userId,
+            ownerId: row.owner.id,
+            label: row.phoneNumber ? `${name} · ${row.phoneNumber}` : name,
+            searchText: `${row.name ?? ""} ${row.nickname ?? ""} ${row.phoneNumber ?? ""}`,
+          };
+        }),
+    [rows],
+  );
+
+  const needle = query.trim();
+  const visible = useMemo(
+    () => (needle ? choices.filter((choice) => choice.searchText.includes(needle)) : choices),
+    [choices, needle],
+  );
+
+  const selectedOutside = Boolean(value) && !choices.some((choice) => choice.userId === value?.userId);
+
+  return (
+    <div>
+      <label className="block text-sm">
+        <span className="mb-1.5 block font-bold text-[#334454]">{t("buses.createDialog.independentDriverLabel")}</span>
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t("buses.createDialog.independentDriverSearchPlaceholder")}
+          aria-label={t("buses.createDialog.independentDriverSearchAria")}
+          className="mb-2"
+        />
+      </label>
+      {!started ? (
+        <p role="status" className="text-sm text-[#6b7c8c]">{t("drivers.assignBus.loading")}</p>
+      ) : loadError && rows.length === 0 ? (
+        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{loadError}</p>
+      ) : (
+        <select
+          aria-label={t("buses.createDialog.independentDriverLabel")}
+          value={value?.userId ?? ""}
+          onChange={(event) => {
+            const next = choices.find((choice) => choice.userId === event.target.value) ?? null;
+            onChange(next);
+          }}
+          className="select-field w-full"
+        >
+          <option value="">{t("buses.createDialog.independentDriverSearchPlaceholder")}</option>
+          {selectedOutside && value ? (
+            <option value={value.userId} disabled>
+              {value.label}
+            </option>
+          ) : null}
+          {visible.map((choice) => (
+            <option key={choice.userId} value={choice.userId}>
+              {choice.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {loadError && rows.length > 0 ? (
+        <p role="alert" className="mt-1.5 text-xs text-red-600">{loadError}</p>
+      ) : null}
+      {!started || visible.length > 0 || needle ? null : (
+        <p className="mt-1.5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t("buses.createDialog.independentDriverEmpty")}</p>
+      )}
+      {cursor ? (
+        <button
+          type="button"
+          onClick={() => void loadMore()}
+          disabled={loadingMore}
+          className="mt-2 text-xs font-bold text-[#1f6f8b] underline disabled:opacity-60"
+        >
+          {loadingMore ? t("drivers.assignBus.loadingMore") : t("drivers.assignBus.loadMore")}
+        </button>
+      ) : null}
+      {started && rows.length > 0 ? (
+        <p className="mt-1.5 text-xs text-[#6b7c8c]">{t("drivers.assignBus.resultCount", { count: visible.length })}</p>
+      ) : null}
+    </div>
   );
 }

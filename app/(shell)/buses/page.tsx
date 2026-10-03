@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -12,6 +12,7 @@ import { deleteBus, fetchSystemBusesPage, type Bus, type BusPage } from "@/lib/a
 import { fetchOwnerNameMap } from "@/lib/actions/fleet-owners";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { AssignDriverDialog } from "@/components/buses/assign-driver-dialog";
 import { EditBusDialog } from "@/components/buses/edit-bus-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -39,10 +40,14 @@ export default function BusesPage() {
   const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
   const [createOpen, setCreateOpen] = useState(false);
   const [busForEdit, setBusForEdit] = useState<BusRow | null>(null);
+  const [busForAssign, setBusForAssign] = useState<BusRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; ownerId?: string }>({});
 
+  // An independent-owned bus resolves through the same map (its personal
+  // company is a real owner row); anything unresolvable gets a readable
+  // label instead of a raw id.
   const nameOf = useMemo(
-    () => (ownerId: string) => ownerNames?.get(ownerId) ?? ownerId,
+    () => (ownerId: string) => ownerNames?.get(ownerId) ?? t("buses.list.unknownOwner"),
     [ownerNames],
   );
 
@@ -151,6 +156,7 @@ export default function BusesPage() {
               label={t("buses.list.rowActions", { value: bus.plateNumber ?? t("common.value.withoutName") })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/buses/${bus.id}?ownerId=${bus.ownerId}` },
+                { label: t("buses.list.assignDriver"), icon: UserPlus, onSelect: () => setBusForAssign(bus) },
                 { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setBusForEdit(bus) },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBus(bus) },
               ]}
@@ -160,6 +166,11 @@ export default function BusesPage() {
       )}
       <CreateBusDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditBusDialog open={Boolean(busForEdit)} bus={busForEdit} onClose={() => setBusForEdit(null)} />
+      <AssignDriverDialog
+        open={Boolean(busForAssign)}
+        bus={busForAssign ? { id: busForAssign.id, ownerId: busForAssign.ownerId, plateNumber: busForAssign.plateNumber } : null}
+        onClose={() => setBusForAssign(null)}
+      />
     </div>
   );
 }

@@ -10,7 +10,6 @@ import { ImagePicker } from "@/components/ui/image-picker";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import {
-  assignDriver,
   deleteBus,
   disableBus,
   discardBusImage,
@@ -27,6 +26,7 @@ import {
   type BusTripRow,
   type VehicleBrand,
 } from "@/lib/actions/buses";
+import { AssignDriverDialog } from "@/components/buses/assign-driver-dialog";
 import { apiGet, validateImageFile, type StagedUpload } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { useFilterStore } from "@/stores/filters";
@@ -73,9 +73,7 @@ export default function BusDetailPage({
   const [isAirConditioned, setIsAirConditioned] = useState(false);
   const [modelYear, setModelYear] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [driverId, setDriverId] = useState("");
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
-  const [driversLoaded, setDriversLoaded] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tripsFirst, setTripsFirst] = useState<{
@@ -129,7 +127,6 @@ export default function BusDetailPage({
     if (!ownerId) return;
     apiGet<{ items: DriverRow[] }>(`/api/fleet-owners/${ownerId}/drivers?limit=100`).then((r) => {
       if (r.ok) setDrivers(r.data.items.filter((d) => d.status === "ACTIVE"));
-      setDriversLoaded(true);
     });
   }, [ownerId]);
 
@@ -265,20 +262,6 @@ export default function BusDetailPage({
     if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
   };
 
-  async function assign() {
-    if (!ownerId || !driverId) {
-      setError(tr("buses.detail.errors.pickDriver"));
-      return;
-    }
-    const r = await assignDriver(ownerId, id, { driverUserId: driverId });
-    note(r.ok, r.ok ? tr("buses.detail.toast.driverAssigned") : r.message);
-    if (r.ok) {
-      setAssignOpen(false);
-      setDriverId("");
-      await refreshDrivers();
-    }
-  }
-
   async function unassign() {
     if (!ownerId) return;
     if (
@@ -312,7 +295,6 @@ export default function BusDetailPage({
       (assignment) => assignment.busId === id && assignment.status === "ACTIVE",
     ),
   );
-  const eligibleDrivers = drivers;
   const colorPresets = BUS_COLORS;
   const storedColorHex = busColorHex(color);
   const colorMissing = color && !colorPresets.some((preset) => preset.name === color);
@@ -588,35 +570,12 @@ export default function BusDetailPage({
         </div>
       </Dialog>
 
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen} title={tr("buses.detail.assignDialog.title")} description={tr("buses.detail.assignDialog.description")} size="sm">
-        <div className="space-y-4">
-          <label className="block text-sm">
-            <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.driver")}</span>
-            {driversLoaded ? (
-              <select aria-label={tr("buses.detail.pickDriver")} value={driverId} onChange={(e) => setDriverId(e.target.value)} className="select-field w-full">
-                <option value="">{tr("buses.detail.pickDriverOption")}</option>
-                {eligibleDrivers.map((d) => {
-                  const assignment = d.assignments?.find((item) => item.status === "ACTIVE");
-                  const assignedElsewhere = assignment && assignment.busId !== id;
-                  return (
-                    <option key={d.id} value={d.userId ?? d.id}>
-                      {d.name ?? (d.userId ?? d.id).slice(0, 8)}{d.phoneNumber ? ` · ${d.phoneNumber}` : ""}{assignedElsewhere ? tr("buses.detail.assignedElsewhereSuffix", { plateNumber: assignment.plateNumber ?? "—" }) : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            ) : (
-              <Skeleton className="h-[2.75rem] w-full" />
-            )}
-          </label>
-          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {driversLoaded && eligibleDrivers.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{tr("buses.detail.noEligibleDrivers")}</p>}
-          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={() => setAssignOpen(false)}>{tr("common.actions.cancel")}</Button>
-            <AsyncButton type="button" variant="success" onClick={assign} disabled={!driverId}>{tr("common.actions.confirmAssignment")}</AsyncButton>
-          </div>
-        </div>
-      </Dialog>
+      <AssignDriverDialog
+        open={assignOpen}
+        bus={ownerId ? { id, ownerId, plateNumber: bus.plateNumber } : null}
+        onClose={() => setAssignOpen(false)}
+        onAssigned={() => void refreshDrivers()}
+      />
     </div>
   );
 }
