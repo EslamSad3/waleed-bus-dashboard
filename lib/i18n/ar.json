@@ -112,6 +112,7 @@
       "change": "تغيير",
       "select": "اختيار",
       "viewFeedback": "تقييمات الرحلة",
+      "back": "رجوع",
       "backTo": "رجوع لـ {value}"
     },
     "status": {
@@ -189,22 +190,6 @@
       "unrated": "لسه محدش قيّم",
       "votes": "{count} تقييم",
       "average": "متوسط التقييم"
-    }
-  },
-  "breadcrumbs": {
-    "aria": "مسار التنقل",
-    "detail": {
-      "fleetOwner": "بيانات المالك",
-      "bus": "بيانات العربية",
-      "booking": "بيانات الحجز",
-      "role": "بيانات الدور",
-      "tripLine": "بيانات خط السير",
-      "trip": "بيانات الرحلة",
-      "tripFeedback": "تقييمات الرحلة",
-      "driver": "بيانات السواق",
-      "driverAssignments": "تعيينات السواق",
-      "driverRatings": "تقييمات السواق",
-      "driverTrips": "رحلات السواق"
     }
   },
   "auth": {

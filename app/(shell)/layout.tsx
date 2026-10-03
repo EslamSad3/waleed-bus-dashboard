@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import { readSession } from "@/lib/auth";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
-import { Breadcrumbs } from "@/components/shell/breadcrumbs";
+import { BackButton } from "@/components/shell/back-button";
 import { t } from "@/lib/i18n/t";
 
 /**
@@ -23,9 +22,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         {/* Desktop sidebar; on phones the drawer in the topbar takes over */}
         <Sidebar />
         <main className="min-w-0 flex-1">
-          <Suspense>
-            <Breadcrumbs />
-          </Suspense>
+          <BackButton />
           {children}
         </main>
       </div>

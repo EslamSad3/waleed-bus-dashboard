@@ -143,6 +143,11 @@ level under a fleet owner any more, and a trip line is **one direction**.
 - Promotions: the audience editor (global vs named targets) and `maxTotalUses` (blank = unlimited, now stated in the hint) are validated at the trust boundary — `createPromotionSchema` / `updatePromotionSchema` are registered in `lib/schemas/p1.ts` for `/platform/promotions`, which previously passed through unvalidated — and the window is checked for `startsAt < expiresAt`.
 - i18n: 66 fleet-era keys removed, copy reworded to company wording, `common.notFound.inFleet` → `inOwner`. Gates: `i18n:check` (1351 keys, 0 unreferenced), `typecheck`, `lint` (0 errors; 2 pre-existing RHF compiler warnings), `build`.
 
+## Back button replaces breadcrumbs (2026-10-03)
+
+- The breadcrumb trails are gone: one `BackButton` (`components/shell/back-button.tsx`) is mounted in `(shell)/layout.tsx` above page content and goes back exactly one history step; a direct landing with no history falls back to the overview. Removed `components/shell/breadcrumbs.tsx`, `lib/breadcrumbs.ts`, `scripts/check-routes.mjs`, the `routes:check` script, and the `breadcrumbs` dictionary section (label from `common.actions.back`).
+- Gates: `lint`, `typecheck`, `i18n:check`, `build`.
+
 ## Breadcrumbs + bus–driver assignment flows (2026-10-03)
 
 - Shared `Breadcrumbs` mounted in `(shell)/layout.tsx` above page content (route-only, so it stays visible during loading/empty/error). Registry `lib/breadcrumbs.ts` covers all 30 authenticated pages (19 root/index + 11 nested); every trail starts at the overview, ancestors are links preserving `owner`/`ownerId`/`lineId`, current page carries `aria-current="page"`, detail labels are localized (no raw ids). Login stays outside the shell; legacy `/fleets` redirects render the destination trail.

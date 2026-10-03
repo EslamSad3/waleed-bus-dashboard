@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "i18n:check": "node scripts/check-i18n.mjs",
-    "routes:check": "node scripts/check-routes.mjs"
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@ag-grid-community/locale": "^36.2.0",
