@@ -131,23 +131,29 @@ export default function DriversPage() {
           emptyMessage={t("drivers.empty")}
           renderItem={(driver) => {
             const driverUserId = driver.userId ?? driver.id;
+            const [statusAction, deleteAction] = driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver));
             return (
-              <RowActions
-                label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
-                actions={[
-                  // Detail links use the DRIVER USER id (stable across membership
-                  // churn) and carry THIS row's company, so opening a driver
-                  // never lands on an unrelated global owner filter.
-                  { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) },
-                  { label: t("drivers.subPages.trips.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/trips") },
-                  { label: t("drivers.subPages.assignments.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/assignments") },
-                  { label: t("drivers.subPages.ratings.title"), icon: Star, href: driverHref(driverUserId, driver.owner.id, "/ratings") },
-                  { label: t("drivers.list.assignBus"), icon: Bus, onSelect: () => setDriverForAssign(driver) },
-                  { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver) },
-                  { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
-                  ...driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver)),
-                ]}
-              />
+              <div className="flex h-full w-full items-center overflow-x-auto">
+                <div className="min-w-max">
+                  <RowActions
+                    label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
+                    actions={[
+                      { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
+                      deleteAction,
+                      statusAction,
+                      // Detail links use the DRIVER USER id (stable across membership
+                      // churn) and carry THIS row's company, so opening a driver
+                      // never lands on an unrelated global owner filter.
+                      { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) },
+                      { label: t("drivers.subPages.trips.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/trips") },
+                      { label: t("drivers.subPages.assignments.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/assignments") },
+                      { label: t("drivers.subPages.ratings.title"), icon: Star, href: driverHref(driverUserId, driver.owner.id, "/ratings") },
+                      { label: t("drivers.list.assignBus"), icon: Bus, onSelect: () => setDriverForAssign(driver) },
+                      { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver) },
+                    ]}
+                  />
+                </div>
+              </div>
             );
           }}
         />
