@@ -170,6 +170,11 @@ export function fetchDriver(ownerId: string, driverUserId: string): Promise<Acti
   return apiGet<DriverRow>(`${ownerBase(ownerId)}/drivers/${driverUserId}`);
 }
 
+/** Permanent platform account deletion, distinct from owner roster removal. */
+export function deleteDriverAccount(driverUserId: string): Promise<ActionResult<null>> {
+  return notifyResult(t("drivers.lifecycle.deleted"), apiSend<null>(`/api/fleet-owners/drivers/${driverUserId}`, "DELETE"));
+}
+
 export function updateDriver(
   ownerId: string,
   driverUserId: string,

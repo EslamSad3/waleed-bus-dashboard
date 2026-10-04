@@ -7,8 +7,8 @@ import { t } from "@/lib/i18n/t";
  * resolves users by email; no `loginType` is ever sent from this dashboard.
  */
 export const loginSchema = z.object({
-  email: z.email(t("validation.email")),
-  password: z.string().min(8, t("validation.passwordMin")),
+  email: z.email(t("validation.email")).max(255, t("validation.maxLength", { max: 255 })),
+  password: z.string().min(8, t("validation.passwordMin")).max(128, t("validation.maxLength", { max: 128 })),
   rememberMe: z.boolean().default(false),
 });
 

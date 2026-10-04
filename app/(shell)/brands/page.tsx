@@ -1,5 +1,11 @@
 "use client";
 
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -27,6 +33,7 @@ export default function BrandsPage() {
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   function openCreate() {
+    validation.reset();
     setEditing(null);
     setName("");
     setSortOrder("0");
@@ -35,6 +42,7 @@ export default function BrandsPage() {
   }
 
   function openEdit(brand: VehicleBrand) {
+    validation.reset();
     setCreating(false);
     setEditing(brand);
     setName(brand.name);
@@ -43,20 +51,21 @@ export default function BrandsPage() {
   }
 
   function closeDialog() {
+    validation.reset();
     setCreating(false);
     setEditing(null);
     setDialogError(null);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(schemas.createBrandSchema, { name: name.trim(), sortOrder: sortOrder.trim() ? Number(sortOrder) : NaN }));
+
   async function save() {
-    if (!name.trim()) {
-      setDialogError(t("brands.errors.nameRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
+
     const result = editing
       ? await updateBrand(editing.id, { name: name.trim(), sortOrder: Number(sortOrder) || 0 })
       : await createBrand({ name: name.trim(), sortOrder: Number(sortOrder) || 0 });
-    if (!result.ok) return setDialogError(result.message);
+    if (!result.ok) return setDialogError(validation.failure(result));
     upsertInList(queryClient, qk.brands, result.data);
     closeDialog();
   }
@@ -121,10 +130,10 @@ export default function BrandsPage() {
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("brands.dialog.editTitle") : t("brands.dialog.createTitle")} description={t("brands.dialog.description")} size="sm">
+      <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("brands.dialog.editTitle") : t("brands.dialog.createTitle")} description={t("brands.dialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.name")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Mercedes" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.order")}</span><Input dir="ltr" inputMode="numeric" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.name")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Mercedes" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.order")}</span><Input fieldName="sortOrder" dir="ltr" inputMode="numeric" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>

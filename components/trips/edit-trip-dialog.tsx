@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -47,29 +55,30 @@ export function EditTripDialog({
   }
 
   function resetForm() {
+    validation.reset();
     setLoadedFor(null);
     setError(null);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined, status }));
+
   async function submit() {
+    if (!validation.validate()) return;
     if (!trip) return;
     // The trip's OWN owner, not the global filter: the dialog can be open while
     // the operator has already switched the page-level company.
     const tripOwnerId = trip.ownerId || ownerId;
     if (!tripOwnerId) return;
-    if (!departAt) {
-      setError(t("trips.editDialog.errors.required"));
-      return;
-    }
+
     setSaving(true);
     const result = await updateTrip(tripOwnerId, lineId, trip.id, {
       departAt: new Date(departAt).toISOString(),
-      fare: fare.trim(),
+      fare: fare.trim() || undefined,
       status,
     });
     setSaving(false);
     if (!result.ok) {
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     // The global `all` index was left stale before, so an edit made from a
@@ -91,7 +100,7 @@ export function EditTripDialog({
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open && Boolean(trip)}
       onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }}
       title={t("trips.editDialog.title")}
@@ -112,20 +121,20 @@ export function EditTripDialog({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("trips.columns.departAt")}</span>
-            <Input dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
+            <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fare")}</span>
-            <Input dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} />
+            <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} />
           </label>
         </div>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.status")}</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as Trip["status"])} className="select-field w-full">
+          <Select fieldName="status" value={status} onChange={(event) => setStatus(event.target.value as Trip["status"])} className="select-field w-full">
             {(Object.keys(TRIP_STATUS_AR) as Trip["status"][]).map((value) => (
               <option key={value} value={value}>{TRIP_STATUS_AR[value]}</option>
             ))}
-          </select>
+          </Select>
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">

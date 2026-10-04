@@ -8,6 +8,9 @@ import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useFieldValidation, ValidationScope } from "@/components/ui/field-validation";
+import { schemaErrors } from "@/lib/field-validation";
+import { dateRangeSchema } from "@/lib/schemas/admin-forms";
 import {
   BOOKING_STATUS_AR,
   deleteBooking,
@@ -49,6 +52,9 @@ export default function BookingsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const dateErrors = schemaErrors(dateRangeSchema, { fromDate, toDate });
+  const invalidDates = Object.keys(dateErrors).length > 0;
+  const dateValidation = useFieldValidation(() => dateErrors);
 
   const [tripLabel, setTripLabel] = useState<{ tripId: string; text: string } | null>(null);
   useEffect(() => {
@@ -77,15 +83,15 @@ export default function BookingsPage() {
     if (paymentStatus !== "all") params.paymentStatus = paymentStatus;
     if (paymentMethod !== "all") params.paymentMethod = paymentMethod;
     if (hasReports) params.hasReports = true;
-    if (dateType === "departure") {
+    if (!invalidDates && dateType === "departure") {
       if (fromDate) params.departureFrom = new Date(fromDate).toISOString();
       if (toDate) { const date = new Date(toDate); date.setHours(23, 59, 59, 999); params.departureTo = date.toISOString(); }
-    } else {
+    } else if (!invalidDates) {
       if (fromDate) params.createdFrom = new Date(fromDate).toISOString();
       if (toDate) { const date = new Date(toDate); date.setHours(23, 59, 59, 999); params.createdTo = date.toISOString(); }
     }
     return params;
-  }, [ownerId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate]);
+  }, [ownerId, tripId, searchTerm, status, paymentStatus, paymentMethod, hasReports, dateType, fromDate, toDate, invalidDates]);
 
   const filterParams = buildFilterParams();
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
@@ -96,6 +102,7 @@ export default function BookingsPage() {
       if (!result.ok) throw new Error(result.message);
       return result.data;
     },
+    { enabled: !invalidDates },
   );
   const items = pageData?.items ?? [];
   const nextCursor = pageData?.nextCursor ?? null;
@@ -187,11 +194,11 @@ export default function BookingsPage() {
           </div>
           {hasActiveFilters ? <button type="button" onClick={resetFilters} className="flex items-center gap-1 text-xs font-medium text-[#606060] hover:text-red-700 sm:text-sm"><RotateCcw className="size-3.5" /> {t("common.actions.resetFilters")}</button> : null}
         </div>
-        {showAdvanced ? <div className="grid gap-3 border-t border-[#e4ecf2] pt-3 sm:grid-cols-3"><select aria-label={t("bookings.filters.dateType")} value={dateType} onChange={(event) => setDateType(event.target.value as "created" | "departure")} className="select-field w-full"><option value="departure">{t("bookings.filters.dateTypeDeparture")}</option><option value="created">{t("bookings.filters.dateTypeCreated")}</option></select><Input type="date" aria-label={t("bookings.filters.fromDate")} value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="bg-white" /><Input type="date" aria-label={t("bookings.filters.toDate")} value={toDate} onChange={(event) => setToDate(event.target.value)} className="bg-white" /></div> : null}
+        {showAdvanced ? <ValidationScope validation={dateValidation}><div className="grid gap-3 border-t border-[#e4ecf2] pt-3 sm:grid-cols-3"><select aria-label={t("bookings.filters.dateType")} value={dateType} onChange={(event) => setDateType(event.target.value as "created" | "departure")} className="select-field w-full"><option value="departure">{t("bookings.filters.dateTypeDeparture")}</option><option value="created">{t("bookings.filters.dateTypeCreated")}</option></select><Input fieldName="fromDate" type="date" aria-label={t("bookings.filters.fromDate")} value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="bg-white" /><Input fieldName="toDate" type="date" aria-label={t("bookings.filters.toDate")} value={toDate} onChange={(event) => setToDate(event.target.value)} className="bg-white" /></div></ValidationScope> : null}
       </div>
 
       {error ? <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
-      {isPending && !fetchError ? (
+      {isPending && !fetchError && !invalidDates ? (
         // أول تحميل (أو مفتاح فلترة جديد بدون كاش) — هيكل الجدول بدل الوميض الفارغ
         <TableSkeleton rows={10} columns={6} />
       ) : (

@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -183,7 +191,10 @@ export default function BusDetailPage({
     }
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateBusSchema, { plateNumber: plate.trim(), color, capacity: Number(capacity), modelYear: modelYear.trim() ? Number(modelYear) : undefined, brandId: brandId || null }), plateNumber: requiredField(plate) || (plate.trim().length > 50 ? tr("validation.maxLength", { max: 50 }) : undefined), color: requiredField(color) || (color.length > 50 ? tr("validation.maxLength", { max: 50 }) : undefined) }));
+
   async function save() {
+    if (!validation.validate()) return;
     if (!ownerId) return;
     // الصورة المختارة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل
     // مفيش تعديل يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
@@ -194,7 +205,7 @@ export default function BusDetailPage({
       const s = await stageBusImage(ownerId, imageFile);
       setUploading(false);
       if (!s.ok) {
-        note(false, s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -210,7 +221,8 @@ export default function BusDetailPage({
       capacity: capacity === "" ? undefined : Number(capacity),
     });
     if (!r.ok && staged) await discardBusImage(ownerId, staged);
-    note(r.ok, r.ok ? tr("common.toast.saved") : r.message, r.ok ? r.data : undefined);
+    if (!r.ok) { setError(validation.failure(r)); return; }
+    note(true, tr("common.toast.saved"), r.data);
     if (r.ok) {
       setImageFile(null);
       setEditOpen(false);
@@ -504,21 +516,21 @@ export default function BusDetailPage({
         </section>
       )}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen} title={tr("buses.detail.editDialog.title")} description={tr("buses.detail.editDialog.description", { plateNumber: bus.plateNumber ?? "—" })} size="sm">
+      <Dialog validation={validation} open={editOpen} onOpenChange={setEditOpen} title={tr("buses.detail.editDialog.title")} description={tr("buses.detail.editDialog.description", { plateNumber: bus.plateNumber ?? "—" })} size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.plateNumber")}</span>
-            <Input dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value)} />
+            <Input fieldName="plateNumber" dir="ltr" value={plate} onChange={(e) => setPlate(e.target.value)} />
           </label>
           <label className="block text-sm">
             <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.color")}</span>
-            <select value={color} onChange={(e) => setColor(e.target.value)} className="select-field w-full">
+            <Select fieldName="color" value={color} onChange={(e) => setColor(e.target.value)} className="select-field w-full">
               <option value="">{tr("buses.detail.pickColor")}</option>
               {colorPresets.map((preset) => (
                 <option key={preset.name} value={preset.name}>{preset.name}</option>
               ))}
               {colorMissing ? <option value={color}>{color}</option> : null}
-            </select>
+            </Select>
           </label>
           {color ? (
             <div className="flex items-center gap-2 text-sm text-[#5e6b78]">
@@ -527,6 +539,7 @@ export default function BusDetailPage({
             </div>
           ) : null}
           <ImagePicker
+            fieldName="imageUrl"
             label={tr("buses.detail.imageLabel")}
             file={imageFile}
             onChange={(file) => void onImageFile(file)}
@@ -539,23 +552,23 @@ export default function BusDetailPage({
             {brandsPending ? (
               <Skeleton className="h-[2.75rem] w-full" />
             ) : (
-              <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
+              <Select fieldName="brandId" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="select-field w-full">
                 <option value="">{tr("buses.detail.noBrand")}</option>
                 {(brands ?? []).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}{brand.isActive ? "" : tr("common.status.inactiveSuffix")}</option>)}
                 {bus?.brand && !(brands ?? []).some((b) => b.id === bus.brand!.id) ? (
                   <option key={bus.brand.id} value={bus.brand.id}>{bus.brand.name} {tr("buses.detail.brandInactiveSuffix")}</option>
                 ) : null}
-              </select>
+              </Select>
             )}
           </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-2 block font-bold text-[#334454]">{tr("common.fields.modelYear")}</span>
-              <Input dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(e) => setModelYear(e.target.value)} placeholder="2022" />
+              <Input fieldName="modelYear" dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(e) => setModelYear(e.target.value)} placeholder="2022" />
             </label>
             <label className="block text-sm">
               <span className="mb-2 block font-bold text-[#334454]">{tr("buses.detail.capacityRange")}</span>
-              <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              <Input fieldName="capacity" dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
             </label>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">

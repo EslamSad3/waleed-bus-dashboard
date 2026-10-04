@@ -43,6 +43,7 @@ export const AR_ERROR_MAP: Record<string, string> = {
   DATABASE_SCHEMA_OUT_OF_DATE: t("errors.DATABASE_SCHEMA_OUT_OF_DATE"),
   INTERNAL_ERROR: t("errors.INTERNAL_ERROR"),
   USER_NOT_FOUND: t("errors.USER_NOT_FOUND"),
+  DRIVER_ACCOUNT_PROTECTED: t("errors.DRIVER_ACCOUNT_PROTECTED"),
   DRIVER_NOT_ASSIGNED: t("errors.DRIVER_NOT_ASSIGNED"),
 
   // --- fleet owners and members ---

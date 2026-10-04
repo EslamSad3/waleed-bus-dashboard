@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { fetchDriversPage, type DriverRow } from "@/lib/actions/members";
@@ -125,7 +126,7 @@ export function DriverPicker({
       ) : loadError && rows.length === 0 ? (
         <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{loadError}</p>
       ) : (
-        <select
+        <Select fieldName="driverUserId"
           aria-label={t("buses.assign.driverLabel")}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -142,7 +143,7 @@ export function DriverPicker({
               {choice.label}
             </option>
           ))}
-        </select>
+        </Select>
       )}
       {loadError && rows.length > 0 ? (
         <p role="alert" className="mt-1.5 text-xs text-red-600">{loadError}</p>

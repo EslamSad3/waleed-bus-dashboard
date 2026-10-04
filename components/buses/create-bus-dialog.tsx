@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+import { useFieldValidation } from "@/components/ui/field-validation";
+import { Select } from "@/components/ui/select";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -136,7 +139,11 @@ export function CreateBusDialog({
     },
   });
 
+  const formValues = useWatch({ control: form.control });
+  const validation = useFieldValidation(() => ({ ...schemaErrors(createBusSchema, formValues), ownerId: ownershipMode === "OWNER" ? requiredField(effectiveOwnerId) : undefined, driverUserId: ownershipMode === "INDEPENDENT" && !fixedDriver ? requiredField(assignTargetUserId ?? "") : undefined, imageUrl: imageFile ? validateImageFile(imageFile) ?? undefined : t("buses.createDialog.errors.imageRequired") }));
+
   function resetForm() {
+    validation.reset();
     setImageFile(null);
     setFormError(null);
     setCreatedBus(null);
@@ -211,7 +218,7 @@ export function CreateBusDialog({
     if (!stagedResult.ok) {
       setUploading(false);
       setBusy(false);
-      setFormError(stagedResult.message);
+      setFormError(validation.failure(stagedResult));
       return;
     }
     const staged: StagedUpload = stagedResult.data;
@@ -231,7 +238,7 @@ export function CreateBusDialog({
     if (!r.ok) {
       await discardBusImage(ownerId, staged);
       setBusy(false);
-      setFormError(r.message);
+      setFormError(validation.failure(r));
       return;
     }
     publishCreatedBus(r.data, ownerLabel);
@@ -285,10 +292,10 @@ export function CreateBusDialog({
     onClose();
   }
 
-  const color = form.watch("color");
+  const color = formValues.color;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) requestClose(); }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) requestClose(); }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
       {createdBus ? (
         <div className="space-y-4">
           <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{assignError}</p>
@@ -365,25 +372,17 @@ export function CreateBusDialog({
           </div>
         ) : null}
         <form
-          onSubmit={(event) => {
-            if (!imageFile) {
-              event.preventDefault();
-              setFormError(t("buses.createDialog.errors.imageRequired"));
-              return;
-            }
-            void form.handleSubmit(onSubmit)(event);
-          }}
+          onSubmit={(event) => { event.preventDefault(); const valid = validation.validate(); void form.handleSubmit((values) => { if (valid) return onSubmit(values); })(event); }}
           className="space-y-4"
           noValidate
         >
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.plateNumber")}</span>
-            <Input dir="ltr" placeholder={t("buses.placeholders.plateNumber")} {...form.register("plateNumber")} />
+            <Input fieldName="plateNumber" dir="ltr" placeholder={t("buses.placeholders.plateNumber")} {...form.register("plateNumber")} />
           </label>
-          {form.formState.errors.plateNumber ? <p role="alert" className="text-sm text-red-600">{form.formState.errors.plateNumber.message}</p> : null}
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.color")}</span>
-            <select
+            <Select fieldName="color"
               value={color ?? ""}
               onChange={(event) => form.setValue("color", event.target.value, { shouldValidate: true })}
               onBlur={() => form.trigger("color")}
@@ -393,7 +392,7 @@ export function CreateBusDialog({
               {BUS_COLORS.map((option) => (
                 <option key={option.name} value={option.name}>{option.name}</option>
               ))}
-            </select>
+            </Select>
           </label>
           {color ? (
             <div className="flex items-center gap-2 text-sm text-[#5e6b78]">
@@ -401,8 +400,8 @@ export function CreateBusDialog({
               {color}
             </div>
           ) : null}
-          {form.formState.errors.color ? <p role="alert" className="text-sm text-red-600">{form.formState.errors.color.message}</p> : null}
           <ImagePicker
+            fieldName="imageUrl"
             label={t("buses.detail.imageLabel")}
             file={imageFile}
             onChange={(file) => void onFileSelect(file)}
@@ -415,19 +414,19 @@ export function CreateBusDialog({
             {brandsPending ? (
               <Skeleton className="h-[2.75rem] w-full" />
             ) : (
-              <select
+              <Select fieldName="brandId"
                 {...form.register("brandId")}
                 className="select-field w-full"
               >
                 <option value="">{t("buses.detail.noBrand")}</option>
                 {(brands ?? []).filter((brand) => brand.isActive).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
-              </select>
+              </Select>
             )}
           </label>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.modelYear")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
-              <Input
+              <Input fieldName="modelYear"
                 dir="ltr"
                 inputMode="numeric"
                 type="number"
@@ -439,7 +438,7 @@ export function CreateBusDialog({
             </label>
             <label className="block text-sm">
               <span className="mb-1.5 block font-bold text-[#334454]">{t("buses.detail.capacityRange")}</span>
-              <Input
+              <Input fieldName="capacity"
                 dir="ltr"
                 inputMode="numeric"
                 type="number"
@@ -449,11 +448,6 @@ export function CreateBusDialog({
               />
             </label>
           </div>
-          {(form.formState.errors.modelYear || form.formState.errors.capacity) ? (
-            <p role="alert" className="text-sm text-red-600">
-              {form.formState.errors.modelYear?.message ?? form.formState.errors.capacity?.message}
-            </p>
-          ) : null}
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
             <input type="checkbox" {...form.register("isAirConditioned")} className="size-4" />
             {t("common.fields.ac")}
@@ -568,7 +562,7 @@ function IndependentDriverPicker({
       ) : loadError && rows.length === 0 ? (
         <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{loadError}</p>
       ) : (
-        <select
+        <Select fieldName="driverUserId"
           aria-label={t("buses.createDialog.independentDriverLabel")}
           value={value?.userId ?? ""}
           onChange={(event) => {
@@ -588,7 +582,7 @@ function IndependentDriverPicker({
               {choice.label}
             </option>
           ))}
-        </select>
+        </Select>
       )}
       {loadError && rows.length > 0 ? (
         <p role="alert" className="mt-1.5 text-xs text-red-600">{loadError}</p>

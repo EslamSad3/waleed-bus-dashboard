@@ -1,5 +1,11 @@
 "use client";
 
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,12 +47,16 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
   const [error, setError] = useState<string | null>(null);
 
   function resetForm() {
+    validation.reset();
     setName(""); setNickname(""); setPhone(""); setNationalId("");
     setPassword(""); setPasswordConfirmation(""); setImageFile(null);
     setError(null);
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createFleetOwnerSchema, { name: name.trim(), nickname: nickname.trim(), phone, password, nationalId: nationalId || undefined }), passwordConfirmation: !passwordConfirmation ? t("validation.required") : password === passwordConfirmation ? undefined : t("common.validation.passwordsMismatch") }));
+
   async function submit() {
+    if (!validation.validate()) return;
     setError(null);
     const parsed = createFleetOwnerSchema.safeParse({
       name, nickname, phone,
@@ -54,14 +64,8 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
       nationalId: nationalId || undefined,
       picture: undefined,
     });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? t("common.validation.required"));
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      setError(t("common.validation.passwordsMismatch"));
-      return;
-    }
+    if (!parsed.success) return;
+
     setSaving(true);
     // الصورة بتترفع الأول (مباشر للتخزين السحابي) قبل إنشاء الحساب — لو الرفع
     // فشل مفيش سجل يتيم، ولو الإنشاء فشل بنمسح الصورة المرحلية.
@@ -70,7 +74,7 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
       const s = await stageFleetOwnerPicture(imageFile);
       if (!s.ok) {
         setSaving(false);
-        setError(s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -86,7 +90,7 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
     if (!result.ok) {
       if (staged) await discardFleetOwnerPicture(staged);
       setSaving(false);
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     setSaving(false);
@@ -97,12 +101,12 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleetOwners.createDialog.title")} description={t("fleetOwners.createDialog.description")} size="lg">
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleetOwners.createDialog.title")} description={t("fleetOwners.createDialog.description")} size="lg">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("fleetOwners.placeholders.fullName")} autoComplete="name" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("fleetOwners.placeholders.nickname")} autoComplete="off" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("fleetOwners.placeholders.nationalIdDigits")} autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("fleetOwners.placeholders.fullName")} autoComplete="name" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input fieldName="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("fleetOwners.placeholders.nickname")} autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input fieldName="phone" dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input fieldName="nationalId" dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("fleetOwners.placeholders.nationalIdDigits")} autoComplete="off" /></label>
         <ImagePicker
           label={t("fleetOwners.createDialog.imageLabel")}
           file={imageFile}
@@ -110,8 +114,8 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
           uploading={saving && Boolean(imageFile)}
           hint={t("common.image.hintUploadFile")}
         />
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><Input fieldName="password" dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><Input fieldName="passwordConfirmation" dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
         {error && <p role="alert" className="text-sm text-red-600 sm:col-span-2">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:col-span-2">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
@@ -148,22 +152,19 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
   }
 
   function resetForm() {
+    validation.reset();
     setLoadedFor(null);
     setImageFile(null);
     setError(null);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateFleetOwnerSchema, { name: name.trim(), nickname: nickname.trim() || undefined, phone: phone.trim() || undefined, nationalId: nationalId.trim(), isActive }));
+
   async function submit() {
+    if (!validation.validate()) return;
     if (!owner) return;
     setError(null);
-    if (!name.trim()) {
-      setError(t("fleetOwners.errors.nameRequired"));
-      return;
-    }
-    if (nationalId && !/^\d{14}$/.test(nationalId.trim())) {
-      setError(t("common.validation.nationalIdDigits"));
-      return;
-    }
+
     setSaving(true);
     // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
     // يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
@@ -172,7 +173,7 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
       const s = await stageFleetOwnerPicture(imageFile, owner.id);
       if (!s.ok) {
         setSaving(false);
-        setError(s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -188,7 +189,7 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
     if (!result.ok) {
       if (staged) await discardFleetOwnerPicture(staged);
       setSaving(false);
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     setSaving(false);
@@ -199,12 +200,12 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
   }
 
   return (
-    <Dialog open={open && Boolean(owner)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleetOwners.editDialog.title")} description={owner ? t("fleetOwners.editDialog.description", { value: owner.name ?? owner.phoneNumber }) : undefined} size="lg">
+    <Dialog validation={validation} open={open && Boolean(owner)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleetOwners.editDialog.title")} description={owner ? t("fleetOwners.editDialog.description", { value: owner.name ?? owner.phoneNumber }) : undefined} size="lg">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} autoComplete="off" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" /></label>
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("fleetOwners.placeholders.nationalIdDigits")} autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input fieldName="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} autoComplete="off" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input fieldName="phone" dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input fieldName="nationalId" dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("fleetOwners.placeholders.nationalIdDigits")} autoComplete="off" /></label>
         <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="size-4 accent-[#059ff8]" /> {t("fleetOwners.editDialog.activeAccount")}</label>
         <ImagePicker
           label={t("fleetOwners.editDialog.imageLabel")}

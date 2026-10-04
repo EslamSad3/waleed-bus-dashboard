@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+import { useFieldValidation } from "@/components/ui/field-validation";
+import { Select } from "@/components/ui/select";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createBookingSchema } from "@/lib/schemas/p1";
@@ -56,7 +59,11 @@ export function CreateBookingDialog({
     { enabled: open && Boolean(ownerId && lineId) },
   );
 
+  const formValues = useWatch({ control: form.control });
+  const validation = useFieldValidation(() => ({ ...schemaErrors(createBookingSchema, formValues), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
+
   function resetForm() {
+    validation.reset();
     setLineId("");
     setFormError(null);
     form.reset();
@@ -72,7 +79,7 @@ export function CreateBookingDialog({
     setOwnerScopeCookie(ownerId);
     const r = await createBooking(ownerId, values);
     if (!r.ok) {
-      setFormError(r.message);
+      setFormError(validation.failure(r));
       return;
     }
     // نفضّل كاش الحجوزات — الجدول بيتحدث فورًا من غير إعادة تحميل
@@ -85,18 +92,18 @@ export function CreateBookingDialog({
   const lines = linesPage?.items ?? [];
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={tr("bookings.createDialog.title")} description={tr("bookings.createDialog.description")} size="sm">
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={tr("bookings.createDialog.title")} description={tr("bookings.createDialog.description")} size="sm">
       <div>
         <div className="mb-4">
           <OwnerPicker ownerId={ownerId} onOwnerChange={(id) => { setLocalOwnerId(id); setLineId(""); form.setValue("tripId", ""); }} />
         </div>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <form onSubmit={(event) => { event.preventDefault(); const valid = validation.validate(); void form.handleSubmit((values) => { if (valid) return onSubmit(values); })(event); }} className="space-y-4" noValidate>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{tr("common.fields.tripLine")}</span>
             {linesLoading ? (
               <InlineBlockSkeleton className="h-11 w-full" />
             ) : (
-              <select
+              <Select fieldName="lineId"
                 aria-label={tr("common.fields.tripLine")}
                 value={lineId}
                 onChange={(event) => { setLineId(event.target.value); form.setValue("tripId", ""); }}
@@ -108,7 +115,7 @@ export function CreateBookingDialog({
                   const ends = lineEndpoints(line);
                   return <option key={line.id} value={line.id}>{line.name} · {ends.origin ?? "—"} ← {ends.destination ?? "—"}</option>;
                 })}
-              </select>
+              </Select>
             )}
           </label>
           <label className="block text-sm">
@@ -116,26 +123,23 @@ export function CreateBookingDialog({
             {tripsLoading ? (
               <InlineBlockSkeleton className="h-11 w-full" />
             ) : (
-              <select aria-label={tr("bookings.createDialog.pickTrip")} {...form.register("tripId")} disabled={!lineId} className="select-field w-full">
+              <Select fieldName="tripId" aria-label={tr("bookings.createDialog.pickTrip")} {...form.register("tripId")} disabled={!lineId} className="select-field w-full">
                 <option value="">{tr("bookings.createDialog.pickTripOption")}</option>
                 {(tripsPage?.items ?? []).map((trip) => (
                   <option key={trip.id} value={trip.id}>
                     {new Date(trip.departAt).toLocaleString("ar-EG")} · {trip.origin ?? "—"} ← {trip.destination ?? "—"}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
-            {form.formState.errors.tripId ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.tripId.message}</p> : null}
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{tr("bookings.createDialog.passengerNameLabel")}<span className="text-[#dc2626]"> *</span></span>
-            <Input placeholder={tr("bookings.createDialog.passengerNamePlaceholder")} {...form.register("passengerName")} />
-            {form.formState.errors.passengerName ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.passengerName.message}</p> : null}
+            <Input fieldName="passengerName" placeholder={tr("bookings.createDialog.passengerNamePlaceholder")} {...form.register("passengerName")} />
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{tr("bookings.createDialog.passengerPhoneLabel")}<span className="text-[#dc2626]"> *</span></span>
-            <Input dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" {...form.register("passengerPhone")} />
-            {form.formState.errors.passengerPhone ? <p role="alert" className="mt-1 text-sm text-red-600">{form.formState.errors.passengerPhone.message}</p> : null}
+            <Input fieldName="passengerPhone" dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" {...form.register("passengerPhone")} />
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">

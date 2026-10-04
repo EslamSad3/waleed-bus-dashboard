@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { useApiQuery, qk } from "@/lib/queries";
 import { fetchOwnerOptions, type OwnerOption } from "@/lib/actions/fleet-owners";
@@ -137,7 +138,7 @@ export function OwnerPicker({
           aria-label={t("fleetOwnerPicker.searchAria")}
           aria-busy={showSpinner}
         />
-        <select
+        <Select fieldName="ownerId"
           className="select-field w-full"
           value={ownerId}
           onChange={(event) => onOwnerChange(event.target.value)}
@@ -164,7 +165,7 @@ export function OwnerPicker({
               {option.label}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       {showSpinner ? (

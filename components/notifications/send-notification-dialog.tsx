@@ -1,5 +1,12 @@
 "use client";
 
+import { Select, Textarea } from "@/components/ui/select";
+
+import { schemaErrors } from "@/lib/field-validation";
+import { notificationSchema } from "@/lib/schemas/admin-forms";
+
+import { useFieldValidation, ValidationMessage } from "@/components/ui/field-validation";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -165,6 +172,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
   }, [userOptions, userSearch]);
 
   function resetForm() {
+    validation.reset();
     setIsGlobal(true);
     setUserId("");
     setSelectedUserObj(null);
@@ -177,42 +185,17 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
     setError(null);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(notificationSchema, { title, body, isGlobal, userId: isGlobal ? undefined : userId || undefined, category, tripId: category === "TRIP" ? tripId || undefined : undefined, promotionId: category === "DISCOUNT_CODE" ? promotionId || undefined : undefined }));
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!validation.validate()) return;
     setError(null);
 
     const trimmedTitle = title.trim();
     const trimmedBody = body.trim();
 
-    if (!trimmedTitle) {
-      setError(tr("notifications.send.errors.titleRequired"));
-      return;
-    }
-    if (!trimmedBody) {
-      setError(tr("notifications.send.errors.bodyRequired"));
-      return;
-    }
-
-    let targetUserId = userId;
-    // Auto-select if user typed and there is exactly 1 match
-    if (!isGlobal && !targetUserId && filteredUsers.length === 1) {
-      targetUserId = filteredUsers[0].id;
-      setUserId(targetUserId);
-      setSelectedUserObj(filteredUsers[0]);
-    }
-
-    if (!isGlobal && !targetUserId) {
-      setError(tr("notifications.send.errors.targetRequired"));
-      return;
-    }
-    if (category === "TRIP" && !tripId) {
-      setError(tr("notifications.send.errors.tripRequired"));
-      return;
-    }
-    if (category === "DISCOUNT_CODE" && !promotionId) {
-      setError(tr("notifications.send.errors.promoRequired"));
-      return;
-    }
+    const targetUserId = userId;
 
     setSubmitting(true);
 
@@ -240,12 +223,12 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
       onOpenChange(false);
       onSuccess(detail ? `${headline} ${detail}` : headline);
     } else {
-      setError(res.message);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={(next) => {
         if (!next) resetForm();
@@ -255,7 +238,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
       description={tr("notifications.send.description")}
       size="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form noValidate onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div
             role="alert"
@@ -355,7 +338,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               /* Search Input and Live Interactive Results List */
               <div className="space-y-2">
                 <div className="relative">
-                  <Input
+                  <Input fieldName="userId"
                     placeholder={tr("notifications.placeholders.userSearch")}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
@@ -440,10 +423,11 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
           </div>
         )}
 
+        {!isGlobal ? <ValidationMessage name="userId" /> : null}
         {/* Category select */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.typeLabel")}</label>
-          <select
+          <Select fieldName="category"
             className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
             value={category}
             onChange={(e) => setCategory(e.target.value as "TEXT" | "TRIP" | "DISCOUNT_CODE")}
@@ -451,7 +435,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
             <option value="TEXT">{tr("notifications.send.typeText")}</option>
             <option value="TRIP">{tr("notifications.send.typeTrip")}</option>
             <option value="DISCOUNT_CODE">{tr("notifications.send.typePromo")}</option>
-          </select>
+          </Select>
         </div>
 
         {/* Trip Dropdown if TRIP (NO UUID) */}
@@ -462,7 +446,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               <PendingSelectSkeleton />
             ) : (
               <>
-                <select
+                <Select fieldName="tripId"
                   className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
                   value={tripId}
                   onChange={(e) => setTripId(e.target.value)}
@@ -473,7 +457,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                       {t.origin} ← {t.destination} ({new Date(t.departAt).toLocaleString("ar-EG")})
                     </option>
                   ))}
-                </select>
+                </Select>
                 {trips.length === 0 && (
                   <p className="text-[11px] text-amber-700">{tr("notifications.send.noTrips")}</p>
                 )}
@@ -490,7 +474,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
               <PendingSelectSkeleton />
             ) : (
               <>
-                <select
+                <Select fieldName="promotionId"
                   className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5 text-sm outline-none focus:border-[#059ff8] focus:ring-1 focus:ring-[#059ff8]"
                   value={promotionId}
                   onChange={(e) => setPromotionId(e.target.value)}
@@ -501,7 +485,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
                       {p.code} {tr("notifications.send.promoDiscountPrefix")} {p.value} {tr("promotions.columns.discountUnitPrefix")}{p.isGlobal ? tr("promotions.placeholders.promoGlobal") : tr("promotions.placeholders.promoSpecific")})
                     </option>
                   ))}
-                </select>
+                </Select>
                 {promotions.length === 0 && (
                   <p className="text-[11px] text-amber-700">{tr("notifications.send.noPromos")}</p>
                 )}
@@ -513,7 +497,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Title */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.titleLabel")}</label>
-          <Input
+          <Input fieldName="title"
             placeholder={tr("notifications.placeholders.title")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -524,7 +508,7 @@ export function SendNotificationDialog({ open, onOpenChange, onSuccess }: Props)
         {/* Body */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-[#00134c]">{tr("notifications.send.bodyLabel")}</label>
-          <textarea
+          <Textarea fieldName="body"
             rows={4}
             placeholder={tr("notifications.placeholders.body")}
             value={body}

@@ -1,24 +1,23 @@
 "use client";
 
+import { useDriverActions } from "@/components/drivers/use-driver-actions";
+import { RowActions } from "@/components/ui/row-actions";
 import Link from "next/link";
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { AsyncButton } from "@/components/ui/async-button";
 import {
   fetchDriver,
-  removeDriver,
   MEMBER_STATUS_AR,
   type DriverRow,
   type Member,
 } from "@/lib/actions/members";
 import { driverHref, useDriverOwnerScope } from "@/lib/owner-scope";
 import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
-import { useConfirm } from "@/components/ui/confirm-dialog";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { fetchDriverTripsPage, type DriverTripRow } from "@/lib/actions/feedback";
@@ -40,7 +39,7 @@ import { t } from "@/lib/i18n/t";
 export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const confirm = useConfirm();
+  const driverActions = useDriverActions();
   const queryClient = useQueryClient();
   const { ownerId: scopedOwnerId, isExplicit } = useDriverOwnerScope(id);
   const [driver, setDriver] = useState<DriverRow | null>(null);
@@ -79,28 +78,12 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function onSaved(fresh: DriverRow) {
-    setDriver(fresh);
+    const updated = { ...driver, ...fresh };
+    setDriver(updated);
     if (fresh.status === "ACTIVE" || fresh.status === "SUSPENDED" || fresh.status === "REVOKED") {
       setStatus(fresh.status);
     }
-    if (scopedOwnerId) patchDetail(queryClient, qk.driver(scopedOwnerId, id), fresh);
-  }
-
-  async function remove() {
-    if (!scopedOwnerId) return;
-    setError(null);
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("drivers.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const r = await removeDriver(scopedOwnerId, id, {
-      // A personal membership is revoked rather than deleted, so the toast
-      // must not claim the record is gone.
-      isIndependent: scopedOwnerId === id,
-    });
-    if (!r.ok) {
-      setError(r.message);
-      return;
-    }
-    router.push("/drivers");
-    router.refresh();
+    if (scopedOwnerId) patchDetail(queryClient, qk.driver(scopedOwnerId, id), updated);
   }
 
   // The company comes from the link, or — for a bare bookmark — from the
@@ -140,7 +123,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
             <p className="page-description">{t("drivers.detail.description")}</p>
           </div>
         </div>
-        <AsyncButton type="button" variant="destructive" onClick={remove}><Trash2 className="size-4" /> {t("drivers.detail.deleteDriver")}</AsyncButton>
+        <RowActions actions={driverActions(driver, scopedOwnerId, (fresh) => { void onSaved(fresh); }, () => { router.push("/drivers"); router.refresh(); })} />
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

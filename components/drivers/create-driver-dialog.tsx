@@ -1,5 +1,11 @@
 "use client";
 
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -65,6 +71,7 @@ export function CreateDriverDialog({
   const needsOwner = mode === "OWNER";
 
   function resetForm() {
+    validation.reset();
     setMode(lockedOwnerId ? "OWNER" : "INDEPENDENT");
     setPickedOwnerId(lockedOwnerId ?? "");
     setOwnerLabel(null);
@@ -83,16 +90,12 @@ export function CreateDriverDialog({
     }
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createDriverAccountSchema, { mode, ownerId: needsOwner ? ownerId || undefined : undefined, name: name.trim(), nickname: nickname.trim(), phone, password, nationalId: nationalId || undefined }), passwordConfirmation: !passwordConfirmation ? t("validation.required") : password === passwordConfirmation ? undefined : t("common.validation.passwordsMismatch") }));
+
   async function submit() {
+    if (!validation.validate()) return;
     setError(null);
-    if (needsOwner && !ownerId) {
-      setError(t("drivers.createDialog.ownerRequired"));
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      setError(t("common.validation.passwordsMismatch"));
-      return;
-    }
+
     const parsed = createDriverAccountSchema.safeParse({
       mode,
       ...(needsOwner && ownerId ? { ownerId } : {}),
@@ -102,10 +105,7 @@ export function CreateDriverDialog({
       password,
       nationalId: nationalId || undefined,
     });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? t("common.validation.required"));
-      return;
-    }
+    if (!parsed.success) return;
     setSaving(true);
     // The picture goes straight to cloud storage first — a failed upload must
     // not create an account, and a failed account write discards the image.
@@ -114,7 +114,7 @@ export function CreateDriverDialog({
       const s = await stageUserPicture(imageFile);
       if (!s.ok) {
         setSaving(false);
-        setError(s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -126,7 +126,7 @@ export function CreateDriverDialog({
     if (!result.ok) {
       if (staged) await discardUserPicture(staged);
       setSaving(false);
-      setError(result.fields ? Object.values(result.fields).join(" · ") : result.message);
+      setError(validation.failure(result));
       return;
     }
     onCreated?.(result.data);
@@ -136,7 +136,7 @@ export function CreateDriverDialog({
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }}
       title={t("drivers.createDialog.title")}
@@ -208,10 +208,10 @@ export function CreateDriverDialog({
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("drivers.placeholders.fullName")} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("drivers.placeholders.nickname")} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("drivers.placeholders.nationalIdDigits")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("drivers.placeholders.fullName")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input fieldName="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("drivers.placeholders.nickname")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input fieldName="phone" dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalIdOptional")}</span><Input fieldName="nationalId" dir="ltr" value={nationalId} onChange={(event) => setNationalId(event.target.value)} placeholder={t("drivers.placeholders.nationalIdDigits")} /></label>
           <ImagePicker
             label={t("drivers.createDialog.imageLabel")}
             file={imageFile}
@@ -219,8 +219,8 @@ export function CreateDriverDialog({
             uploading={saving && Boolean(imageFile)}
             hint={t("common.image.hintUploadFile")}
           />
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><Input dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><Input dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><Input fieldName="password" dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><Input fieldName="passwordConfirmation" dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
           {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row md:col-span-2">
             <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>

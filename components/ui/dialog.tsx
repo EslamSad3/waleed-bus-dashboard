@@ -5,8 +5,10 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n/t";
+import { ValidationScope, type FieldValidation } from "@/components/ui/field-validation";
 
 type DialogProps = {
+  validation?: FieldValidation;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -25,12 +27,14 @@ export function Dialog({
   title,
   description,
   children,
+  validation,
   size = "md",
   closeLabel = t("ui.dialog.closeLabel"),
 }: DialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const validationRef = useRef(validation);
   // onOpenChange arrives as a fresh inline arrow on every parent render.
   // Depending on it directly would tear down + re-run the focus effect on
   // every keystroke inside the dialog (stealing focus out of text inputs
@@ -40,10 +44,14 @@ export function Dialog({
   // the focus effect below (ref writes inside effects are safe).
   useEffect(() => {
     onOpenChangeRef.current = onOpenChange;
+    validationRef.current = validation;
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      validationRef.current?.reset();
+      return;
+    }
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -122,7 +130,7 @@ export function Dialog({
             <X className="size-5" aria-hidden="true" />
           </button>
         </header>
-        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">{children}</div>
+        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"><ValidationScope validation={validation}>{children}</ValidationScope></div>
       </div>
     </div>,
     document.body,

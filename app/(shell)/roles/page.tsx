@@ -1,5 +1,9 @@
 "use client";
 
+import { requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, Plus, Trash2 } from "lucide-react";
@@ -39,17 +43,17 @@ export default function RolesPage() {
     applyMutationCache(queryClient, roleImpact(role, "remove"), result);
   }
 
+  const validation = useFieldValidation(() => ({ name: requiredField(name) || (name.trim().length > 100 ? t("validation.maxLength", { max: 100 }) : undefined), description: description.length > 500 ? t("validation.maxLength", { max: 500 }) : undefined }));
+
   async function save() {
-    if (!name.trim()) {
-      setError(t("roles.errors.nameRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
+
     setSaving(true);
     setError(null);
     const result = await createRole({ name: name.trim(), slug: `custom-role-${Date.now()}`, description: description.trim() || undefined });
     setSaving(false);
     if (!result.ok) {
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     applyMutationCache(queryClient, roleImpact(result.data, "insert"), result);
@@ -88,10 +92,10 @@ export default function RolesPage() {
         )}
       />}
 
-      <Dialog open={open} onOpenChange={setOpen} title={t("roles.createDialog.title")} description={t("roles.createDialog.description")} size="sm">
+      <Dialog validation={validation} open={open} onOpenChange={setOpen} title={t("roles.createDialog.title")} description={t("roles.createDialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.createDialog.nameLabel")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("roles.placeholders.name")} autoFocus /></label>
-          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.createDialog.whenLabel")}</span><Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("roles.placeholders.when")} /></label>
+          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.createDialog.nameLabel")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("roles.placeholders.name")} autoFocus /></label>
+          <label className="block text-sm"><span className="mb-2 block font-bold text-[#334454]">{t("roles.createDialog.whenLabel")}</span><Input fieldName="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("roles.placeholders.when")} /></label>
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end"><Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={saving}>{t("common.actions.cancel")}</Button><Button type="button" onClick={save} loading={saving}>{saving ? t("common.loading.saving") : t("roles.createDialog.next")}</Button></div>
         </div>
       </Dialog>

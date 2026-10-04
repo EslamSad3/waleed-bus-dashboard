@@ -6,7 +6,8 @@ export const adminVerifyPaymentSchema = z.object({
   reference: z.string().max(100, t("validation.transactionRefMax")).optional(),
   amount: z
     .number()
-    .positive(t("validation.amountPositive")),
+    .positive(t("validation.amountPositive"))
+    .multipleOf(0.01, t("validation.moneyPrecision")),
   paymentMethod: z
     .string()
     .max(20, t("validation.paymentMethodMax"))
@@ -35,7 +36,8 @@ export const adminRefundPaymentSchema = z.object({
     .max(100, t("validation.refundRefMax")),
   refundAmount: z
     .number()
-    .positive(t("validation.refundAmountPositive")),
+    .positive(t("validation.refundAmountPositive"))
+    .multipleOf(0.01, t("validation.moneyPrecision")),
   reason: z
     .string()
     .min(1, t("validation.refundReasonRequired"))

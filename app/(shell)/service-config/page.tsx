@@ -1,5 +1,9 @@
 "use client";
 
+import { serviceConfigSchema } from "@/lib/schemas/admin-forms";
+import { schemaErrors } from "@/lib/field-validation";
+import { useFieldValidation, ValidationScope, ValidationMessage } from "@/components/ui/field-validation";
+import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +58,7 @@ export default function ServiceConfigPage() {
   }
 
   function move(key: string, dir: -1 | 1) {
+    validation.reset();
     setSaved(false);
     setRows((items) => {
       if (!items) return items;
@@ -67,24 +72,22 @@ export default function ServiceConfigPage() {
   }
 
   function remove(key: string) {
+    validation.reset();
     setSaved(false);
     setRows((items) => items?.filter((r) => r.key !== key) ?? []);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(serviceConfigSchema, { entries: rows ?? [] }));
+
   async function save() {
+    if (!validation.validate()) return;
     if (!rows) return;
-    for (const r of rows) {
-      if (!r.text.trim() || !r.value.trim()) {
-        setError(t("serviceConfig.errors.rowRequired"));
-        return;
-      }
-    }
     setSaving(true);
     const result = await replaceServiceConfig(
       rows.map(({ key: _key, ...rest }) => rest),
     );
     setSaving(false);
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     // A replace-everything write: the cached list must be the server's new
     // ordering, and every screen that reads customer-service entries refetched.
     applyMutationCache(
@@ -103,18 +106,19 @@ export default function ServiceConfigPage() {
   }
 
   return (
-    <div className="dashboard-page">
+    <ValidationScope validation={validation}><div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
           <h1 className="page-title">{t("serviceConfig.title")}</h1>
           <p className="page-description">{t("serviceConfig.description")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 max-md:w-full">
-          <Button variant="secondary" className="max-md:w-full" onClick={add}><Plus className="size-4" /> {t("serviceConfig.addItem")}</Button>
+          <Button variant="secondary" className="max-md:w-full" onClick={add} disabled={!rows}><Plus className="size-4" /> {t("serviceConfig.addItem")}</Button>
           <Button className="max-md:w-full" onClick={() => void save()} loading={saving} disabled={!rows}>{saving ? t("common.loading.saving") : t("serviceConfig.saveList")}</Button>
         </div>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
+      <ValidationMessage name="entries" />
       {saved ? <p className="mb-4 rounded-xl bg-green-50 p-4 text-sm text-green-800">{t("serviceConfig.saved")}</p> : null}
       {!rows ? (fetchError ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{fetchError.message}</p> : <FormSkeleton fields={4} />) : rows.length === 0 ? <p className="text-sm text-slate-500">{t("serviceConfig.empty")}</p> : (
         <div className="space-y-3">
@@ -129,15 +133,15 @@ export default function ServiceConfigPage() {
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.text")}</span><Input value={row.text} onChange={(event) => patch(row.key, "text", event.target.value)} placeholder={t("serviceConfig.placeholders.text")} /></label>
-                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.value")}</span><Input dir="ltr" value={row.value} onChange={(event) => patch(row.key, "value", event.target.value)} placeholder={t("serviceConfig.placeholders.value")} /></label>
-                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.type")}</span><select className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5" value={row.type} onChange={(event) => patch(row.key, "type", event.target.value)}><option value="PHONE">{t("enums.serviceConfigType.phone")}</option><option value="WHATSAPP">{t("enums.serviceConfigType.whatsapp")}</option><option value="WEBSITE">{t("enums.serviceConfigType.website")}</option></select></label>
+                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.text")}</span><Input fieldName={`entries.${idx}.text`} value={row.text} onChange={(event) => patch(row.key, "text", event.target.value)} placeholder={t("serviceConfig.placeholders.text")} /></label>
+                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.value")}</span><Input fieldName={`entries.${idx}.value`} dir="ltr" value={row.value} onChange={(event) => patch(row.key, "value", event.target.value)} placeholder={t("serviceConfig.placeholders.value")} /></label>
+                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.type")}</span><Select fieldName={`entries.${idx}.type`} className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5" value={row.type} onChange={(event) => patch(row.key, "type", event.target.value)}><option value="PHONE">{t("enums.serviceConfigType.phone")}</option><option value="WHATSAPP">{t("enums.serviceConfigType.whatsapp")}</option><option value="WEBSITE">{t("enums.serviceConfigType.website")}</option></Select></label>
                 <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm"><input type="checkbox" checked={row.isActive ?? true} onChange={(event) => patch(row.key, "isActive", event.target.checked)} className="size-4 accent-[#059ff8]" /> {t("serviceConfig.visibleInApp")}</label>
               </div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </div></ValidationScope>
   );
 }

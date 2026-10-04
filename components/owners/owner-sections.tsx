@@ -1,5 +1,14 @@
 "use client";
 
+import { useDriverActions } from "@/components/drivers/use-driver-actions";
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation, ValidationScope } from "@/components/ui/field-validation";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Bus as BusIcon, Eye, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
@@ -26,7 +35,6 @@ import {
   fetchMembersPage,
   fetchRoleOptions,
   fetchDriversPage,
-  removeDriver,
   MEMBER_STATUS_AR,
   type DriverPage,
   type DriverRow,
@@ -170,21 +178,17 @@ function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => v
     })();
   }, []);
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.addMemberSchema, { userId, roleSlug }), roleSlug: requiredField(roleSlug) }));
+
   async function submit() {
+    if (!validation.validate()) return;
     setError(null);
-    if (!userId) {
-      setError(t("members.form.errors.pickUser"));
-      return;
-    }
-    if (!roleSlug) {
-      setError(t("members.form.errors.pickRole"));
-      return;
-    }
+
     setSaving(true);
     const result = await addMember(ownerId, { userId, roleSlug });
     setSaving(false);
     if (!result.ok) {
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     applyMutationCache(queryClient, memberImpact(ownerId, result.data, "insert"), result);
@@ -193,12 +197,12 @@ function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => v
   }
 
   return (
-    <div className="panel-card p-4 sm:p-5">
+    <ValidationScope validation={validation}><div className="panel-card p-4 sm:p-5">
       <h3 className="section-title mb-3">{t("members.form.title")}</h3>
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("members.form.user")}</span>
-          <select
+          <Select fieldName="userId"
             className="select-field w-full"
             value={userId}
             onChange={(event) => setUserId(event.target.value)}
@@ -210,11 +214,11 @@ function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => v
                 {user.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("members.form.role")}</span>
-          <select
+          <Select fieldName="roleSlug"
             className="select-field w-full"
             value={roleSlug}
             onChange={(event) => setRoleSlug(event.target.value)}
@@ -226,7 +230,7 @@ function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => v
                 {role.name || role.slug}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <Button type="button" onClick={() => void submit()} loading={saving}>
           {saving ? t("common.loading.saving") : t("members.form.submit")}
@@ -237,7 +241,7 @@ function AddMemberForm({ ownerId, onAdded }: { ownerId: string; onAdded: () => v
           {error}
         </p>
       ) : null}
-    </div>
+    </div></ValidationScope>
   );
 }
 
@@ -398,7 +402,7 @@ function SectionAddButton({ label, onClick }: { label: string; onClick: () => vo
 // ---------------------------------------------------------------------------
 
 function OwnerDrivers({ ownerId }: { ownerId: string }) {
-  const confirm = useConfirm();
+  const driverActions = useDriverActions();
   const [page, setPage] = useState<DriverPage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -418,19 +422,6 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
     });
     return () => { cancelled = true; };
   }, [ownerId, reloadToken]);
-
-  async function removeDriverRow(driver: DriverRow) {
-    const driverUserId = driver.userId;
-    if (!driverUserId) return;
-    if (!(await confirm({
-      title: t("common.actions.deleteConfirmTitle"),
-      description: t("drivers.list.deleteConfirm.description", { label: driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel"), value: "" }),
-      confirmLabel: t("common.actions.delete"),
-      destructive: true,
-    }))) return;
-    const result = await removeDriver(ownerId, driverUserId);
-    if (result.ok) reload();
-  }
 
   const columns: CommunityColumnDef<DriverRow>[] = [
     {
@@ -482,7 +473,7 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.userId ?? driver.id}`, disabled: !driver.userId },
                 { label: t("drivers.list.assignBus"), icon: BusIcon, onSelect: () => setDriverForAssign(driver), disabled: !driver.userId },
                 { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver), disabled: !driver.userId },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver), disabled: !driver.userId },
+                ...driverActions(driver, ownerId, reload, reload),
               ]}
             />
           )}

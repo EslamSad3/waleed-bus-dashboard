@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -103,8 +111,9 @@ export default function TripLineDetailPage({
   }
 
   async function saveMeta() {
+    if (!validation.validate()) return;
     const result = await updateOwnerTripLine(ownerId, id, { name: name.trim() });
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     cache(result.data);
     setEditMeta(false);
   }
@@ -166,8 +175,11 @@ export default function TripLineDetailPage({
     setEditStops((items) => items.filter((_, itemIndex) => itemIndex !== index));
   }
 
+  const validation = useFieldValidation(() => editingStops ? schemaErrors(schemas.updateLineStopsSchema, { stops: editStops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType, estimatedStopMinutes: item.estimatedStopMinutes })) }) : schemaErrors(schemas.updateTripLineSchema, { name: name.trim() }));
+
   async function saveStops() {
-    if (editStops.length < 2) return setError(t("tripLines.detail.errors.minStops"));
+    if (!validation.validate()) return;
+
     const result = await updateOwnerTripLineStops(
       ownerId,
       id,
@@ -177,7 +189,7 @@ export default function TripLineDetailPage({
         ...(item.estimatedStopMinutes ? { estimatedStopMinutes: item.estimatedStopMinutes } : {}),
       })),
     );
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     cache(result.data);
     setEditingStops(false);
     setError(null);
@@ -283,11 +295,11 @@ export default function TripLineDetailPage({
         </p>
       </section>
 
-      <Dialog open={editMeta} onOpenChange={setEditMeta} title={t("tripLines.metaDialog.title")} description={t("tripLines.metaDialog.description")} size="sm">
+      <Dialog validation={validation} open={editMeta} onOpenChange={setEditMeta} title={t("tripLines.metaDialog.title")} description={t("tripLines.metaDialog.description")} size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.nameLabel")}</span>
-            <Input value={name} onChange={(event) => setName(event.target.value)} />
+            <Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} />
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.codeLabel")}</span>
@@ -300,13 +312,13 @@ export default function TripLineDetailPage({
         </div>
       </Dialog>
 
-      <Dialog open={editingStops} onOpenChange={(open) => { if (!open) setEditingStops(false); }} title={t("tripLines.stopsDialog.editTitle")} description={t("tripLines.stopsDialog.description")} size="lg">
+      <Dialog validation={validation} open={editingStops} onOpenChange={(open) => { if (!open) setEditingStops(false); }} title={t("tripLines.stopsDialog.editTitle")} description={t("tripLines.stopsDialog.description")} size="lg">
         <div className="space-y-5">
           <div className="flex gap-2 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-[#dbe7ee]">
-            <select aria-label={t("tripLines.stopsDialog.pickStop")} value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent">
+            <Select fieldName="stops" aria-label={t("tripLines.stopsDialog.pickStop")} value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent">
               <option value="">{t("tripLines.stopsDialog.pickStopTo")}…</option>
               {remaining.map((stop) => <option key={stop.id} value={stop.id}>{stop.name} · {stop.address || stop.governorate?.nameAr}</option>)}
-            </select>
+            </Select>
             <Button type="button" variant="secondary" onClick={addStop} disabled={!pick}><Plus className="size-4" /> {t("common.actions.add")}</Button>
           </div>
           {editStops.length === 0 ? (
@@ -328,15 +340,15 @@ export default function TripLineDetailPage({
                       <strong className="block truncate text-sm">{item.stop.name}</strong>
                       <small className="block truncate text-xs text-[#687886]">{item.stop.address || item.stop.governorate?.nameAr}</small>
                     </span>
-                    <select
+                    <Select
                       aria-label={t("tripLines.stopsDialog.stopTypeLabel")}
-                      value={item.stopType}
+                      fieldName={`stops.${index}.stopType`} value={item.stopType}
                       onChange={(event) => setEditStops((items) => items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, stopType: event.target.value as StopUse } : entry)))}
                       className="select-field w-24 shrink-0 py-2 text-xs sm:w-28"
                     >
                       <option value="BOARDING">{t("enums.stopUse.boarding")}</option>
                       <option value="LANDING">{t("enums.stopUse.landing")}</option>
-                    </select>
+                    </Select>
                     <div className="flex shrink-0">
                       <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveUp")} onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp /></Button>
                       <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveDown")} onClick={() => move(index, 1)} disabled={index === editStops.length - 1}><ArrowDown /></Button>
@@ -356,7 +368,7 @@ export default function TripLineDetailPage({
           <p className="text-xs text-[#687886]">{t("tripLines.stopsDialog.saveHint")}</p>
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
             <Button variant="secondary" onClick={() => setEditingStops(false)}>{t("common.actions.cancel")}</Button>
-            <AsyncButton onClick={saveStops} disabled={editStops.length < 2}>{t("tripLines.stopsDialog.submit")}</AsyncButton>
+            <AsyncButton onClick={saveStops}>{t("tripLines.stopsDialog.submit")}</AsyncButton>
           </div>
         </div>
       </Dialog>

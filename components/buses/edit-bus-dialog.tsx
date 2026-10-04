@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -61,32 +69,22 @@ export function EditBusDialog({
   }
 
   function resetForm() {
+    validation.reset();
     setLoadedFor(null);
     setImageFile(null);
     setError(null);
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateBusSchema, { plateNumber: plateNumber.trim(), color, capacity: Number(capacity), modelYear: modelYear.trim() ? Number(modelYear) : undefined, brandId: brandId || null }), plateNumber: requiredField(plateNumber) || (plateNumber.trim().length > 50 ? t("validation.maxLength", { max: 50 }) : undefined), color: requiredField(color) || (color.length > 50 ? t("validation.maxLength", { max: 50 }) : undefined) }));
+
   async function submit() {
+    if (!validation.validate()) return;
     if (!bus) return;
     setError(null);
     const seats = Number(capacity);
-    if (!plateNumber.trim()) {
-      setError(t("buses.editDialog.errors.plateRequired"));
-      return;
-    }
-    if (!color) {
-      setError(t("buses.editDialog.errors.colorRequired"));
-      return;
-    }
-    if (!Number.isInteger(seats) || seats < 1 || seats > 300) {
-      setError(t("buses.editDialog.errors.capacityRange"));
-      return;
-    }
+
     const year = modelYear.trim() === "" ? undefined : Number(modelYear);
-    if (year !== undefined && (!Number.isInteger(year) || year < 1980 || year > 2100)) {
-      setError(t("buses.editDialog.errors.modelYearRange"));
-      return;
-    }
+
     setSaving(true);
     // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
     // يتطبق، ولو الحفظ فشل بنمسح الصورة المرحلية.
@@ -97,7 +95,7 @@ export function EditBusDialog({
       setUploading(false);
       if (!s.ok) {
         setSaving(false);
-        setError(s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -114,7 +112,7 @@ export function EditBusDialog({
     if (!result.ok) {
       if (staged) await discardBusImage(bus.ownerId, staged);
       setSaving(false);
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     setSaving(false);
@@ -132,20 +130,20 @@ export function EditBusDialog({
   }
 
   return (
-    <Dialog open={open && Boolean(bus)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.editDialog.title")} description={bus ? t("buses.editDialog.description", { plateNumber: bus.plateNumber ?? t("common.value.withoutName") }) : undefined} size="sm">
+    <Dialog validation={validation} open={open && Boolean(bus)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("buses.editDialog.title")} description={bus ? t("buses.editDialog.description", { plateNumber: bus.plateNumber ?? t("common.value.withoutName") }) : undefined} size="sm">
       <div className="space-y-4">
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.plateNumber")}</span>
-          <Input dir="ltr" value={plateNumber} onChange={(event) => setPlateNumber(event.target.value)} placeholder={t("buses.placeholders.plateNumber")} />
+          <Input fieldName="plateNumber" dir="ltr" value={plateNumber} onChange={(event) => setPlateNumber(event.target.value)} placeholder={t("buses.placeholders.plateNumber")} />
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.color")}</span>
-          <select value={color} onChange={(event) => setColor(event.target.value)} className="select-field w-full">
+          <Select fieldName="color" value={color} onChange={(event) => setColor(event.target.value)} className="select-field w-full">
             <option value="">{t("buses.detail.pickColor")}</option>
             {BUS_COLORS.map((option) => (
               <option key={option.name} value={option.name}>{option.name}</option>
             ))}
-          </select>
+          </Select>
         </label>
         {color ? (
           <div className="flex items-center gap-2 text-sm text-[#5e6b78]">
@@ -154,6 +152,7 @@ export function EditBusDialog({
           </div>
         ) : null}
         <ImagePicker
+          fieldName="imageUrl"
           label={t("buses.editDialog.imageLabel")}
           file={imageFile}
           onChange={setImageFile}
@@ -162,19 +161,19 @@ export function EditBusDialog({
         />
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.brand")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
-          <select value={brandId} onChange={(event) => setBrandId(event.target.value)} className="select-field w-full">
+          <Select fieldName="brandId" value={brandId} onChange={(event) => setBrandId(event.target.value)} className="select-field w-full">
             <option value="">{t("buses.detail.noBrand")}</option>
             {(brands ?? []).filter((brand) => brand.isActive).map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
-          </select>
+          </Select>
         </label>
         <div className="grid grid-cols-2 gap-4">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.modelYear")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
-            <Input dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(event) => setModelYear(event.target.value)} />
+            <Input fieldName="modelYear" dir="ltr" inputMode="numeric" type="number" min={1980} max={2100} value={modelYear} onChange={(event) => setModelYear(event.target.value)} />
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("buses.detail.capacityRange")}</span>
-            <Input dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(event) => setCapacity(event.target.value)} />
+            <Input fieldName="capacity" dir="ltr" inputMode="numeric" type="number" min={1} max={300} value={capacity} onChange={(event) => setCapacity(event.target.value)} />
           </label>
         </div>
         <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm">

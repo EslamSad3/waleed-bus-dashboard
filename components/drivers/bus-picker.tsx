@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
@@ -120,7 +121,7 @@ export function BusPicker({
       ) : loadError && rows.length === 0 ? (
         <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{loadError}</p>
       ) : (
-        <select
+        <Select fieldName="busId"
           aria-label={t("drivers.assignBus.busLabel")}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -137,7 +138,7 @@ export function BusPicker({
               {choice.label}
             </option>
           ))}
-        </select>
+        </Select>
       )}
       {loadError && rows.length > 0 ? (
         <p role="alert" className="mt-1.5 text-xs text-red-600">{loadError}</p>

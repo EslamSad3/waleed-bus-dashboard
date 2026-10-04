@@ -1,5 +1,11 @@
 "use client";
 
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField, coordinatesFromMapLink } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -8,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { RowActions } from "@/components/ui/row-actions";
 import { TableSkeleton } from "@/components/ui/skeletons";
@@ -27,13 +34,6 @@ import {
 import { qk, upsertInList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, referenceImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
-
-function coordinatesFromLink(value: string) {
-  const match = value.match(/[?&]q=([-+]?\d+(?:\.\d+)?),\s*([-+]?\d+(?:\.\d+)?)/)
-    ?? value.match(/@([-+]?\d+(?:\.\d+)?),\s*([-+]?\d+(?:\.\d+)?)/)
-    ?? value.match(/([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)/);
-  return match ? { latitude: match[1], longitude: match[2] } : null;
-}
 
 /** حقول الموقع المتسلسلة (محافظة → مركز → مدينة/قرية) + رابط الخرائط — مشتركة بين الإضافة والتعديل. */
 function LocationFields({
@@ -67,10 +67,10 @@ function LocationFields({
 }) {
   return (
     <>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span><select value={governorateId} onChange={(event) => onGovernorate(event.target.value)} className="select-field w-full"><option value="">{t("localities.dialog.pickGovernorate")}</option>{governorates.map((governorate) => <option key={governorate.id} value={governorate.id}>{governorate.nameAr} · {governorate.nameEn}</option>)}</select></label>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.markaz")}</span><select value={markazId} onChange={(event) => onMarkaz(event.target.value)} className="select-field w-full" disabled={!governorateId}><option value="">{t("localities.dialog.pickMarkaz")}</option>{markazes.map((markaz) => <option key={markaz.id} value={markaz.id}>{markaz.nameAr} · {markaz.nameEn}</option>)}</select></label>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.localityLabel")}</span><select value={localityId} onChange={(event) => onLocality(event.target.value)} className="select-field w-full" disabled={!markazId}><option value="">{t("stops.dialog.pickLocality")}</option>{localities.map((locality) => <option key={locality.id} value={locality.id}>{locality.type === "CITY" ? t("enums.localityType.city") : t("enums.localityType.village")} {locality.nameAr} · {locality.nameEn}</option>)}</select></label>
-      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.mapsUrlLabel")}</span><Input dir="ltr" value={mapLink} onChange={(event) => onMapLink(event.target.value)} placeholder="maps.google.com/?q=29.953140,31.104898" /></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span><Select fieldName="governorateId" value={governorateId} onChange={(event) => onGovernorate(event.target.value)} className="select-field w-full"><option value="">{t("localities.dialog.pickGovernorate")}</option>{governorates.map((governorate) => <option key={governorate.id} value={governorate.id}>{governorate.nameAr} · {governorate.nameEn}</option>)}</Select></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.markaz")}</span><Select fieldName="markazId" value={markazId} onChange={(event) => onMarkaz(event.target.value)} className="select-field w-full" disabled={!governorateId}><option value="">{t("localities.dialog.pickMarkaz")}</option>{markazes.map((markaz) => <option key={markaz.id} value={markaz.id}>{markaz.nameAr} · {markaz.nameEn}</option>)}</Select></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.localityLabel")}</span><Select fieldName="localityId" value={localityId} onChange={(event) => onLocality(event.target.value)} className="select-field w-full" disabled={!markazId}><option value="">{t("stops.dialog.pickLocality")}</option>{localities.map((locality) => <option key={locality.id} value={locality.id}>{locality.type === "CITY" ? t("enums.localityType.city") : t("enums.localityType.village")} {locality.nameAr} · {locality.nameEn}</option>)}</Select></label>
+      <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.mapsUrlLabel")}</span><Input fieldName="mapLink" dir="ltr" value={mapLink} onChange={(event) => onMapLink(event.target.value)} placeholder="maps.google.com/?q=29.953140,31.104898" /></label>
       {latitude && longitude ? <p dir="ltr" className="rounded-xl bg-[#eaf6ff] p-3 text-sm font-semibold text-[#00134c]">{latitude}, {longitude}</p> : null}
       <p className="text-xs text-[#687886]">{t("stops.dialog.coordsHint")}</p>
     </>
@@ -132,25 +132,25 @@ function CreateStopDialog({
 
   function readMapLink(value: string) {
     setMapLink(value);
-    const coordinates = coordinatesFromLink(value);
-    if (!coordinates) return;
-    setLatitude(coordinates.latitude);
-    setLongitude(coordinates.longitude);
+    const coordinates = coordinatesFromMapLink(value);
+    setLatitude(coordinates ? String(coordinates.latitude) : "");
+    setLongitude(coordinates ? String(coordinates.longitude) : "");
     setError(null);
   }
 
   function resetForm() {
+    validation.reset();
     setName(""); setAddress(""); setMapLink(""); setLatitude(""); setLongitude("");
     setError(null);
     chain.pickGovernorate("");
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createStopSchema.omit({ latitude: true, longitude: true }), { name: name.trim(), address: address.trim() || undefined, governorateId: chain.governorateId, localityId: chain.localityId }), markazId: requiredField(chain.markazId), localityId: requiredField(chain.localityId), mapLink: coordinatesFromMapLink(mapLink) ? undefined : t("validation.mapLink") }));
+
   async function submit() {
+    if (!validation.validate()) return;
     setError(null);
-    if (!name.trim() || !chain.governorateId || !chain.markazId || !chain.localityId || !latitude || !longitude) {
-      setError(t("stops.errors.required"));
-      return;
-    }
+
     const result = await createStop({
       name: name.trim(),
       address: address.trim() || undefined,
@@ -160,7 +160,7 @@ function CreateStopDialog({
       localityId: chain.localityId,
       isActive: true,
     });
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     // A new stop must reach every trip line's stop picker, not just this table.
     applyMutationCache(queryClient, referenceImpact(result.data.id, "stops", "insert"), result);
     resetForm();
@@ -168,9 +168,9 @@ function CreateStopDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("stops.createDialog.title")} description={t("stops.createDialog.description")} size="sm">
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("stops.createDialog.title")} description={t("stops.createDialog.description")} size="sm">
       <div className="space-y-4">
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.nameLabel")}</span><Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("stops.placeholders.name")} /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.nameLabel")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("stops.placeholders.name")} /></label>
         <LocationFields
           governorates={governorates}
           governorateId={chain.governorateId}
@@ -186,7 +186,7 @@ function CreateStopDialog({
           onLocality={chain.setLocalityId}
           onMapLink={readMapLink}
         />
-        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.address")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t("stops.placeholders.address")} /></label>
+        <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.address")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input fieldName="address" value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t("stops.placeholders.address")} /></label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
@@ -217,6 +217,7 @@ export default function StopsPage() {
   }
 
   function openEdit(stop: Stop) {
+    validation.reset();
     setEditing(stop);
     setName(stop.name);
     setAddress(stop.address ?? "");
@@ -242,23 +243,23 @@ export default function StopsPage() {
 
   function readMapLink(value: string) {
     setMapLink(value);
-    const coordinates = coordinatesFromLink(value);
-    if (!coordinates) return;
-    setLatitude(coordinates.latitude);
-    setLongitude(coordinates.longitude);
+    const coordinates = coordinatesFromMapLink(value);
+    setLatitude(coordinates ? String(coordinates.latitude) : "");
+    setLongitude(coordinates ? String(coordinates.longitude) : "");
   }
 
   function closeDialog() {
+    validation.reset();
     setEditing(null);
     setDialogError(null);
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateStopSchema.omit({ latitude: true, longitude: true }), { name: name.trim(), address: address.trim() || null, governorateId: chain.governorateId, localityId: chain.localityId || null }), governorateId: requiredField(chain.governorateId), markazId: requiredField(chain.markazId), localityId: requiredField(chain.localityId), mapLink: coordinatesFromMapLink(mapLink) ? undefined : t("validation.mapLink") }));
+
   async function save() {
+    if (!validation.validate()) return;
     if (!editing) return;
-    if (!name.trim() || !chain.governorateId || !latitude || !longitude) {
-      setDialogError(t("stops.errors.nameGovernorateMaps"));
-      return;
-    }
+
     const result = await updateStop(editing.id, {
       name: name.trim(),
       address: address.trim() || null,
@@ -267,7 +268,7 @@ export default function StopsPage() {
       latitude: Number(latitude),
       longitude: Number(longitude),
     });
-    if (!result.ok) return setDialogError(result.message);
+    if (!result.ok) return setDialogError(validation.failure(result));
     applyMutationCache(queryClient, referenceImpact(result.data.id, "stops", "update"), result);
     closeDialog();
   }
@@ -323,9 +324,9 @@ export default function StopsPage() {
         />
       )}
 
-      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) closeDialog(); }} title={t("stops.editDialog.title")} description={t("stops.editDialog.description")} size="sm">
+      <Dialog validation={validation} open={Boolean(editing)} onOpenChange={(open) => { if (!open) closeDialog(); }} title={t("stops.editDialog.title")} description={t("stops.editDialog.description")} size="sm">
         <div className="space-y-4">
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.nameLabel")}</span><Input value={name} onChange={(event) => setName(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("stops.dialog.nameLabel")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} /></label>
           <LocationFields
             governorates={governorates ?? []}
             governorateId={chain.governorateId}
@@ -341,7 +342,7 @@ export default function StopsPage() {
             onLocality={chain.setLocalityId}
             onMapLink={readMapLink}
           />
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.address")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t("stops.placeholders.address")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.address")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input fieldName="address" value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t("stops.placeholders.address")} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>

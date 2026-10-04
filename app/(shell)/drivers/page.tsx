@@ -1,25 +1,23 @@
 "use client";
 
+import { useDriverActions } from "@/components/drivers/use-driver-actions";
 import { useState } from "react";
-import { Bus, Eye, History, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Bus, Eye, History, Pencil, Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { RowActions } from "@/components/ui/row-actions";
-import { useConfirm } from "@/components/ui/confirm-dialog";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
 import {
   fetchSystemDriversPage,
-  removeDriver,
   MEMBER_STATUS_AR,
   type DriverRow,
   type SystemDriverRow,
 } from "@/lib/actions/members";
 import { driverHref } from "@/lib/owner-scope";
-import { applyMutationCache, driverImpact } from "@/lib/cache/mutations";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
@@ -41,7 +39,7 @@ type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
  */
 export default function DriversPage() {
   const queryClient = useQueryClient();
-  const confirm = useConfirm();
+  const driverActions = useDriverActions();
   const [createOpen, setCreateOpen] = useState(false);
   const [driverForEdit, setDriverForEdit] = useState<SystemDriverRow | null>(null);
   const [driverForAssign, setDriverForAssign] = useState<SystemDriverRow | null>(null);
@@ -60,52 +58,9 @@ export default function DriversPage() {
     };
   }
 
-  async function removeDriverRow(driver: SystemDriverRow) {
-    const label = driver.name || driver.nickname || driver.phoneNumber || t("drivers.list.rowLabel");
-    if (
-      !(await confirm({
-        title: t("common.actions.deleteConfirmTitle"),
-        description: t("drivers.list.deleteConfirm.description", {
-          label,
-          value: driver.isIndependent
-            ? t("drivers.list.independentOwner")
-            : driver.owner?.name ?? "",
-        }),
-        confirmLabel: t("common.actions.delete"),
-        destructive: true,
-      }))
-    ) {
-      return;
-    }
-    const result = await removeDriver(driver.owner.id, driver.userId ?? driver.id, {
-      isIndependent: driver.isIndependent,
-      ownerLabel: driver.owner?.name ?? null,
-    });
-    if (!result.ok) return;
-    // One impact declaration for the global roster, the owner roster, the detail
-    // slot and the dependent histories — and it runs ONLY on success, so a
-    // failed removal can never leave a phantom row behind.
-    applyMutationCache(
-      queryClient,
-      driverImpact({
-        driver: {
-          id: driver.id,
-          ownerId: driver.owner.id,
-          userId: driver.userId ?? driver.id,
-        },
-        mode: "remove",
-        // A removed independent driver is REVOKED, not deleted: keep the row in
-        // the cached page with its new status so an administrator can review or
-        // reactivate it instead of watching it vanish.
-        revoked: driver.isIndependent,
-      }),
-      result,
-    );
-  }
-
   // بعد الحفظ من نافذة التعديل — الـ row المحدث يوصل الكاش فورًا من غير رفريش
-  function onDriverSaved(fresh: DriverRow) {
-    upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, { ...driverForEdit, ...fresh } as SystemDriverRow);
+  function onDriverSaved(fresh: DriverRow, previous = driverForEdit) {
+    if (previous) upsertInCursorList<SystemDriverRow>(queryClient, qk.drivers, { ...previous, ...fresh });
   }
 
   const columns: CommunityColumnDef<SystemDriverRow>[] = [
@@ -190,7 +145,7 @@ export default function DriversPage() {
                   { label: t("drivers.list.assignBus"), icon: Bus, onSelect: () => setDriverForAssign(driver) },
                   { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver) },
                   { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
-                  { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeDriverRow(driver) },
+                  ...driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver)),
                 ]}
               />
             );

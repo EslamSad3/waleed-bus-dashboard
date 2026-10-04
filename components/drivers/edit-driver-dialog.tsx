@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
@@ -58,25 +66,22 @@ export function EditDriverDialog({
   }
 
   function resetForm() {
+    validation.reset();
     setLoadedFor(null);
     setImageFile(null);
     setError(null);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateDriverSchema, { name: name.trim(), nickname: nickname.trim() || undefined, phone: phone.trim() || undefined, nationalId: nationalId.trim() || undefined, password: password || undefined, status }));
+
   async function save() {
+    if (!validation.validate()) return;
     if (!driver) return;
     const ownerId = driver.owner.id;
     // Driver subresources are keyed by the DRIVER USER id, not the membership row.
     const driverUserId = driver.userId ?? driver.id;
     setError(null);
-    if (name.trim() === "") {
-      setError(t("drivers.editDialog.errors.nameRequired"));
-      return;
-    }
-    if (password && password.length < 8) {
-      setError(t("drivers.editDialog.errors.passwordMin"));
-      return;
-    }
+
     if (status !== "ACTIVE" && !(await confirm({ title: t("common.actions.confirmAction"), description: REVOKE_WARNING, confirmLabel: t("common.actions.confirm"), destructive: true }))) return;
     setSaving(true);
     // الصورة بتترفع الأول مباشر للتخزين السحابي، وبعدين الحفظ بيتم في طلب
@@ -86,7 +91,7 @@ export function EditDriverDialog({
       const s = await stageUserPicture(imageFile, driver.userId ?? driver.id);
       if (!s.ok) {
         setSaving(false);
-        setError(s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -103,7 +108,7 @@ export function EditDriverDialog({
     if (!r.ok) {
       if (staged) await discardUserPicture(staged);
       setSaving(false);
-      setError(r.message);
+      setError(validation.failure(r));
       return;
     }
     // The list, the roster and the detail are updated from the returned row, so
@@ -123,23 +128,23 @@ export function EditDriverDialog({
   }
 
   return (
-    <Dialog open={open && Boolean(driver)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("drivers.editDialog.title")} description={t("drivers.editDialog.description")} size="lg">
+    <Dialog validation={validation} open={open && Boolean(driver)} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("drivers.editDialog.title")} description={t("drivers.editDialog.description")} size="lg">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}<span className="text-[#dc2626]"> *</span></span>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("drivers.placeholders.fullName")} autoComplete="name" />
+          <Input fieldName="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("drivers.placeholders.fullName")} autoComplete="name" />
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span>
-          <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t("drivers.placeholders.nickname")} />
+          <Input fieldName="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t("drivers.placeholders.nickname")} />
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span>
-          <Input dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01xxxxxxxxx" inputMode="tel" autoComplete="tel" />
+          <Input fieldName="phone" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01xxxxxxxxx" inputMode="tel" autoComplete="tel" />
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nationalId")}</span>
-          <Input dir="ltr" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder={t("drivers.placeholders.nationalIdDigits")} inputMode="numeric" maxLength={14} />
+          <Input fieldName="nationalId" dir="ltr" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder={t("drivers.placeholders.nationalIdDigits")} inputMode="numeric" maxLength={14} />
         </label>
         <ImagePicker
           label={t("drivers.editDialog.imageLabel")}
@@ -151,11 +156,11 @@ export function EditDriverDialog({
         />
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("drivers.editDialog.newPasswordLabel")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
-          <Input dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("drivers.placeholders.keepPasswordEmpty")} autoComplete="new-password" />
+          <Input fieldName="password" dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("drivers.placeholders.keepPasswordEmpty")} autoComplete="new-password" />
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("drivers.editDialog.membershipStatus")}</span>
-          <select
+          <Select fieldName="status"
             aria-label={t("drivers.editDialog.membershipStatusAria")}
             value={status}
             onChange={(e) => setStatus(e.target.value as Member["status"])}
@@ -164,7 +169,7 @@ export function EditDriverDialog({
             {(Object.keys(MEMBER_STATUS_AR) as Member["status"][]).map((s) => (
               <option key={s} value={s}>{MEMBER_STATUS_AR[s]}</option>
             ))}
-          </select>
+          </Select>
         </label>
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700 md:col-span-2">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end md:col-span-2">

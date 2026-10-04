@@ -1,5 +1,9 @@
 "use client";
 
+import { requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
@@ -58,18 +62,18 @@ export function AssignBusDialog({
     onClose();
   }
 
+  const validation = useFieldValidation(() => ({ busId: requiredField(busId, t("drivers.assignBus.pickRequired")) }));
+
   async function submit() {
+    if (!validation.validate()) return;
     if (!driver || saving) return;
-    if (!busId) {
-      setError(t("drivers.assignBus.pickRequired"));
-      return;
-    }
+
     setError(null);
     setSaving(true);
     const result = await assignDriver(driver.ownerId, busId, { driverUserId: driver.userId });
     setSaving(false);
     if (!result.ok) {
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     applyMutationCache(
@@ -84,7 +88,7 @@ export function AssignBusDialog({
   const driverLabel = driver?.name ?? t("common.value.withoutName");
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={(next) => {
         if (!next) requestClose();
@@ -103,7 +107,7 @@ export function AssignBusDialog({
           <Button type="button" variant="danger" onClick={requestClose} disabled={saving}>
             {t("common.actions.cancel")}
           </Button>
-          <AsyncButton type="button" variant="success" onClick={submit} disabled={!busId || saving} loading={saving}>
+          <AsyncButton type="button" variant="success" onClick={submit} disabled={saving} loading={saving}>
             {t("common.actions.confirmAssignment")}
           </AsyncButton>
         </div>

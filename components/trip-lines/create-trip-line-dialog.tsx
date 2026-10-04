@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Plus, Route, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -91,6 +99,7 @@ export function CreateTripLineDialog({
   }
 
   function resetForm() {
+    validation.reset();
     setName("");
     setCode("");
     setStops([]);
@@ -98,10 +107,11 @@ export function CreateTripLineDialog({
     setError(null);
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), code: code.trim(), stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })) }), ownerId: requiredField(ownerId) }));
+
   async function submit() {
-    if (!ownerId) return setError(t("tripLines.createDialog.errors.pickOwner"));
-    if (!name.trim() || !code.trim()) return setError(t("tripLines.createDialog.errors.required"));
-    if (stops.length < 2) return setError(t("tripLines.createDialog.errors.minStops"));
+    if (!validation.validate()) return;
+
     setError(null);
     setSaving(true);
     const result = await createOwnerTripLine(ownerId, {
@@ -110,7 +120,7 @@ export function CreateTripLineDialog({
       stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })),
     });
     setSaving(false);
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     // تحديث فوري لجدول الخطوط من غير إعادة تحميل — ومعاه سطور الرحلة
     // والاختيارات اللي بتقرأ نفس السطر، عشان تظهر الرحلة الجديدة على طول.
     applyMutationCache(queryClient, tripLineImpact(ownerId, result.data, "insert"), result);
@@ -124,8 +134,8 @@ export function CreateTripLineDialog({
     stops.length >= 2 ? `${stops[0].stop.name} ← ${stops[stops.length - 1].stop.name}` : t("tripLines.incomplete");
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("tripLines.createDialog.title")} description={t("tripLines.createDialog.description")} size="lg">
-      <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("tripLines.createDialog.title")} description={t("tripLines.createDialog.description")} size="lg">
+      <form noValidate className="space-y-6" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         {lockedOwnerId ? null : (
           <div className="rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] p-4">
             <OwnerPicker ownerId={ownerId} onOwnerChange={setPickedOwnerId} />
@@ -135,11 +145,11 @@ export function CreateTripLineDialog({
         <div className="grid gap-3 rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] p-4 sm:grid-cols-[1fr_12rem]">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.nameLabel")}</span>
-            <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={t("tripLines.placeholders.name")} />
+            <Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("tripLines.placeholders.name")} />
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.codeLabel")}</span>
-            <Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="CAI-BNS" />
+            <Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="CAI-BNS" />
           </label>
         </div>
 
@@ -153,10 +163,10 @@ export function CreateTripLineDialog({
           </div>
           <div className="p-4 sm:p-5">
             <div className="flex gap-2 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-[#dbe7ee]">
-              <select aria-label={t("tripLines.stopsDialog.pickStop")} value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent">
+              <Select fieldName="stops" aria-label={t("tripLines.stopsDialog.pickStop")} value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent">
                 <option value="">{t("tripLines.stopsDialog.pickStopTo")}…</option>
                 {remaining.map((stop) => <option key={stop.id} value={stop.id}>{stop.name} · {stop.address}</option>)}
-              </select>
+              </Select>
               <Button type="button" variant="secondary" onClick={addStop} disabled={!pick}><Plus className="size-4" /> {t("common.actions.add")}</Button>
             </div>
             {stops.length === 0 ? (
@@ -179,15 +189,15 @@ export function CreateTripLineDialog({
                         <strong className="block truncate text-sm">{item.stop.name}</strong>
                         <small className="block truncate text-xs text-[#687886]">{item.stop.address}</small>
                       </span>
-                      <select
+                      <Select
                         aria-label={t("tripLines.stopsDialog.stopTypeLabel")}
-                        value={item.stopType}
+                        fieldName={`stops.${index}.stopType`} value={item.stopType}
                         onChange={(event) => setStops((items) => items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, stopType: event.target.value as StopUse } : entry)))}
                         className="select-field w-24 shrink-0 py-2 text-xs sm:w-28"
                       >
                         <option value="BOARDING">{t("enums.stopUse.boarding")}</option>
                         <option value="LANDING">{t("enums.stopUse.landing")}</option>
-                      </select>
+                      </Select>
                       <div className="flex shrink-0">
                         <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveUp")} onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp /></Button>
                         <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveDown")} onClick={() => move(index, 1)} disabled={index === stops.length - 1}><ArrowDown /></Button>
@@ -210,7 +220,7 @@ export function CreateTripLineDialog({
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
-          <Button type="submit" variant="success" loading={saving} disabled={stops.length < 2 || !name.trim() || !code.trim()}>
+          <Button type="submit" variant="success" loading={saving} disabled={saving}>
             {saving ? t("common.loading.saving") : t("tripLines.createDialog.submit")}
           </Button>
         </div>

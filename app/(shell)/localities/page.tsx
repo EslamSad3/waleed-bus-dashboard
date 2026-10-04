@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useState } from "react";
 import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -71,6 +79,7 @@ export default function LocalitiesPage() {
   };
 
   function openCreate() {
+    validation.reset();
     setEditing(null);
     setDialogGovernorateId(governorateFilter || "");
     setDialogMarkazId(governorateFilter ? markazFilter : "");
@@ -82,6 +91,7 @@ export default function LocalitiesPage() {
   }
 
   function openEdit(locality: Locality) {
+    validation.reset();
     setCreating(false);
     setEditing(locality);
     setType(locality.type);
@@ -91,34 +101,31 @@ export default function LocalitiesPage() {
   }
 
   function closeDialog() {
+    validation.reset();
     setCreating(false);
     setEditing(null);
     setDialogError(null);
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(creating ? schemas.createLocalitySchema : schemas.updateLocalitySchema, { nameAr: nameAr.trim(), nameEn: nameEn.trim(), markazId: dialogMarkazId, type }), governorateId: creating ? requiredField(dialogGovernorateId) : undefined }));
+
   async function save() {
-    if (!creating) {
-      if (!nameAr.trim() || !nameEn.trim()) {
-        setDialogError(t("localities.errors.nameRequired"));
-        return;
-      }
-      const result = await updateLocality(editing!.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
-      if (!result.ok) return setDialogError(result.message);
+    if (!validation.validate()) return;
+    if (editing) {
+      const result = await updateLocality(editing.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
+      if (!result.ok) return setDialogError(validation.failure(result));
       applyMutationCache(queryClient, referenceImpact(result.data.id, "localities", "update"), result);
       closeDialog();
       return;
     }
-    if (!dialogMarkazId || !nameAr.trim() || !nameEn.trim()) {
-      setDialogError(t("localities.errors.hierarchyRequired"));
-      return;
-    }
+
     const result = await createLocality({
       markazId: dialogMarkazId,
       type,
       nameAr: nameAr.trim(),
       nameEn: nameEn.trim(),
     });
-    if (!result.ok) return setDialogError(result.message);
+    if (!result.ok) return setDialogError(validation.failure(result));
     applyMutationCache(queryClient, referenceImpact(result.data.id, "localities", "insert"), result);
     closeDialog();
   }
@@ -170,7 +177,7 @@ export default function LocalitiesPage() {
       <div className="mb-4 grid max-w-2xl gap-3 sm:grid-cols-2">
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("localities.filters.governorate")}</span>
-          <select
+          <Select fieldName="governorateFilter"
             value={governorateFilter}
             onChange={(event) => {
               setGovernorateFilter(event.target.value);
@@ -180,14 +187,14 @@ export default function LocalitiesPage() {
           >
             <option value="">{t("localities.filters.allGovernorates")}</option>
             {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("localities.filters.markaz")}</span>
-          <select value={markazFilter} onChange={(event) => setMarkazFilter(event.target.value)} className="select-field w-full" disabled={!governorateFilter}>
+          <Select fieldName="markazFilter" value={markazFilter} onChange={(event) => setMarkazFilter(event.target.value)} className="select-field w-full" disabled={!governorateFilter}>
             <option value="">{governorateFilter ? t("localities.filters.allMarkaz") : t("localities.filters.pickGovernorateFirst")}</option>
             {(filterMarkazes ?? []).map((m) => <option key={m.id} value={m.id}>{m.nameAr} · {m.nameEn}</option>)}
-          </select>
+          </Select>
         </label>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
@@ -213,12 +220,12 @@ export default function LocalitiesPage() {
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("localities.dialog.editTitle") : t("localities.dialog.createTitle")} description={editing ? t("localities.dialog.description") : t("localities.dialog.hierarchyHint")} size="sm">
+      <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("localities.dialog.editTitle") : t("localities.dialog.createTitle")} description={editing ? t("localities.dialog.description") : t("localities.dialog.hierarchyHint")} size="sm">
         <div className="space-y-4">
           {!editing ? (
             <label className="block text-sm">
               <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span>
-              <select
+              <Select fieldName="governorateId"
                 value={dialogGovernorateId}
                 onChange={(event) => {
                   setDialogGovernorateId(event.target.value);
@@ -228,13 +235,13 @@ export default function LocalitiesPage() {
               >
                 <option value="">{t("localities.dialog.pickGovernorate")}</option>
                 {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
-              </select>
+              </Select>
             </label>
           ) : null}
           {!editing ? (
             <label className="block text-sm">
               <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.markaz")}</span>
-              <select
+              <Select fieldName="markazId"
                 value={dialogMarkazId}
                 onChange={(event) => setDialogMarkazId(event.target.value)}
                 className="select-field w-full"
@@ -242,12 +249,12 @@ export default function LocalitiesPage() {
               >
                 <option value="">{dialogGovernorateId ? t("localities.dialog.pickMarkaz") : t("localities.dialog.pickGovernorateFirst")}</option>
                 {(dialogMarkazes ?? []).map((m) => <option key={m.id} value={m.id}>{m.nameAr} · {m.nameEn}</option>)}
-              </select>
+              </Select>
             </label>
           ) : null}
-          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.type")}</span><select value={type} onChange={(event) => setType(event.target.value as "CITY" | "VILLAGE")} className="select-field w-full"><option value="CITY">{t("enums.localityType.city")}</option><option value="VILLAGE">{t("enums.localityType.village")}</option></select></label> : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameAr")}</span><Input value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder={t("localities.placeholders.nameAr")} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameEn")}</span><Input dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
+          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.type")}</span><Select fieldName="type" value={type} onChange={(event) => setType(event.target.value as "CITY" | "VILLAGE")} className="select-field w-full"><option value="CITY">{t("enums.localityType.city")}</option><option value="VILLAGE">{t("enums.localityType.village")}</option></Select></label> : null}
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameAr")}</span><Input fieldName="nameAr" value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder={t("localities.placeholders.nameAr")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameEn")}</span><Input fieldName="nameEn" dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>

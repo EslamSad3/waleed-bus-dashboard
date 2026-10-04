@@ -22,8 +22,7 @@ export type NotifyOptions = {
  * The dashboard's single notification point for action wrappers, so no call site
  * can forget it: a success toasts `successCopy`, a failure toasts the proxy's
  * ARABIC message (the API's English text never reaches this layer), and a
- * per-field failure is folded into the same toast unless the form already shows
- * it.
+ * field errors stay attached to their controls rather than being combined.
  */
 export async function notifyResult<T>(
   successCopy: string,
@@ -37,11 +36,8 @@ export async function notifyResult<T>(
     return result;
   }
   if (result.fields && opts?.rendersFieldErrors) return result;
-  const fieldLines = Object.values(result.fields ?? {}).filter(
-    (message) => message && message !== result.message,
-  );
   toast.error(ERROR_TITLE, {
-    description: [result.message, ...fieldLines].join(" · "),
+    description: result.message,
     duration: 6000,
   });
   return result;

@@ -3,6 +3,7 @@ import { busFetch } from "@/lib/api";
 import { originAllowed } from "@/lib/config";
 import { arabiciseDetails, toArabicError } from "@/lib/errors";
 import { findRegistryEntry } from "@/lib/schemas/p1";
+import { schemaErrors } from "@/lib/field-validation";
 import { t } from "@/lib/i18n/t";
 
 type Ctx = { params: Promise<{ proxy: string[] }> };
@@ -68,11 +69,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     if (entry) {
       const parsed = entry.schema.safeParse(body);
       if (!parsed.success) {
-        const fields: Record<string, string> = {};
-        for (const issue of parsed.error.issues) {
-          const key = issue.path.join(".") || "_";
-          if (!(key in fields)) fields[key] = issue.message;
-        }
+        const fields = schemaErrors(entry.schema, body);
         return NextResponse.json(
           {
             statusCode: 400,

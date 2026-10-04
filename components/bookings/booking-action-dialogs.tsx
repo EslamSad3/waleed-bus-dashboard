@@ -1,5 +1,12 @@
 "use client";
 
+import { Select, Textarea } from "@/components/ui/select";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
+import * as adminSchemas from "@/lib/schemas/admin-bookings";
 import { useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -17,7 +24,7 @@ import {
   type DropStatus,
 } from "@/lib/actions/bookings";
 import { CheckCircle2, Info, RotateCcw, XCircle, ShieldAlert } from "lucide-react";
-import { ActionErrorAlert, FieldError } from "@/components/bookings/action-error";
+import { ActionErrorAlert } from "@/components/bookings/action-error";
 import { t } from "@/lib/i18n/t";
 
 // ---------------------------------------------------------------------------
@@ -42,7 +49,6 @@ export function VerifyPaymentDialog({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   const numAmount = Number(amount);
   // A booking created before its fare was set has no total: there is nothing to
@@ -53,20 +59,14 @@ export function VerifyPaymentDialog({
   const expectedAmount = hasTotal ? Number(booking.totalAmount) : null;
   const mismatch = expectedAmount !== null && !isNaN(numAmount) && Math.abs(numAmount - expectedAmount) > 0.001;
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(adminSchemas.adminVerifyPaymentSchema, { reference, amount: numAmount, paymentMethod, notes }), amount: !Number.isFinite(numAmount) || numAmount <= 0 ? t("validation.amountPositive") : mismatch ? t("bookings.actions.errors.amountMismatch", { amount, bookingTotalAmount: booking.totalAmount }) : schemaErrors(adminSchemas.adminVerifyPaymentSchema, { amount: numAmount }).amount }));
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (isNaN(numAmount) || numAmount <= 0) {
-      setError(t("bookings.actions.errors.amountPositive"));
-      return;
-    }
-    if (mismatch) {
-      setError(t("bookings.actions.errors.amountMismatch", { amount: amount, bookingTotalAmount: booking.totalAmount }));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     const res = await verifyBookingPayment(booking.id, {
       reference: reference.trim() || undefined,
       amount: numAmount,
@@ -79,20 +79,19 @@ export function VerifyPaymentDialog({
       onOpenChange(false);
       onSuccess(t("bookings.actions.verify.success"));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.verify.title")}
       description={t("bookings.actions.verify.description", { value: booking.id.slice(0, 8), value2: booking.passenger?.name ?? "—" })}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
           <div className="flex justify-between items-center">
@@ -111,7 +110,7 @@ export function VerifyPaymentDialog({
             {t("bookings.actions.verify.referenceLabel")}{" "}
             <span className="font-normal text-slate-400">{t("common.value.optional")}</span>
           </span>
-          <Input
+          <Input fieldName="reference"
             placeholder={t("bookings.actions.placeholders.verifyReference")}
             value={reference}
             onChange={(e) => setReference(e.target.value)}
@@ -121,7 +120,7 @@ export function VerifyPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.verify.amountLabel")}</span>
-          <Input
+          <Input fieldName="amount"
             type="number"
             step="0.01"
             value={amount}
@@ -139,7 +138,7 @@ export function VerifyPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("common.fields.paymentMethod")}</span>
-          <select
+          <Select fieldName="paymentMethod"
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
             className="select-field w-full"
@@ -149,12 +148,12 @@ export function VerifyPaymentDialog({
             <option value="WALLET">{t("enums.paymentMethod.walletLong")}</option>
             <option value="CASH">{t("enums.paymentMethod.cashLong")}</option>
             <option value="CARD">{t("enums.paymentMethod.bankCardLong")}</option>
-          </select>
+          </Select>
         </label>
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.verify.notesLabel")}</span>
-          <textarea
+          <Textarea fieldName="notes"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -167,7 +166,7 @@ export function VerifyPaymentDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             {t("common.actions.cancel")}
           </Button>
-          <Button type="submit" loading={loading} disabled={mismatch} className="gap-1.5">
+          <Button type="submit" loading={loading} className="gap-1.5">
             <CheckCircle2 className="size-4" />
             {loading ? t("common.loading.confirming") : t("bookings.actions.verify.submit")}
           </Button>
@@ -195,18 +194,15 @@ export function FailPaymentDialog({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
+
+  const validation = useFieldValidation(() => schemaErrors(adminSchemas.adminFailPaymentSchema, { reason: reason.trim(), notes }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reason.trim()) {
-      setError(t("bookings.actions.failure.errors.reasonRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     const res = await failBookingPayment(booking.id, {
       reason: reason.trim(),
       notes: notes.trim() || undefined,
@@ -217,24 +213,23 @@ export function FailPaymentDialog({
       onOpenChange(false);
       onSuccess(t("bookings.actions.failure.success"));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.failure.title")}
       description={t("bookings.actions.failure.description")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.reasonLabel")}</span>
-          <Input
+          <Input fieldName="reason"
             placeholder={t("bookings.actions.placeholders.failureReason")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -245,7 +240,7 @@ export function FailPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.extraNotesLabel")}</span>
-          <textarea
+          <Textarea fieldName="notes"
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -299,33 +294,18 @@ export function RefundPaymentDialog({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
   const enteredAmount = Number(refundAmount);
   const exceeds = enteredAmount > remaining + 0.001;
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(adminSchemas.adminRefundPaymentSchema, { refundReference: refundReference.trim(), refundAmount: Number(refundAmount), reason: reason.trim(), notes }), refundAmount: !Number.isFinite(Number(refundAmount)) || Number(refundAmount) <= 0 ? t("validation.refundAmountPositive") : Number(refundAmount) > remaining ? t("bookings.actions.refund.errors.exceedsBalance", { enteredAmount: refundAmount, value: remaining.toFixed(2) }) : schemaErrors(adminSchemas.adminRefundPaymentSchema, { refundAmount: Number(refundAmount) }).refundAmount }));
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!refundReference.trim()) {
-      setError(t("bookings.actions.refund.errors.referenceRequired"));
-      return;
-    }
-    if (isNaN(enteredAmount) || enteredAmount <= 0) {
-      setError(t("bookings.actions.refund.errors.amountPositive"));
-      return;
-    }
-    if (exceeds) {
-      setError(t("bookings.actions.refund.errors.exceedsBalance", { enteredAmount: enteredAmount, value: remaining.toFixed(2) }));
-      return;
-    }
-    if (!reason.trim()) {
-      setError(t("bookings.actions.refund.errors.reasonRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     const res = await refundBookingPayment(booking.id, {
       refundReference: refundReference.trim(),
       refundAmount: enteredAmount,
@@ -338,20 +318,19 @@ export function RefundPaymentDialog({
       onOpenChange(false);
       onSuccess(t("bookings.actions.refund.success", { enteredAmount: enteredAmount }));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.refund.title")}
       description={t("bookings.actions.refund.description")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-xs sm:grid-cols-3 sm:text-sm">
           <div>
@@ -370,7 +349,7 @@ export function RefundPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.refund.referenceLabel")}</span>
-          <Input
+          <Input fieldName="refundReference"
             placeholder={t("bookings.actions.placeholders.refundReference")}
             value={refundReference}
             onChange={(e) => setRefundReference(e.target.value)}
@@ -382,7 +361,7 @@ export function RefundPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.refund.amountLabel")}</span>
-          <Input
+          <Input fieldName="refundAmount"
             type="number"
             step="0.01"
             max={remaining}
@@ -400,7 +379,7 @@ export function RefundPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.refund.reasonLabel")}</span>
-          <Input
+          <Input fieldName="reason"
             placeholder={t("bookings.actions.placeholders.refundReason")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -410,7 +389,7 @@ export function RefundPaymentDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.failure.extraNotesLabel")}</span>
-          <textarea
+          <Textarea fieldName="notes"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -423,7 +402,7 @@ export function RefundPaymentDialog({
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
             {t("common.actions.cancel")}
           </Button>
-          <Button type="submit" loading={loading} disabled={exceeds || remaining <= 0} className="gap-1.5">
+          <Button type="submit" loading={loading} disabled={remaining <= 0} className="gap-1.5">
             <RotateCcw className="size-4" />
             {loading ? t("common.loading.executing") : t("bookings.actions.refund.submit")}
           </Button>
@@ -450,18 +429,15 @@ export function ForceCancelDialog({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
+
+  const validation = useFieldValidation(() => schemaErrors(adminSchemas.adminForceCancelSchema, { reason: reason.trim() }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reason.trim()) {
-      setError(t("bookings.actions.forceCancel.errors.reasonRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     // The API has no releaseSeats field: it restores the seats on its own
     // whenever the departure is still ahead. Sending it was rejected outright
     // by the validation whitelist.
@@ -472,24 +448,23 @@ export function ForceCancelDialog({
       onOpenChange(false);
       onSuccess(t("bookings.actions.forceCancel.success", { seatsNote: res.data.seatsRestored ? t("bookings.actions.forceCancel.seatsRestoredNote") : "" }));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.forceCancel.title")}
       description={t("bookings.actions.forceCancel.description")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.forceCancel.reasonLabel")}</span>
-          <textarea
+          <Textarea fieldName="reason"
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -499,7 +474,6 @@ export function ForceCancelDialog({
             autoFocus
           />
         </label>
-        <FieldError errors={fieldErrors} name="reason" />
 
         <div className="flex items-start gap-2 rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-[#059ff8]" />
@@ -537,18 +511,15 @@ export function ReinstateDialog({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
+
+  const validation = useFieldValidation(() => schemaErrors(adminSchemas.adminReinstateSchema, { reason: reason.trim() }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reason.trim()) {
-      setError(t("bookings.actions.reinstate.errors.reasonRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     const res = await reinstateBooking(booking.id, {
       reason: reason.trim(),
     });
@@ -558,20 +529,19 @@ export function ReinstateDialog({
       onOpenChange(false);
       onSuccess(t("bookings.actions.reinstate.success"));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.reinstate.title")}
       description={t("bookings.actions.reinstate.description")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-900 leading-relaxed">
           <p className="font-semibold mb-1">{t("bookings.actions.reinstate.capacityCheck")}</p>
@@ -580,7 +550,7 @@ export function ReinstateDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.reinstate.reasonLabel")}</span>
-          <textarea
+          <Textarea fieldName="reason"
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -626,18 +596,15 @@ export function OperationalOverrideDialog({
   const [justification, setJustification] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
+
+  const validation = useFieldValidation(() => schemaErrors(adminSchemas.adminOperationalOverrideSchema, { boarded, dropStatus: dropStatus || undefined, dropStationId: dropStationId || undefined, dropReason: dropReason.trim() || undefined, justification: justification.trim() }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!justification.trim()) {
-      setError(t("bookings.actions.override.errors.justificationRequired"));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     const res = await overrideBookingOperational(booking.id, {
       boarded,
       dropStatus: dropStatus ? (dropStatus as DropStatus) : undefined,
@@ -651,20 +618,19 @@ export function OperationalOverrideDialog({
       onOpenChange(false);
       onSuccess(t("bookings.actions.override.success"));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.override.title")}
       description={t("bookings.actions.override.description")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <div className="rounded-xl border border-[#d6eeff] bg-[#f8fbfd] p-3 space-y-3">
           <label className="flex items-center gap-3 cursor-pointer">
@@ -682,7 +648,7 @@ export function OperationalOverrideDialog({
 
           <label className="block text-sm pt-2">
             <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.dropStatusLabel")}</span>
-            <select
+            <Select fieldName="dropStatus"
               value={dropStatus}
               onChange={(e) => setDropStatus(e.target.value as DropStatus | "")}
               className="select-field w-full"
@@ -690,12 +656,12 @@ export function OperationalOverrideDialog({
               <option value="">{t("bookings.actions.override.noDropStatus")}</option>
               <option value="DROPPED_OFF">{t("bookings.actions.override.droppedOff")}</option>
               <option value="NOT_DROPPED_OFF">{t("bookings.actions.override.notDroppedOff")}</option>
-            </select>
+            </Select>
           </label>
 
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.dropStationLabel")}</span>
-            <Input
+            <Input fieldName="dropStationId"
               placeholder={t("bookings.actions.placeholders.dropStation")}
               value={dropStationId}
               onChange={(e) => setDropStationId(e.target.value)}
@@ -705,7 +671,7 @@ export function OperationalOverrideDialog({
 
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.dropNoteLabel")}</span>
-            <Input
+            <Input fieldName="dropReason"
               placeholder={t("bookings.actions.placeholders.dropNote")}
               value={dropReason}
               onChange={(e) => setDropReason(e.target.value)}
@@ -715,7 +681,7 @@ export function OperationalOverrideDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.override.justificationLabel")}</span>
-          <textarea
+          <Textarea fieldName="justification"
             rows={2}
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
@@ -759,20 +725,15 @@ export function ResolveReportDialog({
   const [resolutionNote, setResolutionNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
 
-  if (!report) return null;
+  const validation = useFieldValidation(() => schemaErrors(adminSchemas.adminResolveReportSchema, { status, resolutionNote: resolutionNote.trim() }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!resolutionNote.trim() || resolutionNote.trim().length < 5) {
-      setError(t("bookings.actions.report.errors.notesTooShort"));
-      return;
-    }
+    if (!validation.validate()) return;
 
     setLoading(true);
     setError(null);
-    setFieldErrors(null);
     const res = await resolveIncidentReport(bookingId, report!.id, {
       status,
       resolutionNote: resolutionNote.trim(),
@@ -783,20 +744,21 @@ export function ResolveReportDialog({
       onOpenChange(false);
       onSuccess(status === "RESOLVED" ? t("bookings.actions.report.resolvedSuccess") : t("bookings.actions.report.savedSuccess"));
     } else {
-      setError(res.message);
-      setFieldErrors(res.fields ?? null);
+      setError(validation.failure(res));
     }
   }
 
+  if (!report) return null;
+
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={onOpenChange}
       title={t("bookings.actions.report.title")}
       description={t("bookings.actions.report.description")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4 text-right">
-        <ActionErrorAlert error={error} fields={fieldErrors} />
+        <ActionErrorAlert error={error} />
 
         <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm">
           <div className="flex items-center gap-2 font-bold text-amber-900 mb-1">
@@ -839,7 +801,7 @@ export function ResolveReportDialog({
 
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-[#1a1a1a]">{t("bookings.actions.report.notesLabel")}</span>
-          <textarea
+          <Textarea fieldName="resolutionNote"
             rows={3}
             value={resolutionNote}
             onChange={(e) => setResolutionNote(e.target.value)}

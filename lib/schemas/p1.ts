@@ -9,6 +9,7 @@ import {
   adminResolveReportSchema,
 } from "./admin-bookings";
 import { t } from "@/lib/i18n/t";
+import { createUserSchema, updateUserSchema, createRoleSchema, updateRoleSchema, userRolesSchema, rolePermissionsSchema, notificationSchema, serviceConfigSchema } from "./admin-forms";
 
 /**
  * Per-resource zod schemas + proxy registry.
@@ -23,12 +24,12 @@ import { t } from "@/lib/i18n/t";
  */
 
 const uuid = z.uuid(t("validation.uuid"));
-const name255 = z.string(t("validation.required")).min(1, t("validation.required")).max(255);
+const name255 = z.string(t("validation.required")).trim().min(1, t("validation.required")).max(255, t("validation.maxLength", { max: 255 }));
 const egyptPhone = z
   .string()
   .regex(/^(\+20|0)1[0-9]{9}$/, t("validation.phone"));
 const password = z.string(t("validation.passwordMin")).min(8, t("validation.passwordMin")).max(128);
-const nickname = z.string(t("validation.nicknameRequired")).min(1, t("validation.nicknameRequired")).max(100);
+const nickname = z.string(t("validation.nicknameRequired")).trim().min(1, t("validation.nicknameRequired")).max(100, t("validation.maxLength", { max: 100 }));
 const nationalId = z
   .union([z.string().regex(/^\d{14}$/, t("validation.nationalIdDigits")), z.literal("")])
   .optional()
@@ -41,6 +42,7 @@ const capacity = z
 const datetime = z
   .string(t("validation.date"))
   .refine((s) => !Number.isNaN(Date.parse(s)), t("validation.date"));
+const fare = z.string(t("validation.fare")).trim().regex(/^\d+(?:\.\d{1,2})?$/, t("validation.fare"));
 
 const memberStatus = z.enum(["ACTIVE", "SUSPENDED", "REVOKED"]);
 const tripStatus = z.enum(["SCHEDULED", "DEPARTED", "COMPLETED", "CANCELLED"]);
@@ -134,12 +136,12 @@ export const updateLineStopsSchema = z.object({
 export const createTripSchema = z.object({
   busId: uuid,
   departAt: datetime,
-  fare: z.string().optional(),
+  fare: fare.optional(),
   status: tripStatus.optional(),
 });
 export const updateTripSchema = z.object({
   departAt: datetime.optional(),
-  fare: z.string().optional(),
+  fare: fare.optional(),
   status: tripStatus.optional(),
   /** The trip's own driver; null clears it. Rejected by the API after departure. */
   driverUserId: uuid.nullable().optional(),
@@ -311,7 +313,7 @@ export const updatePromotionSchema = z.object({
 
 // ---- Registry ----
 export type RegistryEntry = {
-  method: "POST" | "PATCH";
+  method: "POST" | "PATCH" | "PUT";
   /** Matched against the query-stripped proxy pathname. */
   pattern: RegExp;
   schema: z.ZodType;
@@ -324,6 +326,14 @@ const SEG = "[^/]+";
 const OWNER = `^/fleet-owners/${SEG}`;
 
 export const P1_REGISTRY: RegistryEntry[] = [
+  { method: "POST", pattern: /^\/users$/, schema: createUserSchema },
+  { method: "PATCH", pattern: new RegExp(`^/users/${SEG}$`), schema: updateUserSchema },
+  { method: "PUT", pattern: new RegExp(`^/users/${SEG}/roles$`), schema: userRolesSchema },
+  { method: "POST", pattern: /^\/roles$/, schema: createRoleSchema },
+  { method: "PATCH", pattern: new RegExp(`^/roles/${SEG}$`), schema: updateRoleSchema },
+  { method: "PUT", pattern: new RegExp(`^/roles/${SEG}/permissions$`), schema: rolePermissionsSchema },
+  { method: "POST", pattern: /^\/platform\/notifications$/, schema: notificationSchema },
+  { method: "PUT", pattern: /^\/platform\/config\/customer-service$/, schema: serviceConfigSchema },
   // ---- Owner accounts (platform) ----
   { method: "POST", pattern: /^\/fleet-owners$/, schema: createFleetOwnerSchema },
   { method: "PATCH", pattern: new RegExp(`^/fleet-owners/${SEG}$`), schema: updateFleetOwnerSchema },

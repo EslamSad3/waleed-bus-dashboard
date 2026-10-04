@@ -5,6 +5,40 @@ PRD: `PRD.md` (single source of truth). Backend: `../bus_api` (do not modify).
 
 ## Current status
 
+### Individual form validation and driver actions (2026-10-04)
+
+- Shared field validation connects input, select, textarea and image controls to
+  Arabic errors with invalid styling, accessible descriptions and first-error
+  focus. Errors appear after blur or submit, update as values change, and reset
+  when dialogs close. Server field errors bind to their controls; unmatched
+  errors remain visible. Validation messages are no longer combined in a toast.
+- Migrated create/edit forms for stops, geography, brands, VIP tiers, buses,
+  drivers, owners, members, lines, trips, bookings, users, roles, notifications,
+  promotions, customer-service rows and booking administration actions. Added
+  shared proxy validation for users, roles, notifications and service config.
+  Login keeps its individual RHF errors and now validates on blur. Booking date
+  filters reject invalid/reversed ranges without sending them upstream.
+- Stops validate each hierarchy selection and the map URL separately, including
+  coordinate bounds and clearing stale coordinates after an invalid replacement.
+  An invalid link with all other inputs filled marks only the link.
+- Driver list, details and owner roster expose Delete and Deactivate/Re-Activate.
+  Delete calls the new platform account endpoint; status actions keep using the
+  reversible membership update. Linked operational history blocks deletion with
+  an Arabic error instead of silently deactivating the driver.
+- Automated shared-rule regression command: `pnpm check:validation` (50 checks).
+  Headless Chrome against an isolated mock API verified stop error isolation,
+  upstream field binding, stale coordinates, successful save and dialog reset;
+  user create/profile/role saves; geography PATCH edits; required errors for bus,
+  booking, driver, owner, notification, brand, VIP tier, promotion and role forms;
+  independent errors on repeated
+  service rows; driver list and detail deactivate/reactivate/permanent deletion.
+  No live user data was mutated and no browser exceptions occurred.
+- Dashboard gates passed: lint (0 errors, one existing permissions-page hook
+  warning), typecheck, i18n check, shared validation checks and production build.
+- API gates passed: typecheck, lint, build, OpenAPI regeneration, all 830 tests
+  across 83 suites with coverage above required thresholds (lines 88.07%,
+  statements 87.15%, functions 85.57%, branches 74.60%).
+
 - [x] P-constitution: initial ratification (7 principles + constraints + workflow + governance)
 - [x] P0 specify: `specs/000-p0-scaffold/spec.md` (US1–US4, FR-001–FR-010, SC-001–SC-004)
 - [x] P0 plan: `specs/000-p0-scaffold/plan.md` + `research.md` + `data-model.md` + `contracts/` + `quickstart.md`

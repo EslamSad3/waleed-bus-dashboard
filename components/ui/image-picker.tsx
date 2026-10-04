@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { t } from "@/lib/i18n/t";
+import { useValidatedField } from "@/components/ui/field-validation";
+import { validateImageFile } from "@/lib/actions/http";
 
 type ImagePickerProps = {
+  fieldName?: string;
   label: string;
   /** Selected File (uncontrolled inside; surfaced through onChange). */
   file: File | null;
@@ -23,15 +26,19 @@ type ImagePickerProps = {
  * remote image when no new file is picked yet.
  */
 export function ImagePicker({
+  fieldName = "picture",
   label,
   file,
   onChange,
   existingUrl,
   uploading,
   hint,
-  error,
+  error: externalError,
   required,
 }: ImagePickerProps) {
+  const field = useValidatedField(fieldName);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const error = externalError ?? fileError ?? field.error;
   const inputRef = useRef<HTMLInputElement>(null);
   // Object URL derived in render; the previous URL is revoked on change/unmount.
   const [lastUrl, setLastUrl] = useState<string | null>(null);
@@ -68,6 +75,10 @@ export function ImagePicker({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
+            aria-label={label}
+            data-invalid={Boolean(error)}
+            aria-describedby={error ? field.errorId : undefined}
+            onBlur={field.onBlur}
             className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#eaf6ff] px-4 text-xs font-extrabold text-[#00134c] transition hover:bg-[#d6eeff] disabled:pointer-events-none disabled:opacity-50"
           >
             {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
@@ -86,11 +97,15 @@ export function ImagePicker({
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
         onChange={(event) => {
-          onChange(event.target.files?.[0] ?? null);
+          field.onChange();
+          const selected = event.target.files?.[0] ?? null;
+          const invalid = selected ? validateImageFile(selected) : null;
+          setFileError(invalid);
+          onChange(invalid ? null : selected);
           event.target.value = "";
         }}
       />
-      {error ? <p role="alert" className="mt-1 text-sm text-[#dc2626]">{error}</p> : null}
+      {error ? <p id={field.errorId} role="alert" className="mt-1 text-sm text-[#dc2626]">{error}</p> : null}
     </div>
   );
 }

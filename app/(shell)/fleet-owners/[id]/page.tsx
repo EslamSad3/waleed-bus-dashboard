@@ -1,5 +1,11 @@
 "use client";
 
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -64,6 +70,7 @@ export default function FleetOwnerDetailPage({
   }, [id, setStoreOwnerId]);
 
   function openEdit() {
+    validation.reset();
     if (!owner) return;
     setName(owner.name ?? "");
     setNickname(owner.nickname ?? "");
@@ -75,19 +82,19 @@ export default function FleetOwnerDetailPage({
     setEditOpen(true);
   }
 
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateFleetOwnerSchema, { name: name.trim(), nickname: nickname.trim() || undefined, phone: phone.trim() || undefined, nationalId: nationalId.trim(), isActive }));
+
   async function save() {
+    if (!validation.validate()) return;
     if (!owner) return;
     const parsed = updateFleetOwnerSchema.safeParse({
-      name,
-      nickname,
-      phone,
+      name: name.trim(),
+      nickname: nickname.trim() || undefined,
+      phone: phone.trim() || undefined,
       nationalId,
       isActive,
     });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? t("common.validation.reviewInput"));
-      return;
-    }
+    if (!parsed.success) return;
     setSaving(true);
     setError(null);
     // الصورة بتترفع الأول مباشر للتخزين السحابي — لو الرفع فشل مفيش تعديل
@@ -97,7 +104,7 @@ export default function FleetOwnerDetailPage({
       const s = await stageFleetOwnerPicture(imageFile, id);
       if (!s.ok) {
         setSaving(false);
-        setError(s.message);
+        setError(validation.failure(s));
         return;
       }
       staged = s.data;
@@ -109,7 +116,7 @@ export default function FleetOwnerDetailPage({
     if (!result.ok) {
       if (staged) await discardFleetOwnerPicture(staged);
       setSaving(false);
-      setError(result.message);
+      setError(validation.failure(result));
       return;
     }
     // The mutation already returns the whole account, so the screen, the detail
@@ -230,7 +237,7 @@ export default function FleetOwnerDetailPage({
 
       <OwnerSections ownerId={id} />
 
-      <Dialog
+      <Dialog validation={validation}
         open={editOpen}
         onOpenChange={setEditOpen}
         title={t("fleetOwners.detail.editDialog.title")}
@@ -243,19 +250,19 @@ export default function FleetOwnerDetailPage({
               <span className="mb-2 block font-bold text-[#334454]">
                 {t("common.fields.fullName")}
               </span>
-              <Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
+              <Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
             </label>
             <label className="block text-sm">
               <span className="mb-2 block font-bold text-[#334454]">
                 {t("common.fields.nickname")}
               </span>
-              <Input value={nickname} onChange={(event) => setNickname(event.target.value)} />
+              <Input fieldName="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} />
             </label>
             <label className="block text-sm">
               <span className="mb-2 block font-bold text-[#334454]">
                 {t("common.fields.phoneNumber")}
               </span>
-              <Input
+              <Input fieldName="phone"
                 dir="ltr"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
@@ -267,7 +274,7 @@ export default function FleetOwnerDetailPage({
               <span className="mb-2 block font-bold text-[#334454]">
                 {t("common.fields.nationalId")}
               </span>
-              <Input
+              <Input fieldName="nationalId"
                 dir="ltr"
                 value={nationalId}
                 onChange={(event) => setNationalId(event.target.value)}

@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation, ValidationScope } from "@/components/ui/field-validation";
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -154,13 +162,19 @@ export default function TripDetailPage({
     }
   }
 
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined }));
+
+  const driverValidation = useFieldValidation(() => schemaErrors(schemas.assignDriverSchema, { driverUserId: driverId }));
+
   async function save() {
+    if (!validation.validate()) return;
     if (!ownerId || !lineId) return;
     const r = await updateTrip(ownerId, lineId, id, {
       departAt: departAt ? new Date(departAt).toISOString() : undefined,
-      fare: fare.trim(),
+      fare: fare.trim() || undefined,
     });
-    done(r.ok, r.ok ? t("common.toast.saved") : r.message, r.ok ? r.data : undefined);
+    if (!r.ok) { setError(validation.failure(r)); return; }
+    done(true, t("common.toast.saved"), r.data);
   }
 
   async function move(next: Trip["status"]) {
@@ -191,15 +205,14 @@ export default function TripDetailPage({
   }
 
   async function assignTripDriver() {
-    if (!ownerId || !trip || !driverId) {
-      setError(t("trips.detail.errors.pickDriver"));
-      return;
-    }
+    if (!driverValidation.validate()) return;
+    if (!ownerId || !trip) return;
     // This is the TRIP's driver, not the bus's: the API takes it on the trip
     // and freezes it once the trip departs. Re-read the trip afterwards so the
     // block below shows the new driver instead of the stale one.
     const result = await updateTrip(ownerId, lineId, id, { driverUserId: driverId });
-    done(result.ok, result.ok ? t("trips.detail.toast.driverAssigned") : result.message);
+    if (!result.ok) { setError(driverValidation.failure(result)); return; }
+    done(true, t("trips.detail.toast.driverAssigned"));
     if (result.ok) {
       setTrip(result.data);
       setDriverId("");
@@ -224,12 +237,11 @@ export default function TripDetailPage({
    * "current bus driver" block, so it is never gated on `tripFrozen`.
    */
   async function assignToBus() {
-    if (!ownerId || !trip || !driverId) {
-      setError(t("trips.detail.errors.pickDriver"));
-      return;
-    }
+    if (!driverValidation.validate()) return;
+    if (!ownerId || !trip) return;
     const result = await assignBusDriver(ownerId, trip.busId, { driverUserId: driverId });
-    done(result.ok, result.ok ? t("buses.toast.driverAssigned") : result.message);
+    if (!result.ok) { setError(driverValidation.failure(result)); return; }
+    done(true, t("buses.toast.driverAssigned"));
     if (result.ok) {
       setDriverId("");
       await refreshDrivers();
@@ -269,7 +281,6 @@ export default function TripDetailPage({
   }
   if (foundError && !trip) return <p role="alert" className="text-sm text-red-600">{foundError.message}</p>;
   if (!trip) return <DetailPageSkeleton />;
-
 
   const feedbackColumns: CommunityColumnDef<TripFeedbackRow>[] = [
     { field: "passenger.name", headerName: t("feedback.passenger"), valueGetter: (params) => params.data?.passenger.name || t("common.value.withoutName") },
@@ -320,7 +331,7 @@ export default function TripDetailPage({
   );
 
   return (
-    <div className="dashboard-page">
+    <ValidationScope validation={validation}><div className="dashboard-page">
       <div className="page-heading">
         <div className="min-w-0 flex-1">
           <h1 className="page-title">{trip.origin ?? "—"} ← {trip.destination ?? "—"}</h1>
@@ -351,11 +362,11 @@ export default function TripDetailPage({
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">{t("trips.detail.departureAt")}</span>
-                <Input dir="ltr" type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} />
+                <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">{t("common.fields.fare")}</span>
-                <Input dir="ltr" inputMode="decimal" value={fare} onChange={(e) => setFare(e.target.value)} />
+                <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(e) => setFare(e.target.value)} />
               </label>
             </div>
             <p className="text-xs text-[#687886]">{t("trips.detail.routeFromLineHint", { lineName: trip.line?.name ?? "—" })}</p>
@@ -380,20 +391,20 @@ export default function TripDetailPage({
               </span>
               <label className="mt-3 block text-sm">
                 <span className="mb-1 block font-medium">{t("trips.detail.assignTripDriver")}</span>
-                <select aria-label={t("trips.detail.assignDriverAria")} value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus || tripFrozen}>
+                <ValidationScope validation={driverValidation}><Select fieldName="driverUserId" aria-label={t("trips.detail.assignDriverAria")} value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus || tripFrozen}>
                   <option value="">{t("trips.detail.pickDriver")}</option>
                   {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || t("trips.detail.unnamedDriver")}</option>)}
-                </select>
+                </Select></ValidationScope>
               </label>
               <div className="mt-2 flex flex-wrap gap-2">
-                <AsyncButton type="button" onClick={assignTripDriver} disabled={!driverId || tripFrozen}>{t("trips.detail.assignDriverAria")}</AsyncButton>
+                <AsyncButton type="button" onClick={assignTripDriver} disabled={tripFrozen}>{t("trips.detail.assignDriverAria")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={unassignTripDriver} disabled={!trip.driverUserId || tripFrozen}>
                   {t("trips.detail.assignDriverAria")}
                 </AsyncButton>
               </div>
               {tripFrozen ? <small className="mt-1 block text-xs text-[#687886]">{t("trips.detail.driverFrozenHint")}</small> : null}
               <div className="mt-2 flex flex-wrap gap-2 border-t border-[#e4ecf2] pt-2">
-                <AsyncButton type="button" onClick={assignToBus} disabled={!bus || !driverId}>{t("trips.detail.assignBusDriver")}</AsyncButton>
+                <AsyncButton type="button" onClick={assignToBus} disabled={!bus}>{t("trips.detail.assignBusDriver")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={unassignFromBus} disabled={!bus || !busDriver}>
                   {t("trips.detail.unassignBusDriver")}
                 </AsyncButton>
@@ -472,6 +483,6 @@ export default function TripDetailPage({
           />
         )}
       </section>
-    </div>
+    </div></ValidationScope>
   );
 }

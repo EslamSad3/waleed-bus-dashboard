@@ -1,5 +1,13 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
+
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors, requiredField } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -74,6 +82,7 @@ export function CreateTripDialog({
   const endpoints = selectedLine ? lineEndpoints(selectedLine) : null;
 
   function resetForm() {
+    validation.reset();
     setLineId(lockedLineId ?? "");
     setBusId(lockedBusId ?? "");
     setDepartAt("");
@@ -81,11 +90,11 @@ export function CreateTripDialog({
     setError(null);
   }
 
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, departAt, fare: fare.trim() || undefined }), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
+
   async function submit() {
-    if (!ownerId) return setError(t("trips.createDialog.errors.pickOwner"));
-    if (!lineId) return setError(t("trips.createDialog.errors.pickLine"));
-    if (!busId) return setError(t("trips.createDialog.errors.pickBus"));
-    if (!departAt) return setError(t("trips.createDialog.errors.pickDate"));
+    if (!validation.validate()) return;
+
     setError(null);
     setSaving(true);
     setOwnerId(ownerId);
@@ -96,7 +105,7 @@ export function CreateTripDialog({
       fare: fare.trim() || undefined,
     });
     setSaving(false);
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     // One impact declaration covers the global `all` index, the owner index, the
     // line index and the detail slot — patching only `qk.trips(owner, line)`
     // left the global list missing the new trip until something else refetched.
@@ -113,14 +122,14 @@ export function CreateTripDialog({
   }
 
   return (
-    <Dialog
+    <Dialog validation={validation}
       open={open}
       onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }}
       title={t("trips.createDialog.title")}
       description={t("trips.createDialog.description")}
       size="sm"
     >
-      <form
+      <form noValidate
         className="space-y-4"
         onSubmit={(event) => { event.preventDefault(); void submit(); }}
       >
@@ -139,7 +148,7 @@ export function CreateTripDialog({
 
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.tripLine")}</span>
-          <select
+          <Select fieldName="lineId"
             value={lineId}
             onChange={(event) => setLineId(event.target.value)}
             disabled={!ownerId || Boolean(lockedLineId)}
@@ -154,7 +163,7 @@ export function CreateTripDialog({
                 </option>
               );
             })}
-          </select>
+          </Select>
           {endpoints ? (
             <small className="mt-1 block text-xs text-[#687886]">
               {endpoints.origin ?? "—"} ← {endpoints.destination ?? "—"}
@@ -164,7 +173,7 @@ export function CreateTripDialog({
 
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.bus")}</span>
-          <select
+          <Select fieldName="busId"
             value={busId}
             onChange={(event) => setBusId(event.target.value)}
             disabled={!ownerId || Boolean(lockedBusId)}
@@ -176,17 +185,17 @@ export function CreateTripDialog({
                 {bus.plateNumber ?? t("common.value.withoutName")}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.departAt")}</span>
-            <Input dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
+            <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
           </label>
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fare")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
-            <Input dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} placeholder="50.00" />
+            <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} placeholder="50.00" />
           </label>
         </div>
 

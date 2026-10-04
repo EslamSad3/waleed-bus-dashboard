@@ -1,5 +1,11 @@
 "use client";
 
+import * as schemas from "@/lib/schemas/p1";
+
+import { schemaErrors } from "@/lib/field-validation";
+
+import { useFieldValidation } from "@/components/ui/field-validation";
+
 import { useEffect, useRef, useState } from "react";
 import { Ban, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -50,6 +56,7 @@ export default function PromotionsPage() {
   const [expiresAt, setExpiresAt] = useState("");
 
   function openCreate() {
+    validation.reset();
     setEditing(null);
     setCode("");
     setValue("");
@@ -65,6 +72,7 @@ export default function PromotionsPage() {
   }
 
   function openEdit(promo: Promotion) {
+    validation.reset();
     setCreating(false);
     setEditing(promo);
     setValue(promo.value);
@@ -78,32 +86,23 @@ export default function PromotionsPage() {
     setError(null);
   }
 
+  const validation = useFieldValidation(() => {
+    const fields = schemaErrors(editing ? schemas.updatePromotionSchema : schemas.createPromotionSchema, { code: code.trim(), type: "FIXED", value: Number(value), maxUsesPerUser: Number(maxPerUser), maxTotalUses: maxTotal.trim() ? Number(maxTotal) : null, startsAt: startsAt || null, expiresAt: expiresAt || null, targetUserIds: targetIds });
+    if ((editing ? !editing.isGlobal : audience === "specific") && targetIds.length === 0) fields.targetUserIds = t("promotions.errors.usersRequired");
+    if (startsAt && expiresAt && Date.parse(expiresAt) <= Date.parse(startsAt)) fields.expiresAt = t("promotions.errors.expiryBeforeStart");
+    return fields;
+  });
+
   async function save() {
+    if (!validation.validate()) return;
     const numValue = Number(value);
-    if (!editing && !code.trim()) {
-      setError(t("promotions.errors.codeRequired"));
-      return;
-    }
-    if (!Number.isFinite(numValue) || numValue <= 0) {
-      setError(t("promotions.errors.valueRequired"));
-      return;
-    }
+
     const specific = editing ? !editing.isGlobal : audience === "specific";
-    if (specific && targetIds.length === 0) {
-      setError(t("promotions.errors.usersRequired"));
-      return;
-    }
-    if (startsAt && expiresAt && new Date(expiresAt) <= new Date(startsAt)) {
-      setError(t("promotions.errors.expiryBeforeStart"));
-      return;
-    }
+
     // blank = unlimited, and the field says so — an empty box is a decision,
     // not an accidental reset of a limit that already existed.
     const parsedMaxTotal = maxTotal ? Number(maxTotal) : null;
-    if (parsedMaxTotal !== null && (!Number.isInteger(parsedMaxTotal) || parsedMaxTotal < 1)) {
-      setError(t("promotions.errors.maxTotalInvalid"));
-      return;
-    }
+
     const result = editing
       ? await updatePromotion(editing.id, {
           value: numValue,
@@ -124,7 +123,7 @@ export default function PromotionsPage() {
           startsAt: startsAt ? new Date(startsAt).toISOString() : null,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         });
-    if (!result.ok) return setError(result.message);
+    if (!result.ok) return setError(validation.failure(result));
     applyMutationCache(queryClient, promotionImpact(result.data, "update"), result);
     setEditing(null);
     setCreating(false);
@@ -232,10 +231,10 @@ export default function PromotionsPage() {
           )}
         />
       )}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? t("promotions.dialog.editTitle", { editingCode: editing.code }) : t("promotions.dialog.createTitle")} description={editing ? t("promotions.dialog.immutableHint") : t("promotions.dialog.codeHint")} size="sm">
+      <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? t("promotions.dialog.editTitle", { editingCode: editing.code }) : t("promotions.dialog.createTitle")} description={editing ? t("promotions.dialog.immutableHint") : t("promotions.dialog.codeHint")} size="sm">
         <div className="space-y-4">
-          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="SAVE10" /></label> : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.valueLabel")}</span><Input dir="ltr" inputMode="decimal" type="number" min={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder={t("promotions.placeholders.value")} /></label>
+          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="SAVE10" /></label> : null}
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.valueLabel")}</span><Input fieldName="value" dir="ltr" inputMode="decimal" type="number" min={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder={t("promotions.placeholders.value")} /></label>
           {!editing || !editing.isGlobal ? (
             <div className="space-y-2 text-sm">
               <span className="block font-bold text-[#334454]">{t("promotions.dialog.audienceLabel")} {editing ? t("promotions.dialog.scopeImmutable") : ""}</span>
@@ -247,7 +246,7 @@ export default function PromotionsPage() {
               ) : null}
               {(editing ? !editing.isGlobal : audience === "specific") ? (
                 <div className="rounded-xl border border-[#e4ecf2] p-3">
-                  <Input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder={t("promotions.placeholders.userSearch")} />
+                  <Input fieldName="targetUserIds" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder={t("promotions.placeholders.userSearch")} />
                   <p className="mt-1 text-xs text-slate-500">{t("promotions.dialog.searchHint")}</p>
                   <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">
                     {userOptionsLoading ? (
@@ -278,11 +277,11 @@ export default function PromotionsPage() {
               ) : null}
             </div>
           ) : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxPerUser")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxPerUser} onChange={(event) => setMaxPerUser(event.target.value)} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxTotal")}</span><Input dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /><span className="mt-1 block text-xs text-slate-500">{t("promotions.dialog.maxTotalHint")}</span></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxPerUser")}</span><Input fieldName="maxUsesPerUser" dir="ltr" inputMode="numeric" type="number" min={1} value={maxPerUser} onChange={(event) => setMaxPerUser(event.target.value)} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.maxTotal")}</span><Input fieldName="maxTotalUses" dir="ltr" inputMode="numeric" type="number" min={1} value={maxTotal} onChange={(event) => setMaxTotal(event.target.value)} /><span className="mt-1 block text-xs text-slate-500">{t("promotions.dialog.maxTotalHint")}</span></label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.startsAt")}</span><Input dir="ltr" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
-            <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.expiresAt")}</span><Input dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
+            <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.startsAt")}</span><Input fieldName="startsAt" dir="ltr" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
+            <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.expiresAt")}</span><Input fieldName="expiresAt" dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
           </div>
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>{t("common.actions.cancel")}</Button><AsyncButton type="button" onClick={save}>{t("common.actions.save")}</AsyncButton></div>
