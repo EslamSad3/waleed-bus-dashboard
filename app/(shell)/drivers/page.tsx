@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActions } from "@/components/ui/row-actions";
+import { RowActions, type RowAction } from "@/components/ui/row-actions";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
@@ -71,25 +71,35 @@ export default function DriversPage() {
         <div className="flex items-center gap-2">
           <DriverAvatar name={params.data.name} picture={params.data.picture} size="sm" />
           <span>{params.data.name || t("common.value.withoutName")}</span>
+          {params.data.isOwnerDriver ? (
+            <span className="shrink-0 rounded-full bg-[#e8f1fb] px-2 py-0.5 text-[0.7rem] font-bold text-[#1f6f8b]">
+              {t("drivers.list.ownerDriverBadge")}
+            </span>
+          ) : null}
         </div>
       ),
     },
     { field: "phoneNumber", headerName: t("common.fields.phone") },
     {
-      // A personal membership has no company behind it — showing the driver's
-      // own name in the "owner" column would present a solo driver as a fleet
-      // owner, which is exactly the confusion this column exists to prevent.
+      // Every roster row belongs to one owner scope — the owner's own
+      // self-membership included — so this column is always a real owner name.
       field: "owner.name",
       headerName: t("common.fields.owner"),
-      valueGetter: (params) =>
-        params.data?.isIndependent ? t("drivers.list.independentOwner") : params.data?.owner?.name || t("common.value.ownerWithoutName"),
+      valueGetter: (params) => params.data?.owner?.name || t("common.value.ownerWithoutName"),
     },
     {
-      // Plate number is what the operator recognises.
-      field: "assignedBus.plateNumber",
+      // Plate numbers are what the operator recognises; a driver may hold
+      // several active assignments, so every plate is listed.
+      colId: "assignedBuses",
       headerName: t("drivers.columns.assignedBus"),
-      valueGetter: (params) =>
-        params.data?.assignedBus?.plateNumber ?? t("drivers.list.notAssigned"),
+      valueGetter: (params) => {
+        const buses = params.data?.assignedBuses ?? [];
+        const plates = buses
+          .map((bus) => bus.plateNumber || bus.registrationNumber)
+          .filter((plate): plate is string => Boolean(plate));
+        if (plates.length > 0) return plates.join(t("common.listSeparator"));
+        return params.data?.assignedBus?.plateNumber ?? t("drivers.list.notAssigned");
+      },
     },
     {
       headerName: t("drivers.columns.overallRating"),
@@ -131,16 +141,17 @@ export default function DriversPage() {
           emptyMessage={t("drivers.empty")}
           renderItem={(driver) => {
             const driverUserId = driver.userId ?? driver.id;
-            const [statusAction, deleteAction] = driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver));
+            // Owner-driver rows get navigation instead of lifecycle actions
+            // (the hook returns the manage-in-owners action for them).
+            const lifecycleActions = driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver));
+            const editAction: RowAction = { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) };
             return (
               <div className="flex h-full w-full items-center overflow-x-auto">
                 <div className="min-w-max">
                   <RowActions
                     label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
                     actions={[
-                      { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
-                      deleteAction,
-                      statusAction,
+                      ...(driver.isOwnerDriver ? lifecycleActions : [editAction, ...lifecycleActions]),
                       // Detail links use the DRIVER USER id (stable across membership
                       // churn) and carry THIS row's company, so opening a driver
                       // never lands on an unrelated global owner filter.

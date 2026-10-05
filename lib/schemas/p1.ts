@@ -199,40 +199,23 @@ export const addDriverSchema = z.union([driverFromUser, driverFreshSchema]);
 /**
  * Platform driver creation (`POST /fleet-owners/drivers`).
  *
- * The OPERATOR picks the account shape, not the request: `INDEPENDENT` makes
- * the driver their own company and forbids `ownerId`; `OWNER` requires it. The
- * server owns the role, so `roleSlug` is not part of this contract at all —
- * a strict zod object rejects it at the proxy boundary with a field error
- * instead of forwarding a privilege-escalation attempt.
+ * Every created driver is an EMPLOYED driver under the owner the operator
+ * picks: `ownerId` is required and the retired `mode` field is gone (the
+ * server 400s unknown fields, so it must not be sent at all). The server owns
+ * the role, so `roleSlug` is not part of this contract at all — a strict zod
+ * object rejects it at the proxy boundary with a field error instead of
+ * forwarding a privilege-escalation attempt.
  */
 const createDriverAccountBase = z.object({
-  mode: z.enum(["INDEPENDENT", "OWNER"], t("validation.driverModeRequired")),
-  ownerId: uuid.optional(),
-  name: z.string(t("validation.required")).min(1, t("validation.required")).max(255),
-  nickname,
+  ownerId: z.uuid(t("validation.ownerRequired")),
+  name: z.string().max(255).optional(),
+  nickname: z.string().max(100).optional(),
   phone: egyptPhone,
   password,
   picture: z.string().max(1024).optional(),
   nationalId,
 });
-export const createDriverAccountSchema = createDriverAccountBase.superRefine(
-  (value, ctx) => {
-    if (value.mode === "OWNER" && !value.ownerId) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["ownerId"],
-        message: t("validation.ownerRequired"),
-      });
-    }
-    if (value.mode === "INDEPENDENT" && value.ownerId !== undefined) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["ownerId"],
-        message: t("validation.ownerForbidden"),
-      });
-    }
-  },
-);
+export const createDriverAccountSchema = createDriverAccountBase;
 export const updateDriverSchema = z.object({
   roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
   status: memberStatus.optional(),

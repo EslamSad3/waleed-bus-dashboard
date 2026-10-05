@@ -43,9 +43,9 @@ export default function BusesPage() {
   const [busForAssign, setBusForAssign] = useState<BusRow | null>(null);
   const [listFilters, setListFilters] = useState<{ q?: string; status?: string; ownerId?: string }>({});
 
-  // An independent-owned bus resolves through the same map (its personal
-  // company is a real owner row); anything unresolvable gets a readable
-  // label instead of a raw id.
+  // Every bus belongs to exactly one owner company and the map resolves each
+  // id to its name; anything unresolvable gets a readable label instead of a
+  // raw id.
   const nameOf = useMemo(
     () => (ownerId: string) => ownerNames?.get(ownerId) ?? t("buses.list.unknownOwner"),
     [ownerNames],

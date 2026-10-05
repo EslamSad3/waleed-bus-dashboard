@@ -104,7 +104,7 @@ export default function TripDetailPage({
   async function refreshDrivers() {
     if (!ownerId) return;
     const refreshed = await apiGet<{ items: DriverRow[] }>(`/api/fleet-owners/${ownerId}/drivers?limit=100`);
-    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE" && driver.isActive));
   }
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function TripDetailPage({
       if (result.ok) setBus(result.data);
     });
     apiGet<{ items: DriverRow[] }>(`/api/fleet-owners/${ownerId}/drivers?limit=100`).then((result) => {
-      if (result.ok) setDrivers(result.data.items.filter((driver) => driver.status === "ACTIVE"));
+      if (result.ok) setDrivers(result.data.items.filter((driver) => driver.status === "ACTIVE" && driver.isActive));
     });
   }, [ownerId, trip]);
 

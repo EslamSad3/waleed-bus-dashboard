@@ -42,6 +42,13 @@ export type DriverStats = {
   uniqueBusCount: number;
 };
 
+/** An active bus assignment of this membership inside its owner scope. */
+export type DriverAssignedBus = {
+  busId: string;
+  plateNumber?: string | null;
+  registrationNumber?: string | null;
+};
+
 /** Roster row. Driver subresources are keyed by the DRIVER USER id. */
 export type DriverRow = {
   /** Membership row id. */
@@ -54,6 +61,13 @@ export type DriverRow = {
   nationalId?: string | null;
   status: string;
   roleSlug?: string | null;
+  /** The DRIVER USER's active flag — a suspended user is not driver-eligible. */
+  isActive: boolean;
+  /**
+   * True for the owner's own self-membership row: the account is owner AND
+   * driver, and it is managed from owner administration only.
+   */
+  isOwnerDriver: boolean;
   joinedAt?: string;
   stats?: DriverStats;
   assignments?: {
@@ -65,20 +79,17 @@ export type DriverRow = {
     createdAt: string;
     endedAt: string | null;
   }[];
+  /** All ACTIVE bus assignments in this membership's owner scope. */
+  assignedBuses?: DriverAssignedBus[] | null;
 };
 
-/** Cross-owner roster row: the driver membership plus its company and active bus. */
+/** Cross-owner roster row: the driver membership plus its owner and active buses. */
 export type SystemDriverRow = DriverRow & {
-  /** Owner user id the membership belongs to — a driver's own company. */
+  /** Owner user id the membership belongs to. */
   ownerId: string;
-  /**
-   * A personal membership (`userId === ownerId`): the driver is their own
-   * company, so the grid shows "Independent" instead of pretending they belong
-   * to some company. Sent by the API since the dashboard cannot infer it.
-   */
-  isIndependent: boolean;
   owner: { id: string; name: string | null; phoneNumber: string | null };
-  assignedBus: { id: string; registrationNumber: string; plateNumber: string | null } | null;
+  /** Legacy single-bus shape kept for compat; prefer `assignedBuses`. */
+  assignedBus?: { id: string; registrationNumber: string; plateNumber: string | null } | null;
 };
 
 export type DriverAssignmentRow = {
@@ -147,21 +158,19 @@ export function inviteDriver(ownerId: string, input: AddDriverInput): Promise<Ac
 /**
  * Platform driver account creation (`POST /fleet-owners/drivers`).
  *
- * The OPERATOR chooses the account shape, not the driver: `INDEPENDENT` makes
- * the new user their own company, `OWNER` files them under the company the
- * operator picked. The server assigns the role, so the request carries no
- * `roleSlug`. `ownerLabel` is only used to make the success toast specific.
+ * Every created driver is an employed driver under the owner the operator
+ * picked — there is no independent mode any more. The server assigns the role,
+ * so the request carries no `roleSlug`. `ownerLabel` is only used to make the
+ * success toast specific.
  */
 export function createDriverAccount(
   input: CreateDriverAccountInput,
   ownerLabel?: string,
 ): Promise<ActionResult<SystemDriverRow>> {
   return notifyResult(
-    input.mode === "OWNER" && ownerLabel
+    ownerLabel
       ? t("drivers.createDialog.createdUnderOwner", { owner: ownerLabel })
-      : input.mode === "OWNER"
-        ? t("drivers.createDialog.created")
-        : t("drivers.createDialog.createdIndependent"),
+      : t("drivers.createDialog.created"),
     apiSend<SystemDriverRow>("/api/fleet-owners/drivers", "POST", input),
   );
 }
@@ -202,26 +211,18 @@ export function updateDriver(
 }
 
 /**
- * Removes a driver from a company.
- *
- * The API treats the two shapes differently: an owner-associated driver loses
- * the membership row, while an INDEPENDENT driver's personal membership is
- * REVOKED (deleting it would let their next login re-provision it and silently
- * undo the removal). Both keep the user and the trip history, so the toast says
- * "access revoked" for the independent case rather than pretending a record was
- * erased.
+ * Removes an employed driver from a company: the membership row is deleted and
+ * the user plus trip history stay. The owner's own self-membership is NOT
+ * removable here — the API rejects it with 409 `OWNER_DRIVER_MANAGED_AS_OWNER`
+ * and the row's actions route to owner administration instead.
  */
 export function removeDriver(
   ownerId: string,
   driverUserId: string,
-  context?: { isIndependent?: boolean; ownerLabel?: string | null },
+  ownerLabel?: string | null,
 ): Promise<ActionResult<null>> {
   return notifyResult(
-    context?.isIndependent
-      ? t("drivers.list.removedIndependent")
-      : t("drivers.list.removedFromOwner", {
-          owner: context?.ownerLabel || t("drivers.list.independentOwner"),
-        }),
+    t("drivers.list.removedFromOwner", { owner: ownerLabel || t("fleetOwnerPicker.label") }),
     apiSend<null>(`${ownerBase(ownerId)}/drivers/${driverUserId}`, "DELETE"),
   );
 }

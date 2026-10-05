@@ -271,7 +271,7 @@ export default function BusDetailPage({
     const refreshed = await apiGet<{ items: DriverRow[] }>(
       `/api/fleet-owners/${ownerId}/drivers?limit=100`,
     );
-    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE"));
+    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE" && driver.isActive));
   };
 
   async function unassign() {

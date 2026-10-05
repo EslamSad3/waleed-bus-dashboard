@@ -13,28 +13,20 @@ import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { OwnerPicker } from "@/components/owners/owner-picker";
 import { createDriverAccount, type SystemDriverRow } from "@/lib/actions/members";
+import { fetchFleetOwner } from "@/lib/actions/fleet-owners";
 import { discardUserPicture, stageUserPicture } from "@/lib/actions/users";
 import type { StagedUpload } from "@/lib/actions/http";
 import { createDriverAccountSchema } from "@/lib/schemas/p1";
+import { qk, useApiQuery } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
 /**
  * Create a driver account from the platform (super-admin) side.
  *
- * The OPERATOR picks the account shape, which is the whole point of the dialog:
- *
- * - **Independent driver** — the driver is their own company. No company is
- *   chosen, the server anchors the membership on the new user's own id, and the
- *   account gets the `independent_driver` role.
- * - **Under a fleet owner** — the searchable owner picker appears and the driver
- *   is filed inside that company with the `driver` role. When the dialog is
- *   opened from an owner page (`lockedOwnerId`) this mode is selected and
- *   LOCKED: the operator is already inside a company and the driver belongs
- *   there.
- *
- * Switching back to Independent clears the previously chosen owner so a stale
- * `ownerId` can never leak into an independent request (the API rejects it with
- * a 422 anyway — the UI just refuses to send it).
+ * Every created driver is an EMPLOYED driver under one owner company: the
+ * searchable owner picker is required. When the dialog is opened from an owner
+ * page (`lockedOwnerId`) the company is already decided by where the operator
+ * is — the picker is replaced by a locked field showing that owner's name.
  *
  * A staged picture is DISCARDED when the account write fails, so a rejected
  * form does not leave an orphan file in storage.
@@ -51,9 +43,6 @@ export function CreateDriverDialog({
   onCreated?: (driver: SystemDriverRow) => void;
 }) {
   // Opened from an owner page: the company is decided by where the operator is.
-  const [mode, setMode] = useState<"INDEPENDENT" | "OWNER">(
-    lockedOwnerId ? "OWNER" : "INDEPENDENT",
-  );
   const [pickedOwnerId, setPickedOwnerId] = useState(lockedOwnerId ?? "");
   const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -68,39 +57,34 @@ export function CreateDriverDialog({
 
   const ownerLocked = Boolean(lockedOwnerId);
   const ownerId = lockedOwnerId ?? pickedOwnerId;
-  const needsOwner = mode === "OWNER";
+
+  // Locked mode names the company for the operator; the account payload only
+  // ever carries its id.
+  const { data: lockedOwner } = useApiQuery(
+    qk.fleetOwner(lockedOwnerId ?? "none"),
+    () => fetchFleetOwner(lockedOwnerId!),
+    { enabled: open && ownerLocked },
+  );
+  const lockedOwnerLabel = lockedOwner?.name || lockedOwner?.nickname || lockedOwner?.phoneNumber || null;
 
   function resetForm() {
     validation.reset();
-    setMode(lockedOwnerId ? "OWNER" : "INDEPENDENT");
     setPickedOwnerId(lockedOwnerId ?? "");
     setOwnerLabel(null);
     setName(""); setNickname(""); setPhone(""); setNationalId("");
     setPassword(""); setPasswordConfirmation(""); setImageFile(null); setError(null);
   }
 
-  function changeMode(next: "INDEPENDENT" | "OWNER") {
-    if (mode === next) return;
-    setMode(next);
-    setError(null);
-    if (next === "INDEPENDENT") {
-      // An independent driver belongs to no company — drop any earlier choice.
-      setPickedOwnerId("");
-      setOwnerLabel(null);
-    }
-  }
-
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createDriverAccountSchema, { mode, ownerId: needsOwner ? ownerId || undefined : undefined, name: name.trim(), nickname: nickname.trim(), phone, password, nationalId: nationalId || undefined }), passwordConfirmation: !passwordConfirmation ? t("validation.required") : password === passwordConfirmation ? undefined : t("common.validation.passwordsMismatch") }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createDriverAccountSchema, { ownerId: ownerId || undefined, name: name.trim() || undefined, nickname: nickname.trim() || undefined, phone, password, nationalId: nationalId || undefined }), passwordConfirmation: !passwordConfirmation ? t("validation.required") : password === passwordConfirmation ? undefined : t("common.validation.passwordsMismatch") }));
 
   async function submit() {
     if (!validation.validate()) return;
     setError(null);
 
     const parsed = createDriverAccountSchema.safeParse({
-      mode,
-      ...(needsOwner && ownerId ? { ownerId } : {}),
-      name: name.trim(),
-      nickname: nickname.trim(),
+      ownerId,
+      name: name.trim() || undefined,
+      nickname: nickname.trim() || undefined,
       phone,
       password,
       nationalId: nationalId || undefined,
@@ -121,7 +105,7 @@ export function CreateDriverDialog({
     }
     const result = await createDriverAccount(
       { ...parsed.data, ...(staged ? { picture: staged.publicUrl } : {}) },
-      ownerLabel ?? undefined,
+      ownerLabel ?? lockedOwnerLabel ?? undefined,
     );
     if (!result.ok) {
       if (staged) await discardUserPicture(staged);
@@ -144,58 +128,15 @@ export function CreateDriverDialog({
       size="lg"
     >
       <div>
-        <fieldset className="mb-5">
-          <legend className="mb-1.5 block text-sm font-bold text-[#334454]">
-            {t("drivers.createDialog.modeLabel")}
-          </legend>
-          <div className="grid gap-2 md:grid-cols-2">
-            <label
-              className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
-                mode === "INDEPENDENT" ? "border-[#1f6f8b] bg-[#f2f8fb]" : "border-[#e4ecf2]"
-              }`}
-            >
-              <input
-                type="radio"
-                name="driver-mode"
-                className="mt-0.5"
-                checked={mode === "INDEPENDENT"}
-                onChange={() => changeMode("INDEPENDENT")}
-              />
-              <span>
-                <span className="block font-bold text-[#334454]">
-                  {t("drivers.createDialog.modeIndependent")}
-                </span>
-                <span className="block text-xs text-[#6b7c8c]">
-                  {t("drivers.createDialog.modeIndependentHint")}
-                </span>
-              </span>
+        {ownerLocked ? (
+          <div className="mb-5">
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-bold text-[#334454]">{t("fleetOwnerPicker.label")}</span>
+              <Input value={lockedOwnerLabel ?? lockedOwnerId ?? ""} disabled readOnly aria-label={t("fleetOwnerPicker.label")} />
             </label>
-            <label
-              className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
-                mode === "OWNER" ? "border-[#1f6f8b] bg-[#f2f8fb]" : "border-[#e4ecf2]"
-              } ${ownerLocked ? "opacity-80" : "cursor-pointer"}`}
-            >
-              <input
-                type="radio"
-                name="driver-mode"
-                className="mt-0.5"
-                checked={mode === "OWNER"}
-                disabled={ownerLocked}
-                onChange={() => changeMode("OWNER")}
-              />
-              <span>
-                <span className="block font-bold text-[#334454]">
-                  {t("drivers.createDialog.modeOwner")}
-                </span>
-                <span className="block text-xs text-[#6b7c8c]">
-                  {t("drivers.createDialog.modeOwnerHint")}
-                </span>
-              </span>
-            </label>
+            <p className="mt-1.5 text-xs text-[#6b7c8c]">{t("drivers.createDialog.lockedOwnerHint")}</p>
           </div>
-        </fieldset>
-
-        {needsOwner && !ownerLocked ? (
+        ) : (
           <div className="mb-5">
             <OwnerPicker
               ownerId={pickedOwnerId}
@@ -205,7 +146,7 @@ export function CreateDriverDialog({
               placeholder={t("drivers.createDialog.ownerRequired")}
             />
           </div>
-        ) : null}
+        )}
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("drivers.placeholders.fullName")} /></label>

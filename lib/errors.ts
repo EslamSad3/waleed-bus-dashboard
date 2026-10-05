@@ -52,6 +52,10 @@ export const AR_ERROR_MAP: Record<string, string> = {
   MEMBER_EXISTS: t("errors.MEMBER_EXISTS"),
   FLEET_NOT_FOUND: t("errors.FLEET_NOT_FOUND"),
   OWNER_LINK: t("errors.OWNER_LINK"),
+  /** The owner's own self-membership is managed from owner administration only. */
+  OWNER_DRIVER_MANAGED_AS_OWNER: t("errors.OWNER_DRIVER_MANAGED_AS_OWNER"),
+  /** A fleet owner cannot be invited/assigned as an external driver elsewhere. */
+  OWNER_CANNOT_DRIVE_OTHER_FLEET: t("errors.OWNER_CANNOT_DRIVE_OTHER_FLEET"),
 
   // --- buses and drivers ---
   BUS_ACCESS_DENIED: t("errors.BUS_ACCESS_DENIED"),

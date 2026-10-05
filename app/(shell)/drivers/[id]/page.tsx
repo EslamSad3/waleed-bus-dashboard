@@ -121,6 +121,11 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
           <div className="min-w-0">
             <h1 className="page-title truncate">{driver.name ?? t("common.value.ownerWithoutName")}</h1>
             <p className="page-description">{t("drivers.detail.description")}</p>
+            {driver.isOwnerDriver ? (
+              <span className="mt-1 inline-block rounded-full bg-[#e8f1fb] px-2 py-0.5 text-[0.7rem] font-bold text-[#1f6f8b]">
+                {t("drivers.list.ownerDriverBadge")}
+              </span>
+            ) : null}
           </div>
         </div>
         <RowActions actions={driverActions(driver, scopedOwnerId, (fresh) => { void onSaved(fresh); }, () => { router.push("/drivers"); router.refresh(); })} />
@@ -140,9 +145,15 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         </dl>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
           <span className={status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[status]}</span>
-          <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-            <Pencil className="size-4" aria-hidden="true" /> {t("common.actions.edit")}
-          </Button>
+          {driver.isOwnerDriver ? (
+            // The shared owner+driver account is edited from owner
+            // administration; the API rejects driver-side mutations here.
+            <span className="text-sm text-[#606060]">{t("drivers.detail.ownerManagedNote")}</span>
+          ) : (
+            <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" aria-hidden="true" /> {t("common.actions.edit")}
+            </Button>
+          )}
         </div>
       </section>
 

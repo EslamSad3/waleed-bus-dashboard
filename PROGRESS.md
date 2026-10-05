@@ -5,6 +5,51 @@ PRD: `PRD.md` (single source of truth). Backend: `../bus_api` (do not modify).
 
 ## Current status
 
+### Owners are drivers: one account, one roster (2026-10-05)
+
+Dashboard half of `bus_api` spec 015 (owner and driver share one account;
+independent drivers stop existing) per `specs/004-owner-driver-account/spec.md`:
+
+- Create-driver dialog lost the INDEPENDENT/OWNER radio: the searchable owner
+  picker is always required, locked to the current owner (read-only field with
+  the owner name) when opened from an owner page, and the submit body is
+  `{ownerId, …}` with no `mode`. The zod contract (`createDriverAccountSchema`)
+  requires `ownerId`, makes `name`/`nickname` optional per the new API body, and
+  keeps rejecting `roleSlug` at the proxy boundary.
+- Roster rows: `isIndependent` is gone everywhere; both rosters carry
+  `isOwnerDriver`, the user `isActive` flag and `assignedBuses` (legacy
+  `assignedBus` kept as fallback on the global row). The global list shows a
+  "مالك وسائق" badge, the real owner name for every row, and all active plates
+  joined with the Arabic list separator; the owner-page roster gained the badge
+  and a plates column.
+- Owner-driver rows are display + navigation only: `useDriverActions` returns a
+  single "إدارة من شاشة الملاك" action linking to `/fleet-owners/{ownerId}`
+  instead of edit/status/delete, on the global list, the owner roster and the
+  driver detail (whose Edit button is replaced by a protected-account note).
+  Assignment (both directions), details, trips, assignments and ratings stay.
+- Driver pickers (bus assignment, trip driver select) filter to eligible
+  drivers only: ACTIVE membership AND active user.
+- Bus creation always picks an owner: the independent-driver ownership mode,
+  its picker and its copy are deleted; the fixed-driver create-then-assign
+  flow, staged-image cleanup and assignment-only retry are untouched.
+- Owner creation explains the unified account ("مالك وسائق… بتشتغل للاتنين")
+  and owner create/edit/delete now invalidate the driver rosters/details,
+  member views and pickers through an extended `ownerImpact` (owner responses
+  are never merged into driver rows); `driverImpact` lost its unused
+  independent-revocation branch.
+- `lib/errors.ts` maps the two new API codes: `OWNER_DRIVER_MANAGED_AS_OWNER`
+  (points the operator to owner administration) and
+  `OWNER_CANNOT_DRIVE_OTHER_FLEET`.
+- The generic members tab on the owner page stays disabled (spec 014) and its
+  grid is read-only, so its protection is delivered by the error mapping alone.
+- Gates: `lint` (0 errors, one existing permissions-page hook warning),
+  `typecheck`, `i18n:check` (1510 keys, only pre-existing dynamic-registry
+  unreferenced warnings), `check:validation` (51 checks), `build` (all 30
+  routes + login). Retired keys deleted: `drivers.createDialog.mode*` +
+  `createdIndependent`, `drivers.list.independentOwner`/`removedIndependent`,
+  `buses.createDialog.ownershipLabel`/`modeFleetOwner*`/`modeIndependentDriver*`/
+  `independentDriver*`, `validation.driverModeRequired`/`ownerForbidden`.
+
 ### Individual form validation and driver actions (2026-10-04)
 
 - Shared field validation connects input, select, textarea and image controls to

@@ -432,11 +432,28 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
         <div className="flex items-center gap-2">
           <DriverAvatar name={params.data.name} picture={params.data.picture} size="sm" />
           <span>{params.data.name || t("common.value.withoutName")}</span>
+          {params.data.isOwnerDriver ? (
+            <span className="shrink-0 rounded-full bg-[#e8f1fb] px-2 py-0.5 text-[0.7rem] font-bold text-[#1f6f8b]">
+              {t("drivers.list.ownerDriverBadge")}
+            </span>
+          ) : null}
         </div>
       ),
     },
     { field: "phoneNumber", headerName: t("common.fields.phone"), valueGetter: (params) => params.data?.phoneNumber || "—" },
     { field: "roleSlug", headerName: t("common.fields.role"), valueGetter: (params) => params.data?.roleSlug || "—" },
+    {
+      // A driver may hold several active assignments; list every plate.
+      colId: "assignedBuses",
+      headerName: t("drivers.columns.assignedBus"),
+      valueGetter: (params) => {
+        const buses = params.data?.assignedBuses ?? [];
+        const plates = buses
+          .map((bus) => bus.plateNumber || bus.registrationNumber)
+          .filter((plate): plate is string => Boolean(plate));
+        return plates.length > 0 ? plates.join(t("common.listSeparator")) : t("drivers.list.notAssigned");
+      },
+    },
     {
       colId: "rating",
       headerName: t("drivers.columns.overallRating"),
@@ -473,13 +490,15 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/drivers/${driver.userId ?? driver.id}`, disabled: !driver.userId },
                 { label: t("drivers.list.assignBus"), icon: BusIcon, onSelect: () => setDriverForAssign(driver), disabled: !driver.userId },
                 { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver), disabled: !driver.userId },
+                // The hook returns navigation to owner administration for the
+                // owner's own row instead of status/delete actions.
                 ...driverActions(driver, ownerId, reload, reload),
               ]}
             />
           )}
         />
       ) : (
-        <TableSkeleton rows={3} columns={5} />
+        <TableSkeleton rows={3} columns={6} />
       )}
       <CreateDriverDialog open={createOpen} lockedOwnerId={ownerId} onCreated={reload} onClose={() => setCreateOpen(false)} />
       <AssignBusDialog

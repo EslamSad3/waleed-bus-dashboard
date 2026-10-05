@@ -29,6 +29,7 @@ import {
 import type { StagedUpload } from "@/lib/actions/http";
 import { createFleetOwnerSchema } from "@/lib/schemas/p1";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { applyMutationCache, ownerImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
 type Page = { items: FleetOwnerAccount[]; nextCursor: string | null };
@@ -94,6 +95,9 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
       return;
     }
     setSaving(false);
+    // The new owner is immediately driver-eligible: their roster row and every
+    // picker reading drivers must go stale along with the owner list.
+    applyMutationCache(queryClient, ownerImpact(result.data, "insert"), result);
     const refreshed = await fetchFleetOwnersPage(null);
     if (refreshed.ok) queryClient.setQueryData<Page>(qk.fleetOwners, refreshed.data);
     resetForm();
@@ -103,6 +107,9 @@ function CreateFleetOwnerDialog({ open, onClose }: { open: boolean; onClose: () 
   return (
     <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("fleetOwners.createDialog.title")} description={t("fleetOwners.createDialog.description")} size="lg">
       <div className="grid gap-4 sm:grid-cols-2">
+        <p className="rounded-xl bg-[#f2f8fb] p-3 text-sm text-[#334454] sm:col-span-2">
+          {t("fleetOwners.createDialog.driverEligibleNote")}
+        </p>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fullName")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("fleetOwners.placeholders.fullName")} autoComplete="name" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nickname")}</span><Input fieldName="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={t("fleetOwners.placeholders.nickname")} autoComplete="off" /></label>
         <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.phoneNumber")}</span><Input fieldName="phone" dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="01xxxxxxxxx" autoComplete="tel" /></label>
@@ -193,6 +200,9 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
       return;
     }
     setSaving(false);
+    // A status change flips the user `isActive` flag on the owner's roster
+    // row, so the driver surfaces are invalidated along with the owner list.
+    applyMutationCache(queryClient, ownerImpact(result.data, "update"), result);
     const refreshed = await fetchFleetOwnersPage(null);
     if (refreshed.ok) queryClient.setQueryData<Page>(qk.fleetOwners, refreshed.data);
     resetForm();
@@ -242,6 +252,7 @@ export default function FleetOwnersPage() {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleetOwners.deleteConfirm.description", { value: owner.name || owner.nickname || owner.phoneNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteFleetOwner(owner.id);
     if (!result.ok) return;
+    applyMutationCache(queryClient, ownerImpact({ id: owner.id }, "remove"), result);
     await refresh();
   }
 
