@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPermissionCatalog, type Permission } from "@/lib/actions/permissions";
 import { fetchRole, replaceRolePermissions, updateRole, type RoleDetail } from "@/lib/actions/roles";
 import { presentPermission } from "@/lib/permission-presentation";
+import { presentRoleName } from "@/lib/role-presentation";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, roleImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
@@ -106,7 +107,7 @@ export default function RoleDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <ValidationScope validation={validation}><div className="dashboard-page">
       <Link href="/roles" className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-[#059ff8]"><ArrowRight className="size-4" /> {t("roles.detail.backToList")}</Link>
-      <div className="page-heading"><div className="min-w-0 flex-1"><h1 className="page-title">{role.name}</h1><p className="page-description">{t("roles.detail.description")}</p></div>{role.isSystem ? <span className="max-md:self-start rounded-full bg-[#fff7e3] px-3 py-1 text-sm font-bold text-[#8a6515]">{t("roles.detail.systemBadge")}</span> : null}</div>
+      <div className="page-heading"><div className="min-w-0 flex-1"><h1 className="page-title">{presentRoleName(role)}</h1><p className="page-description">{t("roles.detail.description")}</p></div>{role.isSystem ? <span className="max-md:self-start rounded-full bg-[#fff7e3] px-3 py-1 text-sm font-bold text-[#8a6515]">{t("roles.detail.systemBadge")}</span> : null}</div>
       {role.isSystem ? <p className="mb-5 rounded-xl bg-[#fff7e3] p-4 text-sm text-[#725314]">{t("roles.detail.systemNotice")}</p> : null}
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p> : null}
 

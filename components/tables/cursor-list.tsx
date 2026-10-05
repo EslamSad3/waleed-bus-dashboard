@@ -208,7 +208,11 @@ export function CursorList<T>({
             sortable: false,
             filter: false,
             exportable: false,
-            minWidth: 420,
+            // Every grid shows at most three short chips (view / edit /
+            // delete) — anything else lives on the detail page — so one
+            // shared width fits all tables and data columns keep room.
+            width: 330,
+            minWidth: 300,
             cellRenderer: (params: ICellRendererParams<T>) => {
               if (!params.data) return null;
               const rendered = renderItem?.(params.data, visible.indexOf(params.data));

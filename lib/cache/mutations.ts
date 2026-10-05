@@ -56,8 +56,6 @@ export type MutationImpact = {
   prefixes: readonly (readonly unknown[])[];
   /** Ids to remove from every key above. */
   removeIds?: readonly string[];
-  /** A status-only change to apply instead of removing (a revoke must stay). */
-  revoked?: { id: string; status: string };
   /** The affected record's id, used to match existing cached rows. */
   row?: { id: string };
   mode?: "insert" | "update" | "remove";
@@ -89,8 +87,6 @@ export function tripImpact(input: {
 export function driverImpact(input: {
   driver: Pick<SystemDriverRow, "id" | "ownerId" | "userId">;
   mode: "insert" | "update" | "remove";
-  /** An independent driver is REVOKED, so its row must stay visible. */
-  revoked?: boolean;
 }): MutationImpact {
   const { driver, mode } = input;
   const keys: (readonly unknown[])[] = [
@@ -103,11 +99,7 @@ export function driverImpact(input: {
     // Bus-assignment displays and every driver history page read the same rows.
     prefixes: [["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"], ["bus"]],
     mode,
-    ...(mode === "remove"
-      ? input.revoked
-        ? { revoked: { id: driver.id, status: "REVOKED" } }
-        : { removeIds: [driver.id] }
-      : { row: { id: driver.id } }),
+    ...(mode === "remove" ? { removeIds: [driver.id] } : { row: { id: driver.id } }),
   };
 }
 
@@ -128,8 +120,28 @@ function plainImpact<T extends { id: string }>(
 export const busImpact = (bus: Pick<Bus, "id" | "ownerId">, mode: "insert" | "update" | "remove") =>
   plainImpact([qk.buses(bus.ownerId), qk.bus(bus.ownerId, bus.id), qk.systemBuses], [["buses"], ["bus"], ["bus-trips"]], mode, bus.id);
 
+/**
+ * Owner account create/profile/status changes also touch the driver surfaces:
+ * the owner's own self-membership IS a driver roster row, and an owner status
+ * change flips the user `isActive` flag on it. The driver, member, and picker
+ * families are therefore invalidated — never patched, because an owner
+ * response must not be merged into a driver row (the user id and the
+ * membership id identify different records).
+ */
 export const ownerImpact = (owner: Pick<FleetOwnerAccount, "id">, mode: "insert" | "update" | "remove") =>
-  plainImpact([qk.fleetOwners, qk.fleetOwner(owner.id), qk.myOwner], [["fleet-owners"], ["fleet-owner"]], mode, owner.id);
+  plainImpact(
+    [qk.fleetOwners, qk.fleetOwner(owner.id), qk.myOwner],
+    [
+      ["fleet-owners"],
+      ["fleet-owner"],
+      ["drivers"],
+      ["owner-drivers"],
+      ["driver"],
+      ["owner-members"],
+    ],
+    mode,
+    owner.id,
+  );
 
 export const memberImpact = (ownerId: string, member: Pick<Member, "id">, mode: "insert" | "update" | "remove") =>
   plainImpact([qk.ownerMembers(ownerId)], [["owner-members"]], mode, member.id);
@@ -190,7 +202,7 @@ export function applyMutationCache<T, R extends { id: string } = { id: string }>
 ): void {
   if (!result.ok) return;
 
-  const { keys, prefixes, removeIds, revoked, row, mode } = impact;
+  const { keys, prefixes, removeIds, row, mode } = impact;
   const returned = options.row ?? result.data;
   const returnedObject = returned !== null && typeof returned === "object" && !Array.isArray(returned)
     ? returned as Record<string, unknown>
@@ -202,10 +214,6 @@ export function applyMutationCache<T, R extends { id: string } = { id: string }>
     if (cached === undefined) return cached;
     if (Array.isArray(cached)) {
       if (removeIds) return cached.filter((entry) => !removeIds.includes(entry?.id));
-      if (revoked) {
-        const { id: revokedId, status } = revoked;
-        return cached.map((entry) => entry?.id === revokedId ? { ...entry, status } : entry);
-      }
       if (update) return cached.map((entry) => entry?.id === id ? { ...entry, ...returnedObject } : entry);
       return cached;
     }
@@ -214,7 +222,6 @@ export function applyMutationCache<T, R extends { id: string } = { id: string }>
     }
     if (typeof cached === "object" && cached !== null && "id" in cached) {
       if (removeIds?.includes(cached.id as string)) return undefined;
-      if (revoked && revoked.id === cached.id) return { ...cached, status: revoked.status };
       if (update && cached.id === id) return { ...cached, ...returnedObject };
     }
     return cached;

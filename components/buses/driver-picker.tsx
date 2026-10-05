@@ -13,7 +13,9 @@ export type DriverChoice = {
 };
 
 /**
- * Owner-scoped ACTIVE-driver picker.
+ * Owner-scoped driver picker for eligible drivers only: an ACTIVE membership
+ * whose user account is active. The owner's own self-membership row shows up
+ * in its own fleet's picker.
  *
  * Pages the real cursor until the API returns no next cursor (never a
  * first-page or fixed-page cutoff), searches over the LOADED choices, and
@@ -85,7 +87,9 @@ export function DriverPicker({
   const choices = useMemo<DriverChoice[]>(
     () =>
       rows
-        .filter((row) => row.status === "ACTIVE")
+        // Eligible drivers only: ACTIVE membership AND an active user account
+        // (the owner's own self-membership row is eligible in its own fleet).
+        .filter((row) => row.status === "ACTIVE" && row.isActive)
         .map((row) => {
           const userId = row.userId ?? row.id;
           const name = row.name || row.nickname || row.phoneNumber || userId.slice(0, 8);

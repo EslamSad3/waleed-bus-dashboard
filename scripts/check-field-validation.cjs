@@ -39,8 +39,9 @@ fields(schemas.createStopSchema, { name: 'Stop', governorateId: id, localityId: 
 fields(schemas.createStopSchema, { name: '', governorateId: '', latitude: 91, longitude: 181 }, ['name', 'governorateId', 'latitude', 'longitude']);
 fields(schemas.createBookingSchema, { tripId: '', passengerName: '', passengerPhone: 'abc' }, ['tripId', 'passengerName', 'passengerPhone']);
 fields(schemas.createBookingSchema, { tripId: id, passengerName: 'Passenger', passengerPhone: '01012345678' }, []);
-fields(schemas.createDriverAccountSchema, { mode: 'OWNER', name: '', nickname: '', phone: 'abc', password: 'x' }, ['ownerId', 'name', 'nickname', 'phone', 'password']);
-fields(schemas.createDriverAccountSchema, { mode: 'INDEPENDENT', name: 'Driver', nickname: 'driver', phone: '01012345678', password: 'Passw0rd!123' }, []);
+fields(schemas.createDriverAccountSchema, { phone: 'abc', password: 'x' }, ['ownerId', 'phone', 'password']);
+fields(schemas.createDriverAccountSchema, { ownerId: id, name: 'Driver', nickname: 'driver', phone: '01012345678', password: 'Passw0rd!123' }, []);
+fields(schemas.createDriverAccountSchema, { ownerId: id, phone: '01012345678', password: 'Passw0rd!123' }, []);
 fields(schemas.updateDriverSchema, { status: 'SUSPENDED' }, []);
 fields(schemas.updateDriverSchema, { status: 'ACTIVE' }, []);
 fields(schemas.createBusSchema, { plateNumber: '', color: '', capacity: 0, modelYear: 1979, imageUrl: '' }, ['plateNumber', 'color', 'capacity', 'modelYear', 'imageUrl']);

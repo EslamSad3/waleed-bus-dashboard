@@ -7,7 +7,7 @@ import { schemaErrors } from "@/lib/field-validation";
 import { useFieldValidation } from "@/components/ui/field-validation";
 
 import { useEffect, useRef, useState } from "react";
-import { Ban, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
+import { Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   createPromotion,
   deletePromotion,
-  expirePromotion,
   fetchPromotions,
   fetchPromotionUsages,
   updatePromotion,
@@ -54,6 +53,7 @@ export default function PromotionsPage() {
   const [maxPerUser, setMaxPerUser] = useState("1");
   const [startsAt, setStartsAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [isActive, setIsActive] = useState(true);
 
   function openCreate() {
     validation.reset();
@@ -83,6 +83,7 @@ export default function PromotionsPage() {
     setMaxPerUser(String(promo.maxUsesPerUser));
     setStartsAt(promo.startsAt ? promo.startsAt.slice(0, 16) : "");
     setExpiresAt(promo.expiresAt ? promo.expiresAt.slice(0, 16) : "");
+    setIsActive(promo.isActive);
     setError(null);
   }
 
@@ -111,6 +112,9 @@ export default function PromotionsPage() {
           maxTotalUses: parsedMaxTotal,
           startsAt: startsAt ? new Date(startsAt).toISOString() : null,
           expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+          // Status changes live in the edit dialog now that rows carry at
+          // most three chips (view / edit / delete).
+          isActive,
         })
       : await createPromotion({
           code: code.trim(),
@@ -128,12 +132,6 @@ export default function PromotionsPage() {
     setEditing(null);
     setCreating(false);
     setError(null);
-  }
-
-  async function expire(promo: Promotion) {
-    const result = await expirePromotion(promo.id);
-    if (!result.ok) return setError(result.message);
-    applyMutationCache(queryClient, promotionImpact(result.data, "update"), result);
   }
 
   async function removePromo(promo: Promotion) {
@@ -222,9 +220,8 @@ export default function PromotionsPage() {
             <RowActions
               label={t("promotions.list.rowActions", { value: promo.code })}
               actions={[
-                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => openEdit(promo) },
                 { label: t("promotions.actions.usages"), icon: Ticket, onSelect: () => void openUsages(promo) },
-                ...(promo.isActive ? [{ label: t("common.actions.disable"), icon: Ban, tone: "warning" as const, onSelect: () => void expire(promo) }] : []),
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => openEdit(promo) },
                 { label: t("common.actions.delete"), icon: Trash2, tone: "danger" as const, onSelect: () => void removePromo(promo) },
               ]}
             />
@@ -283,6 +280,12 @@ export default function PromotionsPage() {
             <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.startsAt")}</span><Input fieldName="startsAt" dir="ltr" type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
             <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.expiresAt")}</span><Input fieldName="expiresAt" dir="ltr" type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label>
           </div>
+          {editing ? (
+            <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm">
+              <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="size-4 accent-[#059ff8]" />
+              {t("promotions.dialog.isActiveLabel")}
+            </label>
+          ) : null}
           {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
           <div className="flex gap-2 border-t border-[#e4ecf2] pt-4"><Button type="button" variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>{t("common.actions.cancel")}</Button><AsyncButton type="button" onClick={save}>{t("common.actions.save")}</AsyncButton></div>
         </div>

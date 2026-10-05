@@ -48,15 +48,31 @@ export async function POST(req: Request) {
 
   const { email, password, rememberMe } = parsed.data;
 
-  let res: Response;
-  try {
-    res = await fetch(`${busApiUrl()}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      cache: "no-store",
-    });
-  } catch {
+  // The API talks to the database through a pooled connection: a dropped
+  // pool connection surfaces as a one-off 5xx even with correct credentials.
+  // Retrying once absorbs those flakes; only a repeated failure is reported
+  // (as a retryable server error — never as wrong credentials).
+  let res: Response | null = null;
+  let networkFailed = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 350));
+    try {
+      res = await fetch(`${busApiUrl()}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        cache: "no-store",
+      });
+    } catch {
+      networkFailed = true;
+      continue;
+    }
+    if (res.status < 500) break;
+    networkFailed = false;
+  }
+
+  if (!res || networkFailed) {
+    console.error(`[dashboard login] upstream unreachable after retry for ${email}`);
     return NextResponse.json(
       { statusCode: 503, code: "NETWORK_ERROR", message: toArabicError("NETWORK_ERROR") },
       { status: 503 },
@@ -70,6 +86,15 @@ export async function POST(req: Request) {
 
   if (!res.ok) {
     // Never distinguish unknown user / wrong password / inactive: generic copy.
+    // 5xx here means the API stayed broken across the retry — report it as a
+    // server problem so the operator retries instead of doubting the password.
+    if (res.status >= 500) {
+      console.error(`[dashboard login] upstream ${res.status} after retry for ${email}`);
+      return NextResponse.json(
+        { statusCode: 503, code: "NETWORK_ERROR", message: toArabicError("NETWORK_ERROR") },
+        { status: 503 },
+      );
+    }
     const code = res.status === 429 ? "RATE_LIMITED_429" : "AUTHENTICATION_FAILED";
     return NextResponse.json(
       { statusCode: res.status, code, message: toArabicError(code, res.status) },
@@ -87,7 +112,21 @@ export async function POST(req: Request) {
   }
 
   const identity = await fetchIdentity(accessToken);
-  if (!identity || identity.appRole !== "super_admin") {
+  if (!identity) {
+    // The credentials were accepted but the identity read flaked: retryable
+    // server error, not wrong credentials. Never store a half session.
+    console.error(`[dashboard login] identity read failed after 201 for ${email}`);
+    await clearSessionCookies();
+    return NextResponse.json(
+      {
+        statusCode: 503,
+        code: "NETWORK_ERROR",
+        message: toArabicError("NETWORK_ERROR"),
+      },
+      { status: 503 },
+    );
+  }
+  if (identity.appRole !== "super_admin") {
     await clearSessionCookies();
     return NextResponse.json(
       {

@@ -12,6 +12,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
+import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { presentRoleName } from "@/lib/role-presentation";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { createRole, deleteRole, fetchRolesPage, type Role } from "@/lib/actions/roles";
@@ -37,13 +39,31 @@ export default function RolesPage() {
       setError(t("roles.errors.systemRole"));
       return;
     }
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("roles.deleteConfirm.description", { roleName: role.name }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("roles.deleteConfirm.description", { roleName: presentRoleName(role) }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteRole(role.id);
     if (!result.ok) return setError(result.message);
     applyMutationCache(queryClient, roleImpact(role, "remove"), result);
   }
 
   const validation = useFieldValidation(() => ({ name: requiredField(name) || (name.trim().length > 100 ? t("validation.maxLength", { max: 100 }) : undefined), description: description.length > 500 ? t("validation.maxLength", { max: 500 }) : undefined }));
+
+  // Built-in slugs (super_admin, fleet_owner, driver, …) render their fixed
+  // Arabic names; custom roles show their database name.
+  const columns: CommunityColumnDef<Role>[] = [
+    {
+      field: "name",
+      headerName: t("roles.detail.fields.name"),
+      valueGetter: (params) => (params.data ? presentRoleName(params.data) : ""),
+      cellRenderer: (params: { data?: Role }) => params.data ? <span className="font-bold text-[#1a1a1a]">{presentRoleName(params.data)}</span> : null,
+    },
+    { field: "description", headerName: t("roles.detail.fields.description") },
+    {
+      field: "isActive",
+      headerName: t("common.fields.status"),
+      filter: "agTextColumnFilter",
+      valueFormatter: (params) => params.value ? t("common.status.active") : t("common.status.inactive"),
+    },
+  ];
 
   async function save() {
     if (!validation.validate()) return;
@@ -73,8 +93,10 @@ export default function RolesPage() {
 
       {(error || fetchError) ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error ?? fetchError?.message ?? t("common.error.somethingWentWrong")}</p> : null}
       {isLoading ? <TableSkeleton rows={8} columns={6} /> : <CursorList<Role>
+        gridId="roles"
         initialItems={first?.items ?? []}
         initialCursor={first?.nextCursor ?? null}
+        columnDefs={columns}
         loadMore={(cursor) => fetchRolesPage(cursor).then((result) => {
           if (!result.ok) throw new Error(result.message);
           return result.data;
@@ -83,7 +105,7 @@ export default function RolesPage() {
         emptyMessage={t("roles.empty")}
         renderItem={(role) => (
           <RowActions
-            label={t("roles.list.rowActions", { roleName: role.name })}
+            label={t("roles.list.rowActions", { roleName: presentRoleName(role) })}
             actions={[
               { label: t("common.actions.openDetails"), icon: Eye, href: `/roles/${role.id}` },
               { label: t("common.actions.delete"), icon: Trash2, tone: "danger", disabled: role.isSystem, onSelect: () => void removeRole(role) },

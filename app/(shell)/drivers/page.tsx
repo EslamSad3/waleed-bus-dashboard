@@ -2,12 +2,12 @@
 
 import { useDriverActions } from "@/components/drivers/use-driver-actions";
 import { useState } from "react";
-import { Bus, Eye, History, Pencil, Plus, Star } from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
-import { RowActions } from "@/components/ui/row-actions";
+import { RowActions, type RowAction } from "@/components/ui/row-actions";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
@@ -21,9 +21,6 @@ import { driverHref } from "@/lib/owner-scope";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
-import { AssignBusDialog, type AssignDriverRef } from "@/components/drivers/assign-bus-dialog";
-import { AddBusDialog } from "@/components/drivers/add-bus-dialog";
-import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { t } from "@/lib/i18n/t";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
@@ -42,21 +39,8 @@ export default function DriversPage() {
   const driverActions = useDriverActions();
   const [createOpen, setCreateOpen] = useState(false);
   const [driverForEdit, setDriverForEdit] = useState<SystemDriverRow | null>(null);
-  const [driverForAssign, setDriverForAssign] = useState<SystemDriverRow | null>(null);
-  const [driverForAddBus, setDriverForAddBus] = useState<SystemDriverRow | null>(null);
-  const [createBusForDriver, setCreateBusForDriver] = useState<AssignDriverRef | null>(null);
   const { data: page, isLoading, error } = useApiQuery<DriverPage>(qk.drivers, () => fetchSystemDriversPage(null));
   const drivers = page?.items ?? [];
-
-  // The assignment dialogs fix the driver and work in its own company scope.
-  function assignRef(driver: SystemDriverRow): AssignDriverRef {
-    return {
-      userId: driver.userId ?? driver.id,
-      ownerId: driver.owner.id,
-      name: driver.name ?? driver.nickname ?? driver.phoneNumber,
-      ownerName: driver.owner.name,
-    };
-  }
 
   // بعد الحفظ من نافذة التعديل — الـ row المحدث يوصل الكاش فورًا من غير رفريش
   function onDriverSaved(fresh: DriverRow, previous = driverForEdit) {
@@ -71,25 +55,35 @@ export default function DriversPage() {
         <div className="flex items-center gap-2">
           <DriverAvatar name={params.data.name} picture={params.data.picture} size="sm" />
           <span>{params.data.name || t("common.value.withoutName")}</span>
+          {params.data.isOwnerDriver ? (
+            <span className="shrink-0 rounded-full bg-[#e8f1fb] px-2 py-0.5 text-[0.7rem] font-bold text-[#1f6f8b]">
+              {t("drivers.list.ownerDriverBadge")}
+            </span>
+          ) : null}
         </div>
       ),
     },
     { field: "phoneNumber", headerName: t("common.fields.phone") },
     {
-      // A personal membership has no company behind it — showing the driver's
-      // own name in the "owner" column would present a solo driver as a fleet
-      // owner, which is exactly the confusion this column exists to prevent.
+      // Every roster row belongs to one owner scope — the owner's own
+      // self-membership included — so this column is always a real owner name.
       field: "owner.name",
       headerName: t("common.fields.owner"),
-      valueGetter: (params) =>
-        params.data?.isIndependent ? t("drivers.list.independentOwner") : params.data?.owner?.name || t("common.value.ownerWithoutName"),
+      valueGetter: (params) => params.data?.owner?.name || t("common.value.ownerWithoutName"),
     },
     {
-      // Plate number is what the operator recognises.
-      field: "assignedBus.plateNumber",
+      // Plate numbers are what the operator recognises; a driver may hold
+      // several active assignments, so every plate is listed.
+      colId: "assignedBuses",
       headerName: t("drivers.columns.assignedBus"),
-      valueGetter: (params) =>
-        params.data?.assignedBus?.plateNumber ?? t("drivers.list.notAssigned"),
+      valueGetter: (params) => {
+        const buses = params.data?.assignedBuses ?? [];
+        const plates = buses
+          .map((bus) => bus.plateNumber || bus.registrationNumber)
+          .filter((plate): plate is string => Boolean(plate));
+        if (plates.length > 0) return plates.join(t("common.listSeparator"));
+        return params.data?.assignedBus?.plateNumber ?? t("drivers.list.notAssigned");
+      },
     },
     {
       headerName: t("drivers.columns.overallRating"),
@@ -131,29 +125,27 @@ export default function DriversPage() {
           emptyMessage={t("drivers.empty")}
           renderItem={(driver) => {
             const driverUserId = driver.userId ?? driver.id;
-            const [statusAction, deleteAction] = driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver));
+            // At most three chips per row (view / edit / delete): history,
+            // assignment, and bus-creation flows live on the detail page.
+            // Owner-driver rows get navigation instead of lifecycle actions
+            // (the hook returns the manage-in-owners action for them).
+            const lifecycleActions = driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver));
+            const editAction: RowAction = { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) };
+            // Detail links use the DRIVER USER id (stable across membership
+            // churn) and carry THIS row's company, so opening a driver
+            // never lands on an unrelated global owner filter.
+            const viewAction: RowAction = { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) };
+            // Employed rows show view + edit + delete (status changes live on
+            // the detail page); owner rows show view + owner administration.
+            const rowActions = (driver.isOwnerDriver
+              ? [viewAction, ...lifecycleActions]
+              : [viewAction, editAction, ...lifecycleActions.slice(1)]
+            ).filter((action): action is RowAction => Boolean(action));
             return (
-              <div className="flex h-full w-full items-center overflow-x-auto">
-                <div className="min-w-max">
-                  <RowActions
-                    label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
-                    actions={[
-                      { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) },
-                      deleteAction,
-                      statusAction,
-                      // Detail links use the DRIVER USER id (stable across membership
-                      // churn) and carry THIS row's company, so opening a driver
-                      // never lands on an unrelated global owner filter.
-                      { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) },
-                      { label: t("drivers.subPages.trips.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/trips") },
-                      { label: t("drivers.subPages.assignments.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/assignments") },
-                      { label: t("drivers.subPages.ratings.title"), icon: Star, href: driverHref(driverUserId, driver.owner.id, "/ratings") },
-                      { label: t("drivers.list.assignBus"), icon: Bus, onSelect: () => setDriverForAssign(driver) },
-                      { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver) },
-                    ]}
-                  />
-                </div>
-              </div>
+              <RowActions
+                label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
+                actions={rowActions}
+              />
             );
           }}
         />
@@ -170,27 +162,6 @@ export default function DriversPage() {
         driver={driverForEdit}
         onClose={() => setDriverForEdit(null)}
         onSaved={onDriverSaved}
-      />
-      <AssignBusDialog
-        open={Boolean(driverForAssign)}
-        driver={driverForAssign ? assignRef(driverForAssign) : null}
-        onClose={() => setDriverForAssign(null)}
-      />
-      <AddBusDialog
-        open={Boolean(driverForAddBus)}
-        driver={driverForAddBus ? assignRef(driverForAddBus) : null}
-        onClose={() => setDriverForAddBus(null)}
-        onCreateNew={(fixed) => setCreateBusForDriver(fixed)}
-      />
-      <CreateBusDialog
-        open={Boolean(createBusForDriver)}
-        fixedDriver={createBusForDriver ? {
-          userId: createBusForDriver.userId,
-          ownerId: createBusForDriver.ownerId,
-          ownerLabel: createBusForDriver.ownerName,
-          driverLabel: createBusForDriver.name,
-        } : null}
-        onClose={() => setCreateBusForDriver(null)}
       />
     </div>
   );
