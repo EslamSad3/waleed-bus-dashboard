@@ -17,12 +17,16 @@ import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { Pencil } from "lucide-react";
+import { Bus, Pencil, Plus } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { fetchDriverTripsPage, type DriverTripRow } from "@/lib/actions/feedback";
 import { TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
+import { AssignBusDialog } from "@/components/drivers/assign-bus-dialog";
+import { AddBusDialog } from "@/components/drivers/add-bus-dialog";
+import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
+import { presentRoleSlug } from "@/lib/role-presentation";
 import { t } from "@/lib/i18n/t";
 
 /**
@@ -46,6 +50,9 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
   const [status, setStatus] = useState<Member["status"]>("ACTIVE");
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [addBusOpen, setAddBusOpen] = useState(false);
+  const [createBusFixed, setCreateBusFixed] = useState<{ userId: string; ownerId: string; name?: string | null } | null>(null);
   const [trips, setTrips] = useState<{ items: DriverTripRow[]; nextCursor: string | null } | null>(null);
 
   const { data: driverData, error: driverError } = useApiQuery<DriverRow>(
@@ -141,7 +148,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
           <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.nickname")}</dt><dd className="min-w-0 truncate">{driver.nickname ?? "—"}</dd></div>
           <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.phone")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.phoneNumber ?? "—"}</dd></div>
           <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("drivers.detail.fields.nationalId")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.nationalId ?? "—"}</dd></div>
-          <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.role")}</dt><dd className="min-w-0 truncate" dir="ltr">{driver.roleSlug ?? "—"}</dd></div>
+          <div className="flex min-w-0 items-center justify-between gap-3"><dt className="shrink-0 text-[#606060]">{t("common.fields.role")}</dt><dd className="min-w-0 truncate">{presentRoleSlug(driver.roleSlug)}</dd></div>
         </dl>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
           <span className={status === "ACTIVE" ? "status-pill" : "status-pill status-pill-muted"}>{MEMBER_STATUS_AR[status]}</span>
@@ -150,9 +157,17 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
             // administration; the API rejects driver-side mutations here.
             <span className="text-sm text-[#606060]">{t("drivers.detail.ownerManagedNote")}</span>
           ) : (
-            <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-4" aria-hidden="true" /> {t("common.actions.edit")}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="secondary" onClick={() => setAssignOpen(true)}>
+                <Bus className="size-4" aria-hidden="true" /> {t("drivers.list.assignBus")}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setAddBusOpen(true)}>
+                <Plus className="size-4" aria-hidden="true" /> {t("drivers.list.addBus")}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" aria-hidden="true" /> {t("common.actions.edit")}
+              </Button>
+            </div>
           )}
         </div>
       </section>
@@ -205,6 +220,26 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         driver={driver ? { ...driver, owner: { id: scopedOwnerId } } : null}
         onClose={() => setEditOpen(false)}
         onSaved={(fresh) => void onSaved(fresh)}
+      />
+      <AssignBusDialog
+        open={assignOpen}
+        driver={{ userId: id, ownerId: scopedOwnerId, name: driver?.name ?? driver?.nickname ?? driver?.phoneNumber }}
+        onClose={() => setAssignOpen(false)}
+      />
+      <AddBusDialog
+        open={addBusOpen}
+        driver={{ userId: id, ownerId: scopedOwnerId, name: driver?.name ?? driver?.nickname ?? driver?.phoneNumber }}
+        onClose={() => setAddBusOpen(false)}
+        onCreateNew={(fixed) => setCreateBusFixed(fixed)}
+      />
+      <CreateBusDialog
+        open={Boolean(createBusFixed)}
+        fixedDriver={createBusFixed ? {
+          userId: createBusFixed.userId,
+          ownerId: createBusFixed.ownerId,
+          driverLabel: createBusFixed.name ?? undefined,
+        } : null}
+        onClose={() => setCreateBusFixed(null)}
       />
     </div>
   );

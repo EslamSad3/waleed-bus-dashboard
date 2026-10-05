@@ -23,7 +23,24 @@ const RESOURCES: Record<string, { group: string; name: string }> = {
   roles: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.roles") },
   permissions: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.permissions") },
   audit: { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.audit") },
+  stations: { group: t("permissions.groups.operations"), name: t("permissions.resources.stations") },
   driver: { group: t("permissions.groups.driverOps"), name: t("permissions.resources.driver") },
+  "driver.context": { group: t("permissions.groups.driverOps"), name: t("permissions.resources.driverContext") },
+  "driver.passengers": { group: t("permissions.groups.driverOps"), name: t("permissions.resources.driverPassengers") },
+  "driver.trips": { group: t("permissions.groups.driverOps"), name: t("permissions.resources.driverTrips") },
+  // The fleet-owner account itself (platform reads/creates/updates/deletes).
+  "fleet-owners": { group: t("permissions.groups.accounts"), name: t("permissions.resources.fleetOwners") },
+  // Legacy company surface (spec 014 moved fleets under the owner namespace).
+  "fleet-owners.fleets": { group: t("permissions.groups.fleetOperations"), name: t("permissions.resources.ownerCompanies") },
+  fleets: { group: t("permissions.groups.operations"), name: t("permissions.resources.fleets") },
+  routes: { group: t("permissions.groups.operations"), name: t("permissions.resources.routes") },
+  // Legacy fleet.* keys from earlier migrations (kept readable on old DBs).
+  "fleet.buses": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerBuses") },
+  "fleet.drivers": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerDrivers") },
+  "fleet.trips": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerTrips") },
+  "fleet.bookings": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerBookings") },
+  "fleet.reports": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerReports") },
+  "fleet.routes": { group: t("permissions.groups.fleetOperations"), name: t("permissions.permissions.ownerLines") },
 };
 
 const ACTIONS: Record<string, string> = {

@@ -30,6 +30,7 @@ import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, ownerImpact } from "@/lib/cache/mutations";
 import { Pencil } from "lucide-react";
 import { DetailPageSkeleton } from "@/components/ui/skeletons";
+import { presentRoleSlug } from "@/lib/role-presentation";
 import { t } from "@/lib/i18n/t";
 
 /**
@@ -214,7 +215,7 @@ export default function FleetOwnerDetailPage({
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-[#606060]">{t("common.fields.role")}</dt>
-              <dd className="min-w-0 truncate">{owner.membership?.roleSlug ?? "—"}</dd>
+              <dd className="min-w-0 truncate">{presentRoleSlug(owner.membership?.roleSlug)}</dd>
             </div>
           </dl>
         </div>

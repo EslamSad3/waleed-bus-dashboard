@@ -2,7 +2,7 @@
 
 import { useDriverActions } from "@/components/drivers/use-driver-actions";
 import { useState } from "react";
-import { Bus, Eye, History, Pencil, Plus, Star } from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
@@ -21,9 +21,6 @@ import { driverHref } from "@/lib/owner-scope";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { CreateDriverDialog } from "@/components/drivers/create-driver-dialog";
 import { EditDriverDialog } from "@/components/drivers/edit-driver-dialog";
-import { AssignBusDialog, type AssignDriverRef } from "@/components/drivers/assign-bus-dialog";
-import { AddBusDialog } from "@/components/drivers/add-bus-dialog";
-import { CreateBusDialog } from "@/components/buses/create-bus-dialog";
 import { t } from "@/lib/i18n/t";
 
 type DriverPage = { items: SystemDriverRow[]; nextCursor: string | null };
@@ -42,21 +39,8 @@ export default function DriversPage() {
   const driverActions = useDriverActions();
   const [createOpen, setCreateOpen] = useState(false);
   const [driverForEdit, setDriverForEdit] = useState<SystemDriverRow | null>(null);
-  const [driverForAssign, setDriverForAssign] = useState<SystemDriverRow | null>(null);
-  const [driverForAddBus, setDriverForAddBus] = useState<SystemDriverRow | null>(null);
-  const [createBusForDriver, setCreateBusForDriver] = useState<AssignDriverRef | null>(null);
   const { data: page, isLoading, error } = useApiQuery<DriverPage>(qk.drivers, () => fetchSystemDriversPage(null));
   const drivers = page?.items ?? [];
-
-  // The assignment dialogs fix the driver and work in its own company scope.
-  function assignRef(driver: SystemDriverRow): AssignDriverRef {
-    return {
-      userId: driver.userId ?? driver.id,
-      ownerId: driver.owner.id,
-      name: driver.name ?? driver.nickname ?? driver.phoneNumber,
-      ownerName: driver.owner.name,
-    };
-  }
 
   // بعد الحفظ من نافذة التعديل — الـ row المحدث يوصل الكاش فورًا من غير رفريش
   function onDriverSaved(fresh: DriverRow, previous = driverForEdit) {
@@ -141,30 +125,27 @@ export default function DriversPage() {
           emptyMessage={t("drivers.empty")}
           renderItem={(driver) => {
             const driverUserId = driver.userId ?? driver.id;
+            // At most three chips per row (view / edit / delete): history,
+            // assignment, and bus-creation flows live on the detail page.
             // Owner-driver rows get navigation instead of lifecycle actions
             // (the hook returns the manage-in-owners action for them).
             const lifecycleActions = driverActions(driver, driver.owner.id, (fresh) => onDriverSaved(fresh, driver));
             const editAction: RowAction = { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setDriverForEdit(driver) };
+            // Detail links use the DRIVER USER id (stable across membership
+            // churn) and carry THIS row's company, so opening a driver
+            // never lands on an unrelated global owner filter.
+            const viewAction: RowAction = { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) };
+            // Employed rows show view + edit + delete (status changes live on
+            // the detail page); owner rows show view + owner administration.
+            const rowActions = (driver.isOwnerDriver
+              ? [viewAction, ...lifecycleActions]
+              : [viewAction, editAction, ...lifecycleActions.slice(1)]
+            ).filter((action): action is RowAction => Boolean(action));
             return (
-              <div className="flex h-full w-full items-center overflow-x-auto">
-                <div className="min-w-max">
-                  <RowActions
-                    label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
-                    actions={[
-                      ...(driver.isOwnerDriver ? lifecycleActions : [editAction, ...lifecycleActions]),
-                      // Detail links use the DRIVER USER id (stable across membership
-                      // churn) and carry THIS row's company, so opening a driver
-                      // never lands on an unrelated global owner filter.
-                      { label: t("common.actions.openDetails"), icon: Eye, href: driverHref(driverUserId, driver.owner.id) },
-                      { label: t("drivers.subPages.trips.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/trips") },
-                      { label: t("drivers.subPages.assignments.title"), icon: History, href: driverHref(driverUserId, driver.owner.id, "/assignments") },
-                      { label: t("drivers.subPages.ratings.title"), icon: Star, href: driverHref(driverUserId, driver.owner.id, "/ratings") },
-                      { label: t("drivers.list.assignBus"), icon: Bus, onSelect: () => setDriverForAssign(driver) },
-                      { label: t("drivers.list.addBus"), icon: Plus, onSelect: () => setDriverForAddBus(driver) },
-                    ]}
-                  />
-                </div>
-              </div>
+              <RowActions
+                label={t("drivers.list.rowActions", { value: driver.name || driver.nickname || driver.phoneNumber || "" })}
+                actions={rowActions}
+              />
             );
           }}
         />
@@ -181,27 +162,6 @@ export default function DriversPage() {
         driver={driverForEdit}
         onClose={() => setDriverForEdit(null)}
         onSaved={onDriverSaved}
-      />
-      <AssignBusDialog
-        open={Boolean(driverForAssign)}
-        driver={driverForAssign ? assignRef(driverForAssign) : null}
-        onClose={() => setDriverForAssign(null)}
-      />
-      <AddBusDialog
-        open={Boolean(driverForAddBus)}
-        driver={driverForAddBus ? assignRef(driverForAddBus) : null}
-        onClose={() => setDriverForAddBus(null)}
-        onCreateNew={(fixed) => setCreateBusForDriver(fixed)}
-      />
-      <CreateBusDialog
-        open={Boolean(createBusForDriver)}
-        fixedDriver={createBusForDriver ? {
-          userId: createBusForDriver.userId,
-          ownerId: createBusForDriver.ownerId,
-          ownerLabel: createBusForDriver.ownerName,
-          driverLabel: createBusForDriver.name,
-        } : null}
-        onClose={() => setCreateBusForDriver(null)}
       />
     </div>
   );

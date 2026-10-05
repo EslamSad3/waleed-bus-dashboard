@@ -215,7 +215,7 @@ const createDriverAccountBase = z.object({
   picture: z.string().max(1024).optional(),
   nationalId,
 });
-export const createDriverAccountSchema = createDriverAccountBase;
+export const createDriverAccountSchema = createDriverAccountBase.strict();
 export const updateDriverSchema = z.object({
   roleSlug: z.string(t("validation.roleRequired")).min(1, t("validation.roleRequired")).max(100).optional(),
   status: memberStatus.optional(),

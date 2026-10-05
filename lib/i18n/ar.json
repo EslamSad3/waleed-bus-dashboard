@@ -1144,6 +1144,14 @@
       "permissions": "دليل الصلاحيات",
       "audit": "سجل النشاط",
       "driver": "مهام السائق",
+      "stations": "المحطات",
+      "fleetOwners": "مالكي العربيات",
+      "ownerCompanies": "شركات المالك",
+      "fleets": "الأساطيل",
+      "routes": "الخطوط",
+      "driverContext": "بيانات شغل السائق",
+      "driverPassengers": "كشف ركاب السائق",
+      "driverTrips": "تشغيل رحلات السائق",
       "otherGroup": "صلاحيات أخرى",
       "other": "إعدادات إضافية"
     },
@@ -1211,7 +1219,8 @@
       "maxTotal": "اكبر عدد ركاب يقدروا يستخدموا الكود ده؟",
       "maxTotalHint": "سيبها فاضية = الكود مالهوش حد للاستخدام على مستوى المنصة كله",
       "expiresAt": "تاريخ الانتهاء (فارغ = بلا انتهاء)",
-      "startsAt": "يبدأ في"
+      "startsAt": "يبدأ في",
+      "isActiveLabel": "الكود شغال ومتاح للاستخدام"
     },
     "placeholders": {
       "value": "مثال: 50",
@@ -1287,6 +1296,14 @@
     "description": "حدّد ما يستطيع كل فريق القيام به، مثل إدارة الرحلات أو متابعة الحجوزات.",
     "newRole": "مستوى وصول جديد",
     "empty": "لا توجد أدوار متاحة",
+    "names": {
+      "superAdmin": "مدير المنصة",
+      "fleetOwner": "مالك عربيات",
+      "fleetManager": "مدير عربيات",
+      "driver": "سواق",
+      "passenger": "راكب",
+      "independentDriver": "سواق مستقل"
+    },
     "list": {
       "rowActions": "إجراءات مستوى {roleName}"
     },
