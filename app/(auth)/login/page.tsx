@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BusFront, Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/auth";
 import {
   Form,
@@ -82,8 +83,15 @@ export default function LoginPage() {
       <section className="panel-card relative grid w-full max-w-5xl overflow-hidden lg:grid-cols-[1.05fr_0.95fr]">
         <div className="navy-band hidden min-h-[620px] flex-col justify-between p-10 text-white lg:flex">
           <div>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/20">
-              <BusFront className="h-7 w-7" aria-hidden="true" />
+            <div className="inline-flex items-center rounded-2xl bg-white px-4 py-3 shadow-lg shadow-black/25">
+              <Image
+                src="/logo.png"
+                alt={t("auth.login.logoAlt")}
+                width={220}
+                height={88}
+                className="h-16 w-auto object-contain"
+                priority
+              />
             </div>
             <p className="mt-10 text-sm font-bold tracking-wide text-[#9ed5f8]">{t("auth.login.platformName")}</p>
             <h2 className="mt-3 max-w-sm text-4xl font-extrabold leading-[1.35]">
@@ -103,8 +111,15 @@ export default function LoginPage() {
         <div className="flex min-h-[560px] items-center p-6 sm:p-10 lg:p-12">
           <div className="w-full">
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00134c] text-white shadow-lg shadow-[#00134c]/20">
-                <BusFront className="h-6 w-6" aria-hidden="true" />
+              <span className="flex h-12 items-center overflow-hidden rounded-2xl bg-white px-2 shadow-lg shadow-[#00134c]/20 ring-1 ring-[#dce6ee]">
+                <Image
+                  src="/logo.png"
+                  alt={t("auth.login.logoAlt")}
+                  width={132}
+                  height={48}
+                  className="h-10 w-auto object-contain"
+                  priority
+                />
               </span>
               <div className="min-w-0">
                 <p className="font-extrabold text-[#00134c]">{t("auth.login.brand")}</p>
@@ -127,7 +142,7 @@ export default function LoginPage() {
                     <Input
                       type="email"
                       dir="rtl"
-                      placeholder="admin@waleed.local"
+                      placeholder="admin@waleed-express.local"
                       autoComplete="username"
                       className="h-12 rounded-2xl px-4 text-right text-base"
                       {...field}

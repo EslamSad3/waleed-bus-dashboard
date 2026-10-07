@@ -1,6 +1,7 @@
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
-import { BusFront, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import Image from "next/image";
 import { t } from "@/lib/i18n/t";
 
 export function Topbar({ email }: { email: string | null }) {
@@ -10,8 +11,15 @@ export function Topbar({ email }: { email: string | null }) {
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Phone-only drawer toggle; the drawer it controls lives in mobile-nav.tsx */}
           <MobileNav />
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#00134c] text-white shadow-lg shadow-[#00134c]/15 sm:size-11">
-            <BusFront className="size-5" aria-hidden="true" />
+          <span className="flex h-10 shrink-0 items-center overflow-hidden rounded-xl bg-white px-1.5 shadow-lg shadow-[#00134c]/15 ring-1 ring-[#dce6ee] sm:h-11">
+            <Image
+              src="/logo.png"
+              alt={t("shell.topbar.logoAlt")}
+              width={132}
+              height={44}
+              className="h-8 w-auto object-contain sm:h-9"
+              priority
+            />
           </span>
           <div className="min-w-0">
             <div className="truncate text-base font-extrabold text-[#00134c] sm:text-lg">
