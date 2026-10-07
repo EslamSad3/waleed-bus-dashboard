@@ -152,7 +152,7 @@ export default function TripsPage() {
           <h1 className="page-title">{t("trips.title")}</h1>
           <p className="page-description">{t("trips.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} disabled={!scopedOwnerId} title={!scopedOwnerId ? t("trips.pickOwnerDescription") : undefined}>
+        <Button onClick={() => setCreateOpen(true)}>
           {t("trips.newTrip")}
         </Button>
       </div>
@@ -241,7 +241,9 @@ export default function TripsPage() {
         />
       )}
 
-      <CreateTripDialog open={createOpen} lockedOwnerId={scopedOwnerId ?? undefined} lockedLineId={lineId || undefined} onClose={() => setCreateOpen(false)} />
+      {/* The owner is picked INSIDE the modal (OwnerPicker); nothing is locked
+          here so creating never requires a pre-selected filter first. */}
+      <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} lineId={tripForEdit?.lineId ?? lineId} onClose={() => setTripForEdit(null)} />
     </div>
   );

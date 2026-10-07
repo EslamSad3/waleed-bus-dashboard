@@ -87,7 +87,7 @@ export const fetchMarkazAll = (includeInactive = true) =>
 export const fetchMarkazById = (id: string) => apiGet<Markaz>(`/api/markaz/${id}`);
 export const createMarkaz = (input: { governorateId: string; code: string; nameAr: string; nameEn: string; isActive?: boolean }) =>
   notifyResult(t("markaz.toast.created"), apiSend<Markaz>("/api/markaz", "POST", input));
-export const updateMarkaz = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) =>
+export const updateMarkaz = (id: string, input: { code?: string; governorateId?: string; nameAr?: string; nameEn?: string; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined ? t("markaz.toast.saved") : input.isActive ? t("markaz.toast.activated") : t("markaz.toast.deactivated"),
     apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input),

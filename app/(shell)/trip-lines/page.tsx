@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import type { ICellRendererParams } from "ag-grid-community";
+import { Button } from "@/components/ui/button";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { StatusPill } from "@/components/tables/status-column";
 import { RowActions } from "@/components/ui/row-actions";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
+import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
 import { fetchSystemTripLinesPage, lineEndpoints, type TripLine } from "@/lib/actions/trip-lines";
 import { fetchFleetOwnersPage, fetchOwnerNameMap } from "@/lib/actions/fleet-owners";
 import { qk, useApiQuery } from "@/lib/queries";
@@ -17,7 +20,8 @@ import { t } from "@/lib/i18n/t";
  * Super-admin trip-line index across every owner company. A line is ONE
  * direction, so its endpoints are the first and last ordered stop — derived
  * here with the same rule the API uses for a trip, never stored on the line.
- * Creating and editing a line happens inside the owner company it belongs to.
+ * Lines are created here (owner company picked inside the modal) and edited
+ * on the line detail page.
  */
 export default function TripLinesPage() {
   const { data: page, isLoading, error } = useApiQuery(
@@ -26,6 +30,7 @@ export default function TripLinesPage() {
   );
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
   const [filters, setFilters] = useState<{ q?: string; ownerId?: string }>({});
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: ownerNameEntries } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
   const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
@@ -50,15 +55,7 @@ export default function TripLinesPage() {
       minWidth: 120,
       valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")),
       cellRenderer: (params: ICellRendererParams<TripLine>) =>
-        params.data ? (
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-              params.data.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
-            }`}
-          >
-            {params.data.isActive ? t("common.status.active") : t("common.status.inactive")}
-          </span>
-        ) : null,
+        params.data ? <StatusPill active={params.data.isActive} /> : null,
     },
     {
       headerName: t("common.fields.owner"),
@@ -85,6 +82,7 @@ export default function TripLinesPage() {
           <h1 className="page-title">{t("tripLines.title")}</h1>
           <p className="page-description">{t("tripLines.description")}</p>
         </div>
+        <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("tripLines.newLine")}</Button>
       </div>
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       {isLoading ? (
@@ -137,6 +135,10 @@ export default function TripLinesPage() {
           )}
         />
       )}
+
+      {/* Unlocked: the owner company is picked inside the modal, so creating
+          never requires leaving this page first. */}
+      <CreateTripLineDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

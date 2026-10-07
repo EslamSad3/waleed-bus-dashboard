@@ -37,6 +37,7 @@ import {
 import { AssignDriverDialog } from "@/components/buses/assign-driver-dialog";
 import { apiGet, validateImageFile, type StagedUpload } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
+import { TRIP_STATUS_AR } from "@/lib/actions/trips";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -98,6 +99,7 @@ export default function BusDetailPage({
   const [ratingsReloadKey, setRatingsReloadKey] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
 
   const { data: bus, isLoading: busLoading, error: busError } = useApiQuery<Bus>(
     qk.bus(ownerId ?? "unknown", id),
@@ -353,7 +355,7 @@ export default function BusDetailPage({
         );
       },
     },
-    { field: "status", headerName: tr("common.fields.status") },
+    { field: "status", headerName: tr("common.fields.status"), valueFormatter: (params) => TRIP_STATUS_AR[params.value as keyof typeof TRIP_STATUS_AR] ?? String(params.value ?? "—") },
     { field: "passengerCount", headerName: tr("common.fields.passengerCount") },
     {
       headerName: tr("common.fields.busRatingAvg"),
@@ -411,12 +413,20 @@ export default function BusDetailPage({
               <div className="min-w-0 flex-1">
                 <h2 className="section-title">{tr("buses.detail.sections.details")}</h2>
                 {bus.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={bus.imageUrl}
-                    alt={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
-                    className="mb-3 h-32 w-full rounded-xl object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setImageOpen(true)}
+                    title={tr("buses.detail.viewImage")}
+                    aria-label={tr("buses.detail.viewImage")}
+                    className="mb-3 block w-full cursor-zoom-in rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059ff8]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={bus.imageUrl}
+                      alt={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
+                      className="h-32 w-full rounded-xl object-cover"
+                    />
+                  </button>
                 ) : null}
                 <dl className="space-y-2 text-sm">
                   <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.plateNumber")}</dt><dd dir="ltr" className="min-w-0 flex-1 truncate font-semibold">{bus.plateNumber ?? "—"}</dd></div>
@@ -589,6 +599,28 @@ export default function BusDetailPage({
         onClose={() => setAssignOpen(false)}
         onAssigned={() => void refreshDrivers()}
       />
+
+      {bus.imageUrl ? (
+        <Dialog
+          open={imageOpen}
+          onOpenChange={setImageOpen}
+          title={tr("buses.detail.viewImage")}
+          description={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
+          size="lg"
+        >
+          <div className="space-y-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={bus.imageUrl}
+              alt={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
+              className="max-h-[75vh] w-full rounded-xl object-contain"
+            />
+            <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
+              <Button type="button" variant="danger" onClick={() => setImageOpen(false)}>{tr("common.actions.close")}</Button>
+            </div>
+          </div>
+        </Dialog>
+      ) : null}
     </div>
   );
 }

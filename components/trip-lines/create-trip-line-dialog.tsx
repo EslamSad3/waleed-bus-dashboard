@@ -63,22 +63,18 @@ export function CreateTripLineDialog({
 
   const { data: available } = useApiQuery<Stop[]>(qk.stops, fetchStops, { enabled: open });
   const activeStops = (available ?? []).filter((stop) => stop.isActive);
-  // A station can appear twice as an adjacent BOARDING + LANDING pair; a third
-  // copy can never validate server-side (DUPLICATE_STOP).
+  // A station can be picked only once per line — already-chosen stops leave
+  // the picker so a duplicate can never be submitted.
   const remaining = useMemo(
-    () => activeStops.filter((stop) => stops.filter((item) => item.stop.id === stop.id).length < 2),
+    () => activeStops.filter((stop) => !stops.some((item) => item.stop.id === stop.id)),
     [activeStops, stops],
   );
 
   function addStop() {
     const stop = activeStops.find((item) => item.id === pick);
     if (!stop) return;
-    if (stops.filter((item) => item.stop.id === stop.id).length >= 2) return;
-    const existing = stops.find((item) => item.stop.id === stop.id);
-    // Second copy defaults to the opposite capability so the pair is valid as
-    // written; the server still enforces BOARDING + LANDING.
-    const stopType: StopUse = existing ? (existing.stopType === "BOARDING" ? "LANDING" : "BOARDING") : "BOARDING";
-    setStops((items) => [...items, { key: `${stop.id}#new-${keySeq}`, stop, stopType }]);
+    if (stops.some((item) => item.stop.id === stop.id)) return;
+    setStops((items) => [...items, { key: `${stop.id}#new-${keySeq}`, stop, stopType: "BOARDING" }]);
     setKeySeq((seq) => seq + 1);
     setPick("");
     setError(null);

@@ -99,10 +99,10 @@ export default function TripLineDetailPage({
     setName(line.name);
   }
 
-  // A stop may be picked twice so operators can build a BOARDING + LANDING pair;
-  // a third copy can never validate server-side (DUPLICATE_STOP).
+  // A stop can be picked only once per line — already-chosen stops leave the
+  // picker so a duplicate can never be submitted.
   const remaining = useMemo(
-    () => available.filter((stop) => editStops.filter((item) => item.stop.id === stop.id).length < 2),
+    () => available.filter((stop) => !editStops.some((item) => item.stop.id === stop.id)),
     [available, editStops],
   );
 
@@ -134,9 +134,20 @@ export default function TripLineDetailPage({
   }
 
   function openStopsEditor(current: TripLine) {
+    const seen = new Set<string>();
     setEditStops(
       [...current.stops]
         .sort((a, b) => a.stopOrder - b.stopOrder)
+        .filter((item) => {
+          // Legacy lines may carry the same station twice (old BOARDING +
+          // LANDING pair). A station is allowed once per line now, so only the
+          // first occurrence (lowest stop order) survives into the editor —
+          // saving persists the deduped list.
+          const id = item.station.id;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        })
         .map((item) => ({
           key: item.id,
           stop: item.station,
@@ -152,12 +163,8 @@ export default function TripLineDetailPage({
   function addStop() {
     const stop = available.find((item) => item.id === pick);
     if (!stop) return;
-    if (editStops.filter((item) => item.stop.id === stop.id).length >= 2) return;
-    // Second copy of a stop defaults to the opposite capability so the pair is
-    // valid as written; the server still enforces BOARDING + LANDING.
-    const existing = editStops.find((item) => item.stop.id === stop.id);
-    const stopType: StopUse = existing ? (existing.stopType === "BOARDING" ? "LANDING" : "BOARDING") : "BOARDING";
-    setEditStops((items) => [...items, { key: nextRowKey(stop.id), stop, stopType }]);
+    if (editStops.some((item) => item.stop.id === stop.id)) return;
+    setEditStops((items) => [...items, { key: nextRowKey(stop.id), stop, stopType: "BOARDING" }]);
     setPick("");
   }
 

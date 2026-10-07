@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { activeStatusColumn } from "@/components/tables/status-column";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
@@ -99,9 +100,10 @@ export default function VipTiersPage() {
       headerName: t("common.fields.order"),
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => rankOrdinalAr(params.value as number),
-      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
+      cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}</span> : null,
     },
     { field: "name", headerName: t("common.fields.name") },
+    activeStatusColumn<VipTier>(),
   ];
 
   return (
@@ -114,7 +116,7 @@ export default function VipTiersPage() {
         <Button onClick={openCreate}><Plus className="size-4" /> {t("vipTiers.newTier")}</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <TableSkeleton columns={3} /> : (
+      {isLoading ? <TableSkeleton columns={4} /> : (
         <CursorList<VipTier>
           gridId="vip-tiers"
           initialItems={rows ?? []}

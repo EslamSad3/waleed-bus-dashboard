@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { StatusPill } from "@/components/tables/status-column";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { deleteBus, fetchSystemBusesPage, type Bus, type BusPage } from "@/lib/actions/buses";
@@ -86,7 +87,7 @@ export default function BusesPage() {
     { field: "ownerId", headerName: t("common.fields.owner"), valueGetter: (params) => nameOf(params.data?.ownerId ?? ""), filter: "agTextColumnFilter" },
     { field: "capacity", headerName: t("common.fields.capacity"), filter: "agNumberColumnFilter" },
     { headerName: t("common.fields.avgBusRating"), cellRenderer: (params: { data: BusRow }) => <RatingCell value={params.data.avgRating ?? null} /> },
-    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")) },
+      { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")), cellRenderer: (params: { value: unknown }) => (params.value == null ? null : <StatusPill active={params.value === true} />) },
     { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
   ];
 

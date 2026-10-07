@@ -15,6 +15,7 @@ import { ImagePicker } from "@/components/ui/image-picker";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { activeStatusColumn } from "@/components/tables/status-column";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
@@ -266,8 +267,9 @@ export default function FleetOwnersPage() {
       field: "name",
       headerName: t("common.fields.name"),
       filter: "agTextColumnFilter",
-      cellRenderer: (params: { data?: FleetOwnerAccount }) => params.data ? <span className="font-bold">{params.data.name ?? t("common.value.withoutName")}<span className={params.data.isActive ? "ms-2 status-pill" : "ms-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
+      cellRenderer: (params: { data?: FleetOwnerAccount }) => params.data ? <span className="font-bold">{params.data.name ?? t("common.value.withoutName")}</span> : null,
     },
+    activeStatusColumn<FleetOwnerAccount>(),
     { field: "phoneNumber", headerName: t("common.fields.phone"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || "—" },
     // The owner user IS the company, so the company name is a column of its own —
     // there is no second list to expand.
@@ -284,7 +286,7 @@ export default function FleetOwnersPage() {
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isPending ? (
-        <TableSkeleton rows={8} columns={4} />
+        <TableSkeleton rows={8} columns={5} />
       ) : (
         <CursorList<FleetOwnerAccount>
           gridId="fleet-owners"

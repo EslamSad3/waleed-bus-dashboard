@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { activeStatusColumn } from "@/components/tables/status-column";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
@@ -284,8 +285,9 @@ export default function StopsPage() {
     {
       field: "name",
       headerName: t("common.fields.name"),
-      cellRenderer: (params: { data?: Stop }) => params.data ? <span className="font-bold">{params.data.name}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.activeF") : t("common.status.inactiveF")}</span></span> : null,
+      cellRenderer: (params: { data?: Stop }) => params.data ? <span className="font-bold">{params.data.name}</span> : null,
     },
+    activeStatusColumn<Stop>({ feminine: true }),
     { field: "latitude", headerName: t("stops.columns.latitude"), filter: "agNumberColumnFilter", valueFormatter: (params) => Number(params.value).toFixed(6) },
     { field: "longitude", headerName: t("stops.columns.longitude"), filter: "agNumberColumnFilter", valueFormatter: (params) => Number(params.value).toFixed(6) },
     { field: "governorate.nameAr", headerName: t("common.fields.governorate"), valueGetter: (params) => params.data?.governorate.nameAr },
@@ -303,7 +305,7 @@ export default function StopsPage() {
         <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("stops.newStop")}</Button>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <TableSkeleton columns={7} /> : (
+      {isLoading ? <TableSkeleton columns={8} /> : (
         <CursorList<Stop>
           gridId="stops"
           initialItems={stops ?? []}

@@ -1,5 +1,6 @@
 import { AG_GRID_LOCALE_EG } from "@ag-grid-community/locale";
 import { t } from "@/lib/i18n/t";
+import { ColumnMenuHeader } from "./column-menu-header";
 
 export const arabicGridLocale = {
   ...AG_GRID_LOCALE_EG,
@@ -48,6 +49,8 @@ export const arabicGridDefaultColDef = {
   resizable: true,
   sortable: true,
   minWidth: 120,
+  /** Egyptian-Arabic ⋮ menu on every data header (see column-menu-header). */
+  headerComponent: ColumnMenuHeader,
 };
 
 export const arabicGridHeaders: Record<string, string> = {

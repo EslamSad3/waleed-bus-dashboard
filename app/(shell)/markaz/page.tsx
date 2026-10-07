@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { activeStatusColumn } from "@/components/tables/status-column";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
@@ -65,6 +66,7 @@ export default function MarkazPage() {
     validation.reset();
     setCreating(false);
     setEditing(markaz);
+    setDialogGovernorateId(markaz.governorateId);
     setCode(markaz.code);
     setNameAr(markaz.nameAr);
     setNameEn(markaz.nameEn);
@@ -83,7 +85,12 @@ export default function MarkazPage() {
   async function save() {
     if (!validation.validate()) return;
     if (editing) {
-      const result = await updateMarkaz(editing.id, { nameAr: nameAr.trim(), nameEn: nameEn.trim() });
+      const result = await updateMarkaz(editing.id, {
+        governorateId: dialogGovernorateId,
+        code: code.trim().toUpperCase(),
+        nameAr: nameAr.trim(),
+        nameEn: nameEn.trim(),
+      });
       if (!result.ok) return setDialogError(validation.failure(result));
       applyMutationCache(queryClient, referenceImpact(result.data.id, "markaz", "update"), result);
       closeDialog();
@@ -120,8 +127,9 @@ export default function MarkazPage() {
     {
       field: "code",
       headerName: t("common.fields.code"),
-      cellRenderer: (params: { data?: Markaz }) => params.data ? <span className="font-bold" dir="ltr">{params.data.code}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
+      cellRenderer: (params: { data?: Markaz }) => params.data ? <span className="font-bold" dir="ltr">{params.data.code}</span> : null,
     },
+    activeStatusColumn<Markaz>(),
     { field: "nameAr", headerName: t("markaz.columns.nameAr") },
     { field: "nameEn", headerName: t("markaz.columns.nameEn") },
     {
@@ -149,7 +157,7 @@ export default function MarkazPage() {
         </Select>
       </label>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <TableSkeleton columns={5} /> : (
+      {isLoading ? <TableSkeleton columns={6} /> : (
         <CursorList<Markaz>
           gridId="markaz"
           initialItems={rows ?? []}
@@ -173,16 +181,14 @@ export default function MarkazPage() {
       )}
       <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("markaz.dialog.editTitle") : t("markaz.dialog.createTitle")} description={editing ? t("markaz.dialog.description") : t("markaz.dialog.codeHint")} size="sm">
         <div className="space-y-4">
-          {!editing ? (
-            <label className="block text-sm">
-              <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span>
-              <Select fieldName="governorateId" value={dialogGovernorateId} onChange={(event) => setDialogGovernorateId(event.target.value)} className="select-field w-full">
-                <option value="">{t("localities.dialog.pickGovernorate")}</option>
-                {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
-              </Select>
-            </label>
-          ) : null}
-          {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="BANHA" /></label> : null}
+          <label className="block text-sm">
+            <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span>
+            <Select fieldName="governorateId" value={dialogGovernorateId} onChange={(event) => setDialogGovernorateId(event.target.value)} className="select-field w-full">
+              <option value="">{t("localities.dialog.pickGovernorate")}</option>
+              {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
+            </Select>
+          </label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="BANHA" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameAr")}</span><Input fieldName="nameAr" value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder={t("localities.placeholders.nameAr")} /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameEn")}</span><Input fieldName="nameEn" dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
