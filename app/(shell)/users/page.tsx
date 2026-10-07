@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { StatusPill } from "@/components/tables/status-column";
 import { RowActions } from "@/components/ui/row-actions";
 import { Dialog } from "@/components/ui/dialog";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -93,7 +94,7 @@ export default function UsersPage() {
   const userColumns: CommunityColumnDef<AdminUser>[] = [
     { field: "name", headerName: t("common.fields.name"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value || t("common.value.withoutName") },
     { field: "email", headerName: t("common.fields.email"), filter: "agTextColumnFilter" },
-    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")) },
+    { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")), cellRenderer: (params: { value: unknown }) => (params.value == null ? null : <StatusPill active={params.value === true} />) },
   ];
 
   return <div className="dashboard-page">

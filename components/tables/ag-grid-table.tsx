@@ -64,7 +64,19 @@ export function AgGridTable<T>({
       columnKeys,
       fileName: exportOptions?.fileName ?? `${gridId}.csv`,
       exportedRows: "filteredAndSorted",
-      processCellCallback: (params) => safeCsvValue(params.value),
+      processCellCallback: (params) => {
+        // Prefer the column's Arabic formatter (نشط/موقوفة…) over raw values.
+        const formatter = params.column?.getColDef()?.valueFormatter;
+        if (typeof formatter === "function") {
+          try {
+            const formatted = (formatter as unknown as (p: typeof params) => unknown)(params);
+            if (formatted != null && formatted !== "") return safeCsvValue(formatted);
+          } catch {
+            // Fall through to the raw value.
+          }
+        }
+        return safeCsvValue(params.value);
+      },
     });
   }
 
@@ -87,7 +99,19 @@ export function AgGridTable<T>({
     if (column.field !== "isActive" && column.field !== "hasReports") return column;
     // Boolean fields render as a read-only checkbox by default in AG Grid
     // (boolean cellDataType -> agCheckboxCellRenderer), which is what showed
-    // an empty checkbox under "بلاغات". Force text rendering with نعم/لا.
+    // an empty checkbox under "بلاغات". Force text rendering with نعم/لا —
+    // but keep an explicit pill renderer when the page provides one.
+    if (column.cellRenderer) {
+      return {
+        ...column,
+        cellDataType: "text" as const,
+        filter: "agTextColumnFilter" as const,
+        valueFormatter: column.valueFormatter ?? ((params: { value: unknown }) => {
+          if (column.field === "hasReports") return params.value ? t("common.value.yes") : t("common.value.no");
+          return params.value ? t("common.status.active") : t("common.status.inactive");
+        }),
+      };
+    }
     return {
       ...column,
       cellDataType: "text" as const,
@@ -125,7 +149,7 @@ export function AgGridTable<T>({
       {!loading && rows.length === 0 ? <p className="ag-grid-state">{emptyMessage}</p> : null}
 
       {rows.length > 0 ? (
-        <div className="ag-grid-viewport ag-theme-quartz" style={{ height: `${gridHeight}px` }}>
+        <div className="ag-grid-frame ag-theme-quartz" style={{ height: `${gridHeight}px` }}>
           <AgGridReact<T>
             modules={[AllCommunityModule]}
             theme={themeQuartz}

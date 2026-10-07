@@ -53,8 +53,9 @@ export function CreateTripDialog({
   const scopedOwnerId = useFilterStore((s) => s.ownerId);
   const setOwnerId = useFilterStore((s) => s.setOwnerId);
   const [pickedOwnerId, setPickedOwnerId] = useState("");
-  // A locked owner/line (opened from the bus page) wins over the picked ones.
-  const ownerId = lockedOwnerId ?? pickedOwnerId ?? scopedOwnerId ?? "";
+  // A locked owner (opened from the bus page) wins; otherwise the modal's own
+  // picker wins, falling back to the page filter so it comes prefilled.
+  const ownerId = (lockedOwnerId ?? pickedOwnerId) || (scopedOwnerId ?? "");
   const [lineId, setLineId] = useState(lockedLineId ?? "");
   const [busId, setBusId] = useState(lockedBusId ?? "");
   const [departAt, setDepartAt] = useState("");
@@ -83,6 +84,7 @@ export function CreateTripDialog({
 
   function resetForm() {
     validation.reset();
+    setPickedOwnerId("");
     setLineId(lockedLineId ?? "");
     setBusId(lockedBusId ?? "");
     setDepartAt("");

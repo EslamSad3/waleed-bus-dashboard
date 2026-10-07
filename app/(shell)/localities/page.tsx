@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { activeStatusColumn } from "@/components/tables/status-column";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
@@ -149,8 +150,9 @@ export default function LocalitiesPage() {
     {
       field: "nameAr",
       headerName: t("common.fields.name"),
-      cellRenderer: (params: { data?: Locality }) => params.data ? <span className="font-bold">{params.data.nameAr} · {params.data.nameEn}<span className={params.data.isActive ? "mr-2 status-pill" : "mr-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.activeF") : t("common.status.inactiveF")}</span></span> : null,
+      cellRenderer: (params: { data?: Locality }) => params.data ? <span className="font-bold">{params.data.nameAr} · {params.data.nameEn}</span> : null,
     },
+    activeStatusColumn<Locality>({ feminine: true }),
     { headerName: t("common.fields.type"), valueGetter: (params) => params.data ? TYPE_LABEL[params.data.type] ?? params.data.type : "", filter: "agTextColumnFilter" },
     {
       field: "markazId",
@@ -198,7 +200,7 @@ export default function LocalitiesPage() {
         </label>
       </div>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
-      {isLoading ? <TableSkeleton columns={5} /> : (
+      {isLoading ? <TableSkeleton columns={6} /> : (
         <CursorList<Locality>
           gridId="localities"
           initialItems={rows ?? []}

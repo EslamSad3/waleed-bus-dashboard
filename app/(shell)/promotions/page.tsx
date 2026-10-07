@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { activeStatusColumn } from "@/components/tables/status-column";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
@@ -174,8 +175,9 @@ export default function PromotionsPage() {
     {
       field: "code",
       headerName: t("common.fields.code"),
-      cellRenderer: (params: { data?: Promotion }) => params.data ? <span dir="ltr" className="font-mono font-bold">{params.data.code}<span className={params.data.isActive ? "ms-2 status-pill" : "ms-2 status-pill status-pill-muted"}>{params.data.isActive ? t("common.status.active") : t("common.status.inactive")}</span></span> : null,
+      cellRenderer: (params: { data?: Promotion }) => params.data ? <span dir="ltr" className="font-mono font-bold">{params.data.code}</span> : null,
     },
+    activeStatusColumn<Promotion>(),
     {
       field: "type",
       headerName: t("common.fields.type"),

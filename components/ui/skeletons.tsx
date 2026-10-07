@@ -53,7 +53,7 @@ export function TableSkeleton({ rows = 8, columns = 5, className }: TableSkeleto
         <Skeleton className="ms-auto h-4 w-14 max-md:hidden" />
         <Skeleton className="h-[2.6rem] w-full md:w-28" />
       </div>
-      <div className="ag-grid-viewport" style={{ height: `${viewportHeight}px` }}>
+      <div className="ag-grid-frame" style={{ height: `${viewportHeight}px` }}>
         <div className="grid gap-3 border-b border-[#e4ecf2] bg-[#f5f9fc] px-4 py-4">
           <div className="grid items-center gap-3" style={{ gridTemplateColumns }}>
             {Array.from({ length: columns }, (_, column) => (

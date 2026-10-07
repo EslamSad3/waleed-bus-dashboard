@@ -303,7 +303,7 @@ input:-webkit-autofill:focus {
   white-space: nowrap;
 }
 
-.ag-grid-viewport {
+.ag-grid-frame {
   width: 100%;
   min-width: 0;
   height: 30rem;
@@ -313,19 +313,19 @@ input:-webkit-autofill:focus {
   background: #fff;
 }
 
-.ag-grid-viewport .ag-root-wrapper {
+.ag-grid-frame .ag-root-wrapper {
   border: 0;
   border-radius: 1rem;
 }
 
-.ag-grid-viewport .ag-cell {
+.ag-grid-frame .ag-cell {
   display: flex;
   align-items: center;
   overflow: hidden;
   line-height: 1.4;
 }
 
-.ag-grid-viewport .ag-cell .list-card {
+.ag-grid-frame .ag-cell .list-card {
   width: 100%;
   min-height: 2.25rem;
   transform: none;
@@ -336,7 +336,7 @@ input:-webkit-autofill:focus {
   box-shadow: none;
 }
 
-.ag-grid-viewport .ag-cell .list-card:hover {
+.ag-grid-frame .ag-cell .list-card:hover {
   background: #eaf6ff;
   box-shadow: none;
 }
@@ -364,16 +364,16 @@ input:-webkit-autofill:focus {
   outline-offset: 2px;
 }
 
-.ag-grid-viewport .ag-header {
+.ag-grid-frame .ag-header {
   background: #f5f9fc;
 }
 
-.ag-grid-viewport .ag-floating-filter {
+.ag-grid-frame .ag-floating-filter {
   border-top: 1px solid #e4ecf2;
   background: #fbfdff;
 }
 
-.ag-grid-viewport .ag-floating-filter-input input {
+.ag-grid-frame .ag-floating-filter-input input {
   border: 1px solid #d5e1e9;
   border-radius: 0.45rem;
   background: #fff;
@@ -381,8 +381,8 @@ input:-webkit-autofill:focus {
   font-family: inherit;
 }
 
-.ag-grid-viewport .ag-header-cell-text,
-.ag-grid-viewport .ag-cell {
+.ag-grid-frame .ag-header-cell-text,
+.ag-grid-frame .ag-cell {
   font-family: inherit;
 }
 
@@ -436,12 +436,12 @@ input:-webkit-autofill:focus {
     width: 100%;
   }
 
-  .ag-grid-viewport {
+  .ag-grid-frame {
     height: 26rem;
     overflow: auto;
   }
 
-  .ag-grid-viewport .ag-root-wrapper {
+  .ag-grid-frame .ag-root-wrapper {
     min-width: 48rem;
   }
 }

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
+import { StatusPill } from "@/components/tables/status-column";
 import { presentRoleName } from "@/lib/role-presentation";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -62,6 +63,7 @@ export default function RolesPage() {
       headerName: t("common.fields.status"),
       filter: "agTextColumnFilter",
       valueFormatter: (params) => params.value ? t("common.status.active") : t("common.status.inactive"),
+      cellRenderer: (params: { value: unknown }) => (params.value == null ? null : <StatusPill active={params.value === true} />),
     },
   ];
 

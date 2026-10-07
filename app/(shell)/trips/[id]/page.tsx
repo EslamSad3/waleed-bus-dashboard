@@ -156,6 +156,13 @@ export default function TripDetailPage({
    */
   function done(ok: boolean, msg: string, updated?: Trip) {
     setError(ok ? null : msg);
+    if (ok) {
+      // Clear stale "submitted" flags: without this, emptying the driver
+      // select after a successful assign re-shows its required-error next to
+      // the success toast.
+      validation.reset();
+      driverValidation.reset();
+    }
     if (ok && updated) {
       setTrip(updated);
       syncTrip({ ok: true, data: updated }, "update", updated);
@@ -399,7 +406,7 @@ export default function TripDetailPage({
               <div className="mt-2 flex flex-wrap gap-2">
                 <AsyncButton type="button" onClick={assignTripDriver} disabled={tripFrozen}>{t("trips.detail.assignDriverAria")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={unassignTripDriver} disabled={!trip.driverUserId || tripFrozen}>
-                  {t("trips.detail.assignDriverAria")}
+                  {t("trips.detail.unassignDriver")}
                 </AsyncButton>
               </div>
               {tripFrozen ? <small className="mt-1 block text-xs text-[#687886]">{t("trips.detail.driverFrozenHint")}</small> : null}

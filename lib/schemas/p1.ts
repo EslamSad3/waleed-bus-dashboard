@@ -114,7 +114,9 @@ export const updateVipTierSchema = z.object({
   rank: z.number().int().min(1).optional(),
   isActive: z.boolean().optional(),
 });
-export const assignDriverSchema = z.object({ driverUserId: uuid });
+export const assignDriverSchema = z.object({
+  driverUserId: z.uuid(t("validation.driverRequired")),
+});
 
 // ---- Trip lines (owner-scoped; ONE direction, one ordered stop list) ----
 const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
