@@ -134,9 +134,20 @@ export default function TripLineDetailPage({
   }
 
   function openStopsEditor(current: TripLine) {
+    const seen = new Set<string>();
     setEditStops(
       [...current.stops]
         .sort((a, b) => a.stopOrder - b.stopOrder)
+        .filter((item) => {
+          // Legacy lines may carry the same station twice (old BOARDING +
+          // LANDING pair). A station is allowed once per line now, so only the
+          // first occurrence (lowest stop order) survives into the editor —
+          // saving persists the deduped list.
+          const id = item.station.id;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        })
         .map((item) => ({
           key: item.id,
           stop: item.station,
