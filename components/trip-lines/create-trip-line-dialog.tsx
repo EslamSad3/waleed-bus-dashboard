@@ -54,7 +54,6 @@ export function CreateTripLineDialog({
   // A locked owner (opened from a company tab) wins over anything picked here.
   const ownerId = lockedOwnerId ?? pickedOwnerId;
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
   const [stops, setStops] = useState<EditableStop[]>([]);
   const [pick, setPick] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -97,13 +96,12 @@ export function CreateTripLineDialog({
   function resetForm() {
     validation.reset();
     setName("");
-    setCode("");
     setStops([]);
     setPick("");
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), code: code.trim(), stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })) }), ownerId: requiredField(ownerId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })) }), ownerId: requiredField(ownerId) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -112,7 +110,6 @@ export function CreateTripLineDialog({
     setSaving(true);
     const result = await createOwnerTripLine(ownerId, {
       name: name.trim(),
-      code: code.trim().toUpperCase(),
       stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })),
     });
     setSaving(false);
@@ -138,14 +135,10 @@ export function CreateTripLineDialog({
           </div>
         )}
 
-        <div className="grid gap-3 rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] p-4 sm:grid-cols-[1fr_12rem]">
+        <div className="rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] p-4">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.nameLabel")}</span>
             <Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("tripLines.placeholders.name")} />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.codeLabel")}</span>
-            <Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="CAI-BNS" />
           </label>
         </div>
 

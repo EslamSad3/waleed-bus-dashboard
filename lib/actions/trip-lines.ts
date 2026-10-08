@@ -4,17 +4,13 @@ import { t } from "@/lib/i18n/t";
 
 export type Governorate = {
   id: string;
-  code: string;
   nameAr: string;
-  nameEn: string;
 };
 
 export type Markaz = {
   id: string;
   governorateId: string;
-  code: string;
   nameAr: string;
-  nameEn: string;
   isActive: boolean;
   governorate?: Governorate;
 };
@@ -23,7 +19,6 @@ export type Locality = {
   id: string;
   markazId: string;
   nameAr: string;
-  nameEn: string;
   type: "CITY" | "VILLAGE";
   isActive: boolean;
   markaz?: Markaz & { governorate?: Governorate };
@@ -57,7 +52,6 @@ export type TripLine = {
   id: string;
   ownerId: string;
   name: string;
-  code: string;
   qrIdentifier: string;
   isActive: boolean;
   stops: TripLineStop[];
@@ -85,9 +79,9 @@ export const fetchMarkaz = (governorateId: string, includeInactive = false) =>
 export const fetchMarkazAll = (includeInactive = true) =>
   apiGet<Markaz[]>(`/api/markaz${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchMarkazById = (id: string) => apiGet<Markaz>(`/api/markaz/${id}`);
-export const createMarkaz = (input: { governorateId: string; code: string; nameAr: string; nameEn: string; isActive?: boolean }) =>
+export const createMarkaz = (input: { governorateId: string; nameAr: string; isActive?: boolean }) =>
   notifyResult(t("markaz.toast.created"), apiSend<Markaz>("/api/markaz", "POST", input));
-export const updateMarkaz = (id: string, input: { code?: string; governorateId?: string; nameAr?: string; nameEn?: string; isActive?: boolean }) =>
+export const updateMarkaz = (id: string, input: { governorateId?: string; nameAr?: string; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined ? t("markaz.toast.saved") : input.isActive ? t("markaz.toast.activated") : t("markaz.toast.deactivated"),
     apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input),
@@ -107,9 +101,9 @@ export const fetchLocalitiesAll = (
   return apiGet<Locality[]>(`/api/localities${qs ? `?${qs}` : ""}`);
 };
 export const fetchLocalityById = (id: string) => apiGet<Locality>(`/api/localities/${id}`);
-export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; nameEn: string; isActive?: boolean }) =>
+export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; isActive?: boolean }) =>
   notifyResult(t("localities.toast.created"), apiSend<Locality>("/api/localities", "POST", input));
-export const updateLocality = (id: string, input: { nameAr?: string; nameEn?: string; isActive?: boolean }) =>
+export const updateLocality = (id: string, input: { nameAr?: string; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined
       ? t("localities.toast.saved")
@@ -151,7 +145,7 @@ export const fetchOwnerTripLine = (ownerId: string, id: string) =>
 
 export const createOwnerTripLine = (
   ownerId: string,
-  input: { name: string; code: string; qrIdentifier?: string; stops: LineStopInput[] },
+  input: { name: string; qrIdentifier?: string; stops: LineStopInput[] },
 ) =>
   notifyResult(
     t("tripLines.toast.created"),

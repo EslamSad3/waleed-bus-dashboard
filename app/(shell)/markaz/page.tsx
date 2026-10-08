@@ -43,9 +43,7 @@ export default function MarkazPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Markaz | null>(null);
   const [dialogGovernorateId, setDialogGovernorateId] = useState("");
-  const [code, setCode] = useState("");
   const [nameAr, setNameAr] = useState("");
-  const [nameEn, setNameEn] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
 
   // فلتر المحافظة — CursorList بيطبقه على الصفوف الظاهرة وصفحات "عرض المزيد"
@@ -55,9 +53,7 @@ export default function MarkazPage() {
     validation.reset();
     setEditing(null);
     setDialogGovernorateId(governorateFilter || governorates?.[0]?.id || "");
-    setCode("");
     setNameAr("");
-    setNameEn("");
     setDialogError(null);
     setCreating(true);
   }
@@ -67,9 +63,7 @@ export default function MarkazPage() {
     setCreating(false);
     setEditing(markaz);
     setDialogGovernorateId(markaz.governorateId);
-    setCode(markaz.code);
     setNameAr(markaz.nameAr);
-    setNameEn(markaz.nameEn);
     setDialogError(null);
   }
 
@@ -80,16 +74,14 @@ export default function MarkazPage() {
     setDialogError(null);
   }
 
-  const validation = useFieldValidation(() => schemaErrors(creating ? schemas.createMarkazSchema : schemas.updateMarkazSchema, { nameAr: nameAr.trim(), nameEn: nameEn.trim(), code: code.trim(), governorateId: dialogGovernorateId }));
+  const validation = useFieldValidation(() => schemaErrors(creating ? schemas.createMarkazSchema : schemas.updateMarkazSchema, { nameAr: nameAr.trim(), governorateId: dialogGovernorateId }));
 
   async function save() {
     if (!validation.validate()) return;
     if (editing) {
       const result = await updateMarkaz(editing.id, {
         governorateId: dialogGovernorateId,
-        code: code.trim().toUpperCase(),
         nameAr: nameAr.trim(),
-        nameEn: nameEn.trim(),
       });
       if (!result.ok) return setDialogError(validation.failure(result));
       applyMutationCache(queryClient, referenceImpact(result.data.id, "markaz", "update"), result);
@@ -99,9 +91,7 @@ export default function MarkazPage() {
 
     const result = await createMarkaz({
       governorateId: dialogGovernorateId,
-      code: code.trim().toUpperCase(),
       nameAr: nameAr.trim(),
-      nameEn: nameEn.trim(),
     });
     if (!result.ok) return setDialogError(validation.failure(result));
     applyMutationCache(queryClient, referenceImpact(result.data.id, "markaz", "insert"), result);
@@ -124,19 +114,13 @@ export default function MarkazPage() {
   const dialogOpen = creating || editing !== null;
 
   const columns: CommunityColumnDef<Markaz>[] = [
-    {
-      field: "code",
-      headerName: t("common.fields.code"),
-      cellRenderer: (params: { data?: Markaz }) => params.data ? <span className="font-bold" dir="ltr">{params.data.code}</span> : null,
-    },
     activeStatusColumn<Markaz>(),
     { field: "nameAr", headerName: t("markaz.columns.nameAr") },
-    { field: "nameEn", headerName: t("markaz.columns.nameEn") },
     {
       field: "governorateId",
       headerName: t("common.fields.governorate"),
       filter: "agTextColumnFilter",
-      valueGetter: (params) => params.data?.governorate ? `${params.data.governorate.nameAr} · ${params.data.governorate.nameEn}` : "",
+      valueGetter: (params) => params.data?.governorate ? params.data.governorate.nameAr : "",
     },
   ];
 
@@ -153,7 +137,7 @@ export default function MarkazPage() {
         <span className="mb-1.5 block font-bold text-[#334454]">{t("markaz.filters.governorate")}</span>
         <Select fieldName="governorateFilter" value={governorateFilter} onChange={(event) => setGovernorateFilter(event.target.value)} className="select-field w-full">
           <option value="">{t("localities.filters.allGovernorates")}</option>
-          {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
+          {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr}</option>)}
         </Select>
       </label>
       {error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error.message}</p> : null}
@@ -179,18 +163,16 @@ export default function MarkazPage() {
           )}
         />
       )}
-      <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("markaz.dialog.editTitle") : t("markaz.dialog.createTitle")} description={editing ? t("markaz.dialog.description") : t("markaz.dialog.codeHint")} size="sm">
+      <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("markaz.dialog.editTitle") : t("markaz.dialog.createTitle")} description={t("markaz.dialog.description")} size="sm">
         <div className="space-y-4">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.governorate")}</span>
             <Select fieldName="governorateId" value={dialogGovernorateId} onChange={(event) => setDialogGovernorateId(event.target.value)} className="select-field w-full">
               <option value="">{t("localities.dialog.pickGovernorate")}</option>
-              {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr} · {g.nameEn}</option>)}
+              {(governorates ?? []).map((g) => <option key={g.id} value={g.id}>{g.nameAr}</option>)}
             </Select>
           </label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="BANHA" /></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameAr")}</span><Input fieldName="nameAr" value={nameAr} onChange={(event) => setNameAr(event.target.value)} placeholder={t("localities.placeholders.nameAr")} /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("localities.dialog.nameEn")}</span><Input fieldName="nameEn" dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Banha" /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
             <Button type="button" variant="danger" onClick={closeDialog}>{t("common.actions.cancel")}</Button>

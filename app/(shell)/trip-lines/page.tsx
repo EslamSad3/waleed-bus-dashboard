@@ -41,12 +41,10 @@ export default function TripLinesPage() {
     (!ownerFilter || line.ownerId === ownerFilter) &&
     (!query ||
       line.name.includes(query) ||
-      line.code.includes(query) ||
       (ownerNames?.get(line.ownerId) ?? "").includes(query));
 
   const columns: CommunityColumnDef<TripLine>[] = [
     { field: "name", headerName: t("tripLines.columns.name"), filter: "agTextColumnFilter" },
-    { field: "code", headerName: t("common.fields.code"), filter: "agTextColumnFilter" },
     {
       field: "isActive",
       headerName: t("common.fields.status"),

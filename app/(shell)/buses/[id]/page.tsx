@@ -83,6 +83,7 @@ export default function BusDetailPage({
   const [modelYear, setModelYear] = useState("");
   const [uploading, setUploading] = useState(false);
   const [assignmentTripId, setAssignmentTripId] = useState("");
+  const [assignmentDriverId, setAssignmentDriverId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tripsFirst, setTripsFirst] = useState<{
@@ -430,7 +431,7 @@ export default function BusDetailPage({
           <div className="panel-card p-5 sm:p-6">
             <h2 className="section-title">{tr("buses.detail.sections.statusAndDriver")}</h2>
             <div className="flex flex-col gap-3">
-<div className="rounded-xl bg-slate-50 px-3 py-3 text-sm"><p>{tr("tripAssignment.notice")}</p><TripAssignmentPicker ownerId={ownerId} busId={id} value={assignmentTripId} onChange={setAssignmentTripId} /></div>
+<div className="rounded-xl bg-slate-50 px-3 py-3 text-sm"><p>{tr("tripAssignment.notice")}</p><TripAssignmentPicker ownerId={ownerId} busId={id} value={assignmentTripId} onChange={(tripId, trip) => { setAssignmentTripId(tripId); setAssignmentDriverId(trip?.driver?.id ?? ""); }} /></div>
               <div className="flex flex-wrap gap-2">
                 <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>{tr("common.actions.disable")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>{tr("buses.detail.actions.reactivate")}</AsyncButton>
@@ -575,8 +576,10 @@ export default function BusDetailPage({
       <AssignDriverDialog
         open={assignOpen}
         bus={ownerId ? { id, ownerId, plateNumber: bus.plateNumber } : null}
+        initialTripId={assignmentTripId}
+        initialDriverUserId={assignmentDriverId}
         onClose={() => setAssignOpen(false)}
-        onAssigned={() => void refreshDrivers()}
+        onAssigned={(driverUserId) => { setAssignmentDriverId(driverUserId); void refreshDrivers(); }}
       />
 
       {bus.imageUrl ? (

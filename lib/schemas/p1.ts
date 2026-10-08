@@ -123,7 +123,6 @@ export const assignDriverSchema = z.object({
 const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
 export const createTripLineSchema = z.object({
   name: name255,
-  code: z.string(t("validation.lineCodeRequired")).min(1, t("validation.lineCodeRequired")).max(50),
   qrIdentifier: z.string().min(1).max(100).optional(),
   stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
 });
@@ -247,11 +246,6 @@ export const updateStopSchema = z.object({
   name: name255.optional(), address: z.string().min(1).max(500).nullable().optional(),
   latitude: latitude.optional(), longitude: longitude.optional(), governorateId: uuid.optional(), localityId: uuid.nullable().optional(), isActive: z.boolean().optional(),
 });
-const markazCode = z
-  .string(t("validation.markazCodeRequired"))
-  .min(1, t("validation.markazCodeRequired"))
-  .max(50, t("validation.maxLength", { max: 50 }))
-  .regex(/^[A-Z0-9_-]+$/, t("validation.markazCodeFormat"));
 export const createMarkazSchema = z.object({
   governorateId: z
     .string(t("validation.governorateRequired"))
@@ -260,25 +254,21 @@ export const createMarkazSchema = z.object({
       (value) => z.uuid(t("validation.uuid")).safeParse(value).success,
       t("validation.governorateRequired"),
     ),
-  code: markazCode,
   nameAr: name255,
-  nameEn: name255,
   isActive: z.boolean().optional(),
 });
 export const updateMarkazSchema = z.object({
   governorateId: uuid.optional(),
-  code: markazCode.optional(),
-  nameAr: name255.optional(), nameEn: name255.optional(), isActive: z.boolean().optional(),
+  nameAr: name255.optional(), isActive: z.boolean().optional(),
 });
 export const createLocalitySchema = z.object({
   markazId: uuid,
   type: z.enum(["CITY", "VILLAGE"], t("validation.localityType")),
   nameAr: name255,
-  nameEn: name255,
   isActive: z.boolean().optional(),
 });
 export const updateLocalitySchema = z.object({
-  nameAr: name255.optional(), nameEn: name255.optional(), isActive: z.boolean().optional(),
+  nameAr: name255.optional(), isActive: z.boolean().optional(),
 });
 
 // ---- Promotions (platform) ----

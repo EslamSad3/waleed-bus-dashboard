@@ -229,7 +229,6 @@ export default function TripLineDetailPage({
             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${line.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
               {line.isActive ? t("tripLines.activeBadge") : t("tripLines.inactiveBadge")}
             </span>
-            <span dir="ltr" className="rounded-full bg-[#eaf4fa] px-3 py-1 text-xs font-extrabold text-[#285778]">{line.code}</span>
           </div>
           <h1 className="page-title">{line.name}</h1>
           <p className="page-description">{t("tripLines.detail.description")}</p>
@@ -307,11 +306,6 @@ export default function TripLineDetailPage({
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.nameLabel")}</span>
             <Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.codeLabel")}</span>
-            <Input dir="ltr" value={line.code} readOnly />
-            <small className="mt-1 block text-xs text-[#687886]">{t("tripLines.metaDialog.codeFixedHint")}</small>
           </label>
           <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
             <AsyncButton onClick={saveMeta}>{t("common.actions.saveChanges")}</AsyncButton>

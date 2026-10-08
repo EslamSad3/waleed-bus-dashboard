@@ -33,13 +33,19 @@ export function AssignDriverDialog({
   open,
   onClose,
   bus,
+  initialTripId = "",
+  initialDriverUserId = "",
   onAssigned,
 }: {
   open: boolean;
   onClose: () => void;
   bus: AssignBusRef | null;
+  /** Trip already chosen by the caller (bus detail) — not asked for again. */
+  initialTripId?: string;
+  /** That trip's current driver, so the operator only changes it if needed. */
+  initialDriverUserId?: string;
   /** Extra hook for callers with local state (owner tables reload here). */
-  onAssigned?: () => void;
+  onAssigned?: (driverUserId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const [driverUserId, setDriverUserId] = useState("");
@@ -54,8 +60,8 @@ export function AssignDriverDialog({
   const [seenKey, setSeenKey] = useState(openKey);
   if (seenKey !== openKey) {
     setSeenKey(openKey);
-    setDriverUserId("");
-    setTripId("");
+    setDriverUserId(openKey ? initialDriverUserId : "");
+    setTripId(openKey ? initialTripId : "");
     setError(null);
     setSaving(false);
   }
@@ -89,7 +95,7 @@ export function AssignDriverDialog({
       evictImpact(["buses"], ["bus"], ["bus-trips"], ["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"]),
       { ok: true, data: null },
     );
-    onAssigned?.();
+    onAssigned?.(driverUserId);
     requestClose();
   }
 
@@ -106,7 +112,7 @@ export function AssignDriverDialog({
       size="sm"
     >
       <div className="space-y-4">
-        {bus ? <fieldset disabled={saving}><TripAssignmentPicker ownerId={bus.ownerId} busId={bus.id} value={tripId} onChange={setTripId} /></fieldset> : null}
+        {bus ? <fieldset disabled={saving}><TripAssignmentPicker ownerId={bus.ownerId} busId={bus.id} value={tripId} onChange={(id, trip) => { setTripId(id); setDriverUserId(trip?.driver?.id ?? ""); setError(null); }} /></fieldset> : null}
         {bus ? (
           <DriverPicker ownerId={bus.ownerId} value={driverUserId} onChange={(id) => { setDriverUserId(id); setError(null); }} />
         ) : null}

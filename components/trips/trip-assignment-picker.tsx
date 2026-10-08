@@ -1,19 +1,28 @@
 "use client";
+import { useEffect } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { fetchBusTripsPage } from "@/lib/actions/buses";
+import { fetchBusTripsPage, type BusTripRow } from "@/lib/actions/buses";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n/t";
 
-/** A bus is fixed; only scheduled trips on that bus may be reassigned. */
-export function TripAssignmentPicker({ ownerId, busId, value, onChange }: { ownerId: string; busId: string; value: string; onChange: (id: string) => void }) {
+/**
+ * A bus is fixed; only scheduled trips on that bus may be reassigned. When the
+ * bus has exactly one scheduled trip it is picked automatically, so the
+ * operator is never asked to choose between a single option.
+ */
+export function TripAssignmentPicker({ ownerId, busId, value, onChange }: { ownerId: string; busId: string; value: string; onChange: (id: string, trip: BusTripRow | null) => void }) {
   const query = useInfiniteQuery({ queryKey: ["assignment-trips", ownerId, busId], initialPageParam: null as string | null, enabled: Boolean(ownerId && busId),
     queryFn: async ({ pageParam }) => { const r = await fetchBusTripsPage(ownerId, busId, pageParam); if (!r.ok) throw new Error(r.message); return r.data; },
     getNextPageParam: (page) => page.nextCursor });
   const trips = query.data?.pages.flatMap((p) => p.items).filter((trip) => trip.status === "SCHEDULED") ?? [];
+  const onlyTrip = !query.hasNextPage && trips.length === 1 ? trips[0] : null;
+  useEffect(() => {
+    if (!value && onlyTrip) onChange(onlyTrip.id, onlyTrip);
+  }, [value, onlyTrip, onChange]);
   return <div className="space-y-2">
     <label className="block text-sm font-bold">{t("tripAssignment.pickTrip")}
-      <Select fieldName="tripId" value={value} onChange={(e) => onChange(e.target.value)} disabled={!busId || query.isPending} className="select-field mt-1 w-full">
+      <Select fieldName="tripId" value={value} onChange={(e) => onChange(e.target.value, trips.find((trip) => trip.id === e.target.value) ?? null)} disabled={!busId || query.isPending} className="select-field mt-1 w-full">
         <option value="">{t("tripAssignment.pickTrip")}</option>
         {trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.line.origin} ← {trip.line.destination} · {new Date(trip.departAt).toLocaleString("ar-EG")} · {trip.driver?.name ?? t("tripAssignment.unassigned")}</option>)}
       </Select>
