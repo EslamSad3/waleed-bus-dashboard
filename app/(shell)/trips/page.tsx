@@ -87,7 +87,7 @@ export default function TripsPage() {
       ...trip,
       busName: trip.bus?.plateNumber ?? trip.busId.slice(0, 8),
       driverName: trip.driverUserId
-        ? (driverNameById.get(trip.driverUserId) ?? t("common.value.withoutName"))
+        ? (driverNameById.get(trip.driverUserId) ?? trip.driver?.name ?? trip.driver?.phoneNumber ?? t("common.value.withoutName"))
         : (trip.driver?.name ?? t("common.value.unassigned")),
     }),
     [driverNameById],

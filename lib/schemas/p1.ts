@@ -115,6 +115,7 @@ export const updateVipTierSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export const assignDriverSchema = z.object({
+  tripId: uuid,
   driverUserId: z.uuid(t("validation.driverRequired")),
 });
 
@@ -137,6 +138,7 @@ export const updateLineStopsSchema = z.object({
 // ---- Trips (nested under their line; no From/To, no direction) ----
 export const createTripSchema = z.object({
   busId: uuid,
+  driverUserId: z.uuid(t("validation.driverRequired")),
   departAt: datetime,
   fare: fare.optional(),
   status: tripStatus.optional(),
@@ -146,7 +148,7 @@ export const updateTripSchema = z.object({
   fare: fare.optional(),
   status: tripStatus.optional(),
   /** The trip's own driver; null clears it. Rejected by the API after departure. */
-  driverUserId: uuid.nullable().optional(),
+  driverUserId: uuid.optional(),
 });
 
 // ---- Bookings ----

@@ -22,13 +22,25 @@ export type OpsNotification = {
 export function fetchOpsNotifications(params?: {
   userId?: string;
   category?: string;
+  cursor?: string;
 }): Promise<ActionResult<CursorPage<OpsNotification>>> {
   const search = new URLSearchParams();
   if (params?.userId) search.set("userId", params.userId);
   if (params?.category) search.set("category", params.category);
+  if (params?.cursor) search.set("cursor", params.cursor);
   const qs = search.toString();
   return apiGet(`/api/platform/notifications${qs ? `?${qs}` : ""}`);
 }
+
+export type InboxNotification = OpsNotification & { bookingId?: string | null; readAt?: string | null };
+export function fetchMyNotifications(cursor: string | null = null, unreadOnly = false): Promise<ActionResult<CursorPage<InboxNotification>>> {
+  return apiGet(`/api/notifications?limit=20${unreadOnly ? "&unread=true" : ""}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+}
+export function fetchMyUnreadCount(): Promise<ActionResult<{ unreadCount: number }>> { return apiGet("/api/notifications/unread-count"); }
+export function markNotificationRead(id: string) { return apiSend(`/api/notifications/${id}/read`, "PATCH"); }
+export function markAllNotificationsRead() { return apiSend("/api/notifications/read-all", "PATCH"); }
+export function deleteNotification(id: string) { return apiSend(`/api/notifications/${id}`, "DELETE"); }
+export function deleteAllNotifications() { return apiSend("/api/notifications", "DELETE"); }
 
 export type SendNotificationInput = {
   userId?: string | null;

@@ -1,10 +1,11 @@
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import { t } from "@/lib/i18n/t";
 
-export function Topbar({ email }: { email: string | null }) {
+export function Topbar({ email, userId }: { email: string | null; userId: string }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-[#f4f8fc]/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 lg:px-8">
@@ -42,6 +43,7 @@ export function Topbar({ email }: { email: string | null }) {
             {(email ?? t("shell.topbar.avatarInitial")).slice(0, 1).toUpperCase()}
           </span>
           <SignOutButton />
+          <NotificationBell userId={userId} />
         </div>
       </div>
     </header>

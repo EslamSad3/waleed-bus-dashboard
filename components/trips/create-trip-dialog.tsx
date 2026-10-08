@@ -1,6 +1,7 @@
 "use client";
 
 import { Select } from "@/components/ui/select";
+import { DriverPicker } from "@/components/buses/driver-picker";
 
 import * as schemas from "@/lib/schemas/p1";
 
@@ -58,6 +59,7 @@ export function CreateTripDialog({
   const ownerId = (lockedOwnerId ?? pickedOwnerId) || (scopedOwnerId ?? "");
   const [lineId, setLineId] = useState(lockedLineId ?? "");
   const [busId, setBusId] = useState(lockedBusId ?? "");
+  const [driverUserId, setDriverUserId] = useState("");
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -87,12 +89,13 @@ export function CreateTripDialog({
     setPickedOwnerId("");
     setLineId(lockedLineId ?? "");
     setBusId(lockedBusId ?? "");
+    setDriverUserId("");
     setDepartAt("");
     setFare("");
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, departAt, fare: fare.trim() || undefined }), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: fare.trim() || undefined }), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -103,6 +106,7 @@ export function CreateTripDialog({
     setOwnerScopeCookie(ownerId);
     const result = await createTrip(ownerId, lineId, {
       busId,
+      driverUserId,
       departAt: new Date(departAt).toISOString(),
       fare: fare.trim() || undefined,
     });
@@ -143,6 +147,7 @@ export function CreateTripDialog({
                 setPickedOwnerId(next);
                 setLineId("");
                 setBusId("");
+                setDriverUserId("");
               }}
             />
           </div>
@@ -190,6 +195,8 @@ export function CreateTripDialog({
           </Select>
         </label>
 
+        {ownerId ? <fieldset disabled={saving}><DriverPicker ownerId={ownerId} value={driverUserId} onChange={setDriverUserId} /></fieldset> : null}
+        <p className="text-xs text-[#687886]">{t("tripAssignment.notice")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.departAt")}</span>

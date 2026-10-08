@@ -36,7 +36,7 @@ import {
 } from "@/lib/actions/buses";
 import { AssignDriverDialog } from "@/components/buses/assign-driver-dialog";
 import { apiGet, validateImageFile, type StagedUpload } from "@/lib/actions/http";
-import type { DriverRow } from "@/lib/actions/members";
+import { TripAssignmentPicker } from "@/components/trips/trip-assignment-picker";
 import { TRIP_STATUS_AR } from "@/lib/actions/trips";
 import { useFilterStore } from "@/stores/filters";
 import { Dialog } from "@/components/ui/dialog";
@@ -82,7 +82,7 @@ export default function BusDetailPage({
   const [isAirConditioned, setIsAirConditioned] = useState(false);
   const [modelYear, setModelYear] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [drivers, setDrivers] = useState<DriverRow[]>([]);
+  const [assignmentTripId, setAssignmentTripId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tripsFirst, setTripsFirst] = useState<{
@@ -133,12 +133,6 @@ export default function BusDetailPage({
     if (ownerId) setStoreOwnerId(ownerId);
   }, [ownerId, setStoreOwnerId]);
 
-  useEffect(() => {
-    if (!ownerId) return;
-    apiGet<{ items: DriverRow[] }>(`/api/fleet-owners/${ownerId}/drivers?limit=100`).then((r) => {
-      if (r.ok) setDrivers(r.data.items.filter((d) => d.status === "ACTIVE"));
-    });
-  }, [ownerId]);
 
   useEffect(() => {
     if (tab !== "trips" || !ownerId) return;
@@ -232,7 +226,7 @@ export default function BusDetailPage({
   }
 
   async function remove() {
-    if (!ownerId) return;
+    if (!ownerId || !assignmentTripId) return;
     if (
       !(await confirm({
         title: tr("common.actions.deleteConfirmTitle"),
@@ -269,11 +263,8 @@ export default function BusDetailPage({
   }
 
   const refreshDrivers = async () => {
-    if (!ownerId) return;
-    const refreshed = await apiGet<{ items: DriverRow[] }>(
-      `/api/fleet-owners/${ownerId}/drivers?limit=100`,
-    );
-    if (refreshed.ok) setDrivers(refreshed.data.items.filter((driver) => driver.status === "ACTIVE" && driver.isActive));
+    setTripsReloadKey((key) => key + 1);
+    await queryClient.invalidateQueries({ queryKey: ["assignment-trips", ownerId, id] });
   };
 
   async function unassign() {
@@ -288,7 +279,7 @@ export default function BusDetailPage({
     ) {
       return;
     }
-    const r = await unassignDriver(ownerId, id);
+    const r = await unassignDriver(ownerId, id, assignmentTripId);
     note(r.ok, r.ok ? tr("buses.detail.toast.driverUnassigned") : r.message);
     if (r.ok) await refreshDrivers();
   }
@@ -304,11 +295,6 @@ export default function BusDetailPage({
   if (busError) return <p role="alert" className="text-sm text-red-600">{busError.message}</p>;
   if (!bus || busLoading) return <DetailPageSkeleton />;
 
-  const currentDriver = drivers.find((driver) =>
-    driver.assignments?.some(
-      (assignment) => assignment.busId === id && assignment.status === "ACTIVE",
-    ),
-  );
   const colorPresets = BUS_COLORS;
   const storedColorHex = busColorHex(color);
   const colorMissing = color && !colorPresets.some((preset) => preset.name === color);
@@ -336,11 +322,10 @@ export default function BusDetailPage({
       // would show nobody even when the bus has a driver assigned. Fall back to
       // the bus's current driver, and say which of the two this is.
       headerName: tr("common.fields.snapshottedDriver"),
-      valueGetter: (params) => params.data?.driver?.name ?? currentDriver?.name ?? "",
+      valueGetter: (params) => params.data?.driver?.name ?? "",
       cellRenderer: (params: { data: BusTripRow }) => {
         const snapshot = params.data.driver;
-        const fallback = currentDriver;
-        const shown = snapshot ?? fallback;
+        const shown = snapshot;
         if (!shown) return <span>{tr("buses.detail.noDriver")}</span>;
         return (
           <div className="flex items-center gap-2">
@@ -445,13 +430,7 @@ export default function BusDetailPage({
           <div className="panel-card p-5 sm:p-6">
             <h2 className="section-title">{tr("buses.detail.sections.statusAndDriver")}</h2>
             <div className="flex flex-col gap-3">
-              <div className="rounded-xl bg-slate-50 px-3 py-3 text-sm">
-                <span className="block text-[#606060]">{tr("buses.detail.currentDriver")}</span>
-                <strong>{currentDriver?.name ?? tr("buses.detail.noDriver")}</strong>
-                {currentDriver?.phoneNumber ? (
-                  <span className="ms-2 text-[#606060]" dir="ltr">{currentDriver.phoneNumber}</span>
-                ) : null}
-              </div>
+<div className="rounded-xl bg-slate-50 px-3 py-3 text-sm"><p>{tr("tripAssignment.notice")}</p><TripAssignmentPicker ownerId={ownerId} busId={id} value={assignmentTripId} onChange={setAssignmentTripId} /></div>
               <div className="flex flex-wrap gap-2">
                 <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>{tr("common.actions.disable")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>{tr("buses.detail.actions.reactivate")}</AsyncButton>
@@ -459,7 +438,7 @@ export default function BusDetailPage({
               <Button type="button" onClick={() => setAssignOpen(true)}>
                 <UserPlus className="size-4" aria-hidden="true" /> {tr("buses.detail.actions.assignDriver")}
               </Button>
-              <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!currentDriver}>{tr("buses.detail.actions.unassignDriver")}</AsyncButton>
+              <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!assignmentTripId}>{tr("buses.detail.actions.unassignDriver")}</AsyncButton>
             </div>
           </div>
         </div>

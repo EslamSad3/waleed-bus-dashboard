@@ -250,3 +250,33 @@ level under a fleet owner any more, and a trip line is **one direction**.
 - `CursorList` now detects edits when the row ID is unchanged and includes genuinely new first-page rows. The cache helper no longer mistakes detail objects for cursor pages or writes ID-only placeholders over complete rows.
 - The proxy keeps stable error codes, Arabic messages and field details. Action wrappers show Arabic success/error toasts for mutations. Database schema drift has a dedicated Arabic error.
 - API migrations `20260930180000_remove_both_stop_type` and `20260930200000_trip_stop_snapshots` were deployed to the configured database; RLS setup/check and Prisma migration status passed. API gate: typecheck, lint, build, OpenAPI generation, and coverage (81 files, 817 tests; lines 88.05%, functions 85.51%, statements 87.12%, branches 74.47%). Dashboard gate: typecheck, lint (0 errors, 2 existing warnings), i18n check, build. Browser click-through with a signed-in account remains unverified.
+
+## Booking notifications and per-trip drivers (2026-10-08)
+
+- Spec 016 supersedes earlier bus-wide assignment and immediate create-bus
+  assignment descriptions above. Trip creation requires a selected driver;
+  assignment/reassignment dialogs select a scheduled trip and send `tripId`.
+  Different scheduled trips on one bus can use different drivers. The API
+  updates the trip and linked bus assignment atomically. Historical attribution
+  is frozen; initial future-trip selection is allowed while another trip runs,
+  while replacement/unassignment is blocked on that running bus.
+- A personal notification bell now supports unread count, cursor paging,
+  read/read-all and delete/delete-all. One shell-level Ably client receives
+  private booking events, shows one Arabic toast, reconciles queries on
+  reconnect, polls while visible and closes on logout. Token delegation stays
+  behind the same-origin authenticated proxy; no Ably server key reaches the
+  client. The operational notifications page remains separate.
+- Passenger bookings persist inbox rows and durable work before transport.
+  Owner/driver mobile installations receive FCM, and active super admins receive
+  Ably. The existing `fcm_token` table keeps its name and registration contract.
+- Passed: typecheck, lint (zero errors, one pre-existing permissions-page
+  warning), i18n check, build, and 9 tests using `pnpm test:notifications`.
+  The realtime harness executes the actual component with controlled SDK,
+  fetch and clock dependencies; browser behavior is still a separate check.
+  API passed 904 tests plus coverage, build, OpenAPI and local RLS gates.
+- Firebase OAuth and Ably delegation/diagnostic publish were verified live.
+  No registered remote FCM installation was available for device display.
+  Remote migration, coordinated deployment, flags and hosted Cron activation
+  remain deployment steps; see `../bus_api/docs/BOOKING_NOTIFICATIONS.md`.
+  Automatic approval review blocked the local browser preview launch and gave
+  no reason, so the authenticated browser walkthrough remains unverified.

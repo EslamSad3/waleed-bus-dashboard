@@ -112,7 +112,7 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     statusCode: result.status,
     data: result.data ?? null,
     ...(result.message ? { message: result.message } : {}),
-  });
+  }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export function GET(req: NextRequest, ctx: Ctx) {

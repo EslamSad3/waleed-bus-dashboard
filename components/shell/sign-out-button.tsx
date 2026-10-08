@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { clearUserCache } from "@/lib/cache/mutations";
 import { useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
+import { closeNotificationConnection } from "@/lib/notification-realtime";
 
 export function SignOutButton() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export function SignOutButton() {
   async function signOut() {
     if (busy) return;
     setBusy(true);
+    closeNotificationConnection();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { BusPicker } from "@/components/drivers/bus-picker";
+import { TripAssignmentPicker } from "@/components/trips/trip-assignment-picker";
 import { assignDriver } from "@/lib/actions/buses";
 import { evictImpact, applyMutationCache } from "@/lib/cache/mutations";
 import { useQueryClient } from "@/lib/queries";
@@ -21,7 +22,7 @@ type AddMode = "existing" | "create";
  * Drivers → Add bus: one action offering "Choose existing" (default) and
  * "Create new". Existing assigns immediately with the driver fixed; creating
  * hands the fixed driver scope to the shared bus-creation flow, which records
- * the bus under the driver's own company and assigns it in the same pass.
+ * the bus under the driver's company. Its driver is selected when creating a trip.
  */
 export function AddBusDialog({
   open,
@@ -40,6 +41,7 @@ export function AddBusDialog({
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<AddMode>("existing");
   const [busId, setBusId] = useState("");
+  const [tripId, setTripId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -52,6 +54,7 @@ export function AddBusDialog({
     setSeenKey(openKey);
     setMode("existing");
     setBusId("");
+    setTripId("");
     setError(null);
     setSaving(false);
   }
@@ -60,6 +63,7 @@ export function AddBusDialog({
     if (saving) return;
     setMode("existing");
     setBusId("");
+    setTripId("");
     setError(null);
     onClose();
   }
@@ -69,10 +73,11 @@ export function AddBusDialog({
     setMode(next);
     // An incompatible pick must never ride along into the other branch.
     setBusId("");
+    setTripId("");
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ busId: requiredField(busId, t("drivers.assignBus.pickRequired")) }));
+  const validation = useFieldValidation(() => ({ tripId: requiredField(tripId), busId: requiredField(busId, t("drivers.assignBus.pickRequired")) }));
 
   async function assignExisting() {
     if (!validation.validate()) return;
@@ -80,7 +85,7 @@ export function AddBusDialog({
 
     setError(null);
     setSaving(true);
-    const result = await assignDriver(driver.ownerId, busId, { driverUserId: driver.userId });
+    const result = await assignDriver(driver.ownerId, busId, { driverUserId: driver.userId, tripId });
     setSaving(false);
     if (!result.ok) {
       setError(validation.failure(result));
@@ -151,8 +156,9 @@ export function AddBusDialog({
         </fieldset>
 
         {mode === "existing" && driver ? (
-          <BusPicker ownerId={driver.ownerId} value={busId} onChange={(id) => { setBusId(id); setError(null); }} />
+          <BusPicker ownerId={driver.ownerId} value={busId} onChange={(id) => { setBusId(id); setTripId(""); setError(null); }} />
         ) : null}
+        {mode === "existing" && driver && busId ? <fieldset disabled={saving}><TripAssignmentPicker ownerId={driver.ownerId} busId={busId} value={tripId} onChange={setTripId} /></fieldset> : null}
         {mode === "existing" ? (
           <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{t("drivers.assignBus.reassignNotice")}</p>
         ) : null}

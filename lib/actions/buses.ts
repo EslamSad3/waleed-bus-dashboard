@@ -136,10 +136,10 @@ export function assignDriver(
   );
 }
 
-export function unassignDriver(ownerId: string, busId: string): Promise<ActionResult<null>> {
+export function unassignDriver(ownerId: string, busId: string, tripId: string): Promise<ActionResult<null>> {
   return notifyResult(
     t("buses.toast.driverUnassigned"),
-    apiSend<null>(`${base(ownerId)}/${busId}/driver`, "DELETE"),
+    apiSend<null>(`${base(ownerId)}/${busId}/driver?tripId=${encodeURIComponent(tripId)}`, "DELETE"),
   );
 }
 

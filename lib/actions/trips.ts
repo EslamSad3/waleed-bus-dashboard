@@ -47,7 +47,7 @@ export type Trip = {
   line?: TripLineRef & { stops?: TripLineStop[] };
   /** Present on the flat index, so a row needs no second request to be labelled. */
   bus?: { id: string; registrationNumber: string; plateNumber?: string | null } | null;
-  driver?: { id: string; name: string | null; nickname?: string | null; picture?: string | null } | null;
+  driver?: { id: string; name: string | null; phoneNumber?: string | null; nickname?: string | null; picture?: string | null } | null;
 };
 
 export type TripPage = CursorPage<Trip>;

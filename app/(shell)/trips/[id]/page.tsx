@@ -1,6 +1,6 @@
 "use client";
 
-import { Select } from "@/components/ui/select";
+import { DriverPicker } from "@/components/buses/driver-picker";
 
 import * as schemas from "@/lib/schemas/p1";
 
@@ -16,12 +16,13 @@ import { AsyncButton } from "@/components/ui/async-button";
 import { Input } from "@/components/ui/input";
 import {
   deleteTrip,
+  fetchTrip,
   findTripAcrossLines,
   updateTrip,
   TRIP_STATUS_AR,
   type Trip,
 } from "@/lib/actions/trips";
-import { assignDriver as assignBusDriver, fetchBus, unassignDriver as unassignBusDriver, type Bus } from "@/lib/actions/buses";
+import { fetchBus, unassignDriver as unassignBusDriver, type Bus } from "@/lib/actions/buses";
 import { apiGet, type ActionResult } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
@@ -171,7 +172,7 @@ export default function TripDetailPage({
 
   const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined }));
 
-  const driverValidation = useFieldValidation(() => schemaErrors(schemas.assignDriverSchema, { driverUserId: driverId }));
+  const driverValidation = useFieldValidation(() => schemaErrors(schemas.assignDriverSchema, { driverUserId: driverId, tripId: id }));
 
   async function save() {
     if (!validation.validate()) return;
@@ -229,38 +230,13 @@ export default function TripDetailPage({
 
   async function unassignTripDriver() {
     if (!ownerId || !lineId || !trip?.driverUserId) return;
-    const result = await updateTrip(ownerId, lineId, id, { driverUserId: null });
+    const result = await unassignBusDriver(ownerId, trip.busId, id);
     done(result.ok, result.ok ? t("trips.detail.toast.driverUnassigned") : result.message);
     if (result.ok) {
-      setTrip(result.data);
+      const refreshed = await fetchTrip(ownerId, lineId, id);
+      if (refreshed.ok) { setTrip(refreshed.data); syncTrip(refreshed, "update", refreshed.data); }
       setDriverId("");
-      syncTrip(result, "update", result.data);
     }
-  }
-
-  /**
-   * Bus-driver assignment for the trip's bus. Unlike the trip snapshot above,
-   * this is LIVE data: it stays editable after departure and drives the
-   * "current bus driver" block, so it is never gated on `tripFrozen`.
-   */
-  async function assignToBus() {
-    if (!driverValidation.validate()) return;
-    if (!ownerId || !trip) return;
-    const result = await assignBusDriver(ownerId, trip.busId, { driverUserId: driverId });
-    if (!result.ok) { setError(driverValidation.failure(result)); return; }
-    done(true, t("buses.toast.driverAssigned"));
-    if (result.ok) {
-      setDriverId("");
-      await refreshDrivers();
-    }
-  }
-
-  async function unassignFromBus() {
-    if (!ownerId || !trip) return;
-    if (!(await confirm({ title: t("buses.detail.unassignConfirm.title"), description: t("buses.detail.unassignConfirm.description"), confirmLabel: t("buses.detail.unassignConfirm.confirmLabel"), destructive: true }))) return;
-    const result = await unassignBusDriver(ownerId, trip.busId);
-    done(result.ok, result.ok ? t("buses.toast.driverUnassigned") : result.message);
-    if (result.ok) await refreshDrivers();
   }
 
   // Rated bookings for this trip, fetched next to the trip itself so the screen
@@ -324,19 +300,11 @@ export default function TripDetailPage({
     },
   ];
 
-  const snapshottedDriverId = trip.driverUserId;
   // Departed (or finished) trips have a historical driver: the API refuses a
   // change, so the controls say so instead of failing on click.
   const tripFrozen = trip.status !== "SCHEDULED";
-  // What the picker actually changes: the bus's ACTIVE assignment. The trip's
-  // own driverUserId is a departure snapshot and never changes afterwards, so
-  // showing only that made a successful assign look broken.
-  const busDriver = drivers.find((driver) =>
-    (driver.assignments ?? []).some(
-      (assignment) => assignment.busId === trip.busId && assignment.status === "ACTIVE",
-    ),
-  );
-
+  // One driver selection controls both this trip and its linked bus assignment.
+  const busDriver = trip.driver ?? drivers.find((driver) => driver.userId === trip.driverUserId);
   return (
     <ValidationScope validation={validation}><div className="dashboard-page">
       <div className="page-heading">
@@ -396,13 +364,10 @@ export default function TripDetailPage({
                   <strong>{t("common.value.unassigned")}</strong>
                 )}
               </span>
-              <label className="mt-3 block text-sm">
-                <span className="mb-1 block font-medium">{t("trips.detail.assignTripDriver")}</span>
-                <ValidationScope validation={driverValidation}><Select fieldName="driverUserId" aria-label={t("trips.detail.assignDriverAria")} value={driverId} onChange={(event) => setDriverId(event.target.value)} className="select-field w-full" disabled={!bus || tripFrozen}>
-                  <option value="">{t("trips.detail.pickDriver")}</option>
-                  {drivers.map((driver) => <option key={driver.userId ?? driver.id} value={driver.userId ?? driver.id}>{driver.name || driver.nickname || driver.phoneNumber || t("trips.detail.unnamedDriver")}</option>)}
-                </Select></ValidationScope>
-              </label>
+              <fieldset disabled={!bus || tripFrozen} className="mt-3 block text-sm">
+                <legend className="mb-1 font-medium">{t("trips.detail.assignTripDriver")}</legend>
+                <ValidationScope validation={driverValidation}><DriverPicker ownerId={ownerId} value={driverId} onChange={setDriverId} /></ValidationScope>
+              </fieldset>
               <div className="mt-2 flex flex-wrap gap-2">
                 <AsyncButton type="button" onClick={assignTripDriver} disabled={tripFrozen}>{t("trips.detail.assignDriverAria")}</AsyncButton>
                 <AsyncButton type="button" variant="secondary" onClick={unassignTripDriver} disabled={!trip.driverUserId || tripFrozen}>
@@ -410,28 +375,7 @@ export default function TripDetailPage({
                 </AsyncButton>
               </div>
               {tripFrozen ? <small className="mt-1 block text-xs text-[#687886]">{t("trips.detail.driverFrozenHint")}</small> : null}
-              <div className="mt-2 flex flex-wrap gap-2 border-t border-[#e4ecf2] pt-2">
-                <AsyncButton type="button" onClick={assignToBus} disabled={!bus}>{t("trips.detail.assignBusDriver")}</AsyncButton>
-                <AsyncButton type="button" variant="secondary" onClick={unassignFromBus} disabled={!bus || !busDriver}>
-                  {t("trips.detail.unassignBusDriver")}
-                </AsyncButton>
-              </div>
-            </div>
-            <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
-              <span className="block text-[#606060]">{t("common.fields.snapshottedDriver")}</span>
-              {snapshottedDriverId ? (
-                <div className="mt-1 flex items-center gap-2">
-                  <DriverAvatar
-                    name={drivers.find((driver) => driver.userId === snapshottedDriverId)?.name}
-                    picture={drivers.find((driver) => driver.userId === snapshottedDriverId)?.picture}
-                    size="sm"
-                  />
-                  <strong>{drivers.find((driver) => driver.userId === snapshottedDriverId)?.name ?? t("common.value.withoutName")}</strong>
-                </div>
-              ) : (
-                <strong>{t("common.value.unassigned")}</strong>
-              )}
-              <small className="mt-1 block text-xs text-[#687886]">{t("trips.detail.driverSnapshotHint")}</small>
+              <p className="mt-2 text-xs text-[#687886]">{t("tripAssignment.notice")}</p>
             </div>
             <div className="flex gap-2">
               <AsyncButton type="button" onClick={save}>{t("common.actions.save")}</AsyncButton>
@@ -447,7 +391,7 @@ export default function TripDetailPage({
                 type="button"
                 variant={status === s ? "default" : "secondary"}
                 onClick={() => move(s)}
-                disabled={status === s}
+                disabled={status === s || (s === "SCHEDULED" && tripFrozen)}
               >
                 {TRIP_STATUS_AR[s]}
               </AsyncButton>

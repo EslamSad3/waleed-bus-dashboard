@@ -305,8 +305,13 @@ export default function NotificationsOpsPage() {
         <CursorList<OpsNotification>
           gridId="notifications-ops"
           initialItems={rows ?? []}
-          initialCursor={null}
-          loadMore={async () => ({ items: [], nextCursor: null })}
+          initialCursor={notifPage?.nextCursor ?? null}
+          scopeKey={`${selectedUserId}/${category}`}
+          loadMore={async (cursor) => {
+            const result = await fetchOpsNotifications({ userId: selectedUserId || undefined, category: category || undefined, cursor });
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
           keyOf={(notification) => notification.id}
           filter={filterPredicate}
           columnDefs={columns}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { DriverPicker } from "@/components/buses/driver-picker";
+import { TripAssignmentPicker } from "@/components/trips/trip-assignment-picker";
 import { assignDriver } from "@/lib/actions/buses";
 import { evictImpact, applyMutationCache } from "@/lib/cache/mutations";
 import { useQueryClient } from "@/lib/queries";
@@ -42,6 +43,7 @@ export function AssignDriverDialog({
 }) {
   const queryClient = useQueryClient();
   const [driverUserId, setDriverUserId] = useState("");
+  const [tripId, setTripId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -53,6 +55,7 @@ export function AssignDriverDialog({
   if (seenKey !== openKey) {
     setSeenKey(openKey);
     setDriverUserId("");
+    setTripId("");
     setError(null);
     setSaving(false);
   }
@@ -60,11 +63,12 @@ export function AssignDriverDialog({
   function requestClose() {
     if (saving) return;
     setDriverUserId("");
+    setTripId("");
     setError(null);
     onClose();
   }
 
-  const validation = useFieldValidation(() => ({ driverUserId: requiredField(driverUserId, t("buses.assign.pickRequired")) }));
+  const validation = useFieldValidation(() => ({ tripId: requiredField(tripId), driverUserId: requiredField(driverUserId, t("buses.assign.pickRequired")) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -72,7 +76,7 @@ export function AssignDriverDialog({
 
     setError(null);
     setSaving(true);
-    const result = await assignDriver(bus.ownerId, bus.id, { driverUserId });
+    const result = await assignDriver(bus.ownerId, bus.id, { driverUserId, tripId });
     setSaving(false);
     if (!result.ok) {
       setError(validation.failure(result));
@@ -102,6 +106,7 @@ export function AssignDriverDialog({
       size="sm"
     >
       <div className="space-y-4">
+        {bus ? <fieldset disabled={saving}><TripAssignmentPicker ownerId={bus.ownerId} busId={bus.id} value={tripId} onChange={setTripId} /></fieldset> : null}
         {bus ? (
           <DriverPicker ownerId={bus.ownerId} value={driverUserId} onChange={(id) => { setDriverUserId(id); setError(null); }} />
         ) : null}

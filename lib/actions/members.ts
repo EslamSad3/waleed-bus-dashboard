@@ -72,6 +72,7 @@ export type DriverRow = {
   stats?: DriverStats;
   assignments?: {
     id: string;
+    tripId: string | null;
     busId: string;
     registrationNumber: string;
     plateNumber?: string | null;
@@ -94,6 +95,7 @@ export type SystemDriverRow = DriverRow & {
 
 export type DriverAssignmentRow = {
   id: string;
+  tripId: string | null;
   busId: string;
   registrationNumber: string;
   plateNumber: string | null;

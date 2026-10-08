@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "i18n:check": "node scripts/check-i18n.mjs",
-    "check:validation": "node scripts/check-field-validation.cjs"
+    "check:validation": "node scripts/check-field-validation.cjs",
+    "test:notifications": "node --experimental-strip-types --test test/notification-realtime.test.mjs test/notification-realtime-provider.test.mjs",
+    "test:trip-edit": "node --experimental-strip-types --test test/trip-edit-time.test.mjs"
   },
   "dependencies": {
     "@ag-grid-community/locale": "^36.2.0",
@@ -17,6 +19,7 @@
     "@radix-ui/react-label": "2.1.15",
     "@radix-ui/react-slot": "1.3.3",
     "@tanstack/react-query": "^5.103.2",
+    "ably": "^2.29.0",
     "ag-grid-community": "^36.2.0",
     "ag-grid-react": "^36.2.0",
     "apexcharts": "^7.6.0",

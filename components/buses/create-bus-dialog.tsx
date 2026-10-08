@@ -13,7 +13,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import {
-  assignDriver,
   createBus,
   discardBusImage,
   fetchBrands,
@@ -26,7 +25,7 @@ import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { createBusSchema } from "@/lib/schemas/p1";
 import { BUS_COLORS } from "@/lib/colors";
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
-import { applyMutationCache, busImpact, evictImpact } from "@/lib/cache/mutations";
+import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { OwnerPicker } from "@/components/owners/owner-picker";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
@@ -50,8 +49,7 @@ export type FixedBusDriver = {
  *
  * كل عربية بتعود لصاحب عربيه واحد: صفحة العربيات بتختار المالك من المنتقي،
  * وfixedDriver يثبّت النطاق على عربيه سواق معيّن (إضافة عربية من صف السواق)
- * ويعيّن العربية الجديدة عليه في نفس الخطوة (إنشاء ثم تعيين برسالة واحدة،
- * مع تنظيف الصورة المرحلية عند فشل الإنشاء وإعادة تعيين فقط عند فشل التعيين).
+ * والسواق بيتحدد عند إنشاء كل رحلة على العربية الجديدة.
  */
 export function CreateBusDialog({
   open,
@@ -76,9 +74,6 @@ export function CreateBusDialog({
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  /** A bus saved while its follow-up assignment failed — retry assigns only, never recreates. */
-  const [createdBus, setCreatedBus] = useState<Bus | null>(null);
-  const [assignError, setAssignError] = useState<string | null>(null);
 
   const fixedKey = fixedDriver ? `${fixedDriver.ownerId}/${fixedDriver.userId}` : "";
   // Reset everything when the dialog opens for another row — in render phase
@@ -92,8 +87,6 @@ export function CreateBusDialog({
     setUploading(false);
     setBusy(false);
     setFormError(null);
-    setCreatedBus(null);
-    setAssignError(null);
   }
 
   const { data: brands, isPending: brandsPending } = useApiQuery<VehicleBrand[]>(qk.brands, () => fetchBrands(true), { enabled: open });
@@ -130,8 +123,6 @@ export function CreateBusDialog({
     validation.reset();
     setImageFile(null);
     setFormError(null);
-    setCreatedBus(null);
-    setAssignError(null);
     form.reset();
   }
 
@@ -212,52 +203,8 @@ export function CreateBusDialog({
       return;
     }
     publishCreatedBus(r.data, ownerLabel);
-    if (!assignTargetUserId) {
-      setBusy(false);
-      resetForm();
-      onClose();
-      return;
-    }
-    const assigned = await assignDriver(ownerId, r.data.id, { driverUserId: assignTargetUserId }, { notify: false });
     setBusy(false);
-    if (!assigned.ok) {
-      // Partial success: the bus and its image are saved and already visible;
-      // only the assignment is retried — never a second bus.
-      setCreatedBus(r.data);
-      setAssignError(t("buses.createDialog.partialSuccess", { reason: assigned.message }));
-      return;
-    }
-    applyMutationCache(
-      queryClient,
-      evictImpact(["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"]),
-      { ok: true, data: null },
-    );
-    toast.success(t("buses.createDialog.createdAndAssigned"));
-    resetForm();
-    onClose();
-  }
-
-  async function retryAssignment() {
-    if (!createdBus || busy) return;
-    setBusy(true);
-    setAssignError(null);
-    const target = fixedDriver?.userId;
-    if (!target) {
-      setBusy(false);
-      return;
-    }
-    const result = await assignDriver(createdBus.ownerId, createdBus.id, { driverUserId: target }, { notify: false });
-    setBusy(false);
-    if (!result.ok) {
-      setAssignError(t("buses.createDialog.partialSuccess", { reason: result.message }));
-      return;
-    }
-    applyMutationCache(
-      queryClient,
-      evictImpact(["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"]),
-      { ok: true, data: null },
-    );
-    toast.success(t("buses.createDialog.createdAndAssigned"));
+    if (assignTargetUserId) toast.success(t("tripAssignment.busCreated"));
     resetForm();
     onClose();
   }
@@ -266,19 +213,6 @@ export function CreateBusDialog({
 
   return (
     <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) requestClose(); }} title={t("buses.createDialog.title")} description={t("buses.createDialog.description")} size="sm">
-      {createdBus ? (
-        <div className="space-y-4">
-          <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{assignError}</p>
-          <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="danger" onClick={requestClose} disabled={busy}>
-              {t("common.actions.cancel")}
-            </Button>
-            <Button type="button" variant="success" onClick={() => void retryAssignment()} loading={busy}>
-              {t("buses.createDialog.retryAssignment")}
-            </Button>
-          </div>
-        </div>
-      ) : (
       <div>
         {fixedDriver ? (
           <p className="mb-4 rounded-xl bg-[#f2f8fb] p-3 text-sm text-[#334454]">
@@ -383,7 +317,6 @@ export function CreateBusDialog({
           </div>
         </form>
       </div>
-      )}
     </Dialog>
   );
 }

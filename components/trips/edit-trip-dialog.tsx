@@ -1,6 +1,7 @@
 "use client";
 
 import { Select } from "@/components/ui/select";
+import { DriverPicker } from "@/components/buses/driver-picker";
 
 import * as schemas from "@/lib/schemas/p1";
 
@@ -17,6 +18,7 @@ import { useFilterStore } from "@/stores/filters";
 import { qk, upsertInCursorList, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
+import { editedDeparture, toLocalDateTimeInput } from "@/lib/trip-edit-time";
 
 type TripRow = Trip & { busName?: string; driverName?: string };
 
@@ -40,6 +42,7 @@ export function EditTripDialog({
   const ownerId = useFilterStore((s) => s.ownerId);
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
+  const [driverUserId, setDriverUserId] = useState("");
   const [status, setStatus] = useState<Trip["status"]>("SCHEDULED");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,9 +51,10 @@ export function EditTripDialog({
   if (trip && trip.id !== loadedFor) {
     setLoadedFor(trip.id);
     // datetime-local محتاج الشكل YYYY-MM-DDTHH:mm من غير الثانية والزون
-    setDepartAt(trip.departAt.slice(0, 16));
+    setDepartAt(toLocalDateTimeInput(trip.departAt));
     setFare(trip.fare ?? "");
     setStatus(trip.status);
+    setDriverUserId(trip.driverUserId ?? "");
     setError(null);
   }
 
@@ -60,7 +64,7 @@ export function EditTripDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined, status }));
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -72,9 +76,10 @@ export function EditTripDialog({
 
     setSaving(true);
     const result = await updateTrip(tripOwnerId, lineId, trip.id, {
-      departAt: new Date(departAt).toISOString(),
+      departAt: editedDeparture(trip.departAt, departAt),
       fare: fare.trim() || undefined,
       status,
+      ...(trip.status === "SCHEDULED" && driverUserId !== trip.driverUserId ? { driverUserId } : {}),
     });
     setSaving(false);
     if (!result.ok) {
@@ -128,10 +133,11 @@ export function EditTripDialog({
             <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} />
           </label>
         </div>
+        {trip?.status === "SCHEDULED" ? <fieldset disabled={saving}><DriverPicker ownerId={trip.ownerId} value={driverUserId} onChange={setDriverUserId} /><p className="text-xs text-[#687886]">{t("tripAssignment.notice")}</p></fieldset> : null}
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.status")}</span>
           <Select fieldName="status" value={status} onChange={(event) => setStatus(event.target.value as Trip["status"])} className="select-field w-full">
-            {(Object.keys(TRIP_STATUS_AR) as Trip["status"][]).map((value) => (
+            {(Object.keys(TRIP_STATUS_AR) as Trip["status"][]).filter((value) => trip?.status === "SCHEDULED" || value !== "SCHEDULED").map((value) => (
               <option key={value} value={value}>{TRIP_STATUS_AR[value]}</option>
             ))}
           </Select>

@@ -3,6 +3,7 @@ import { readSession } from "@/lib/auth";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { BackButton } from "@/components/shell/back-button";
+import { NotificationRealtime } from "@/components/notifications/notification-realtime";
 import { t } from "@/lib/i18n/t";
 
 /**
@@ -17,7 +18,8 @@ export default async function ShellLayout({ children }: { children: React.ReactN
 
   return (
     <div className="page-bg min-h-screen">
-      <Topbar email={session.email} />
+      <NotificationRealtime userId={session.id} />
+      <Topbar email={session.email} userId={session.id} />
       <div className="mx-auto flex max-w-[1480px] gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-5 lg:px-8 lg:py-7">
         {/* Desktop sidebar; on phones the drawer in the topbar takes over */}
         <Sidebar />
