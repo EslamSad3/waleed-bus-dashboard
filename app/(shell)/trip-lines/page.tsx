@@ -1,19 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye, Plus } from "lucide-react";
+import { Eye, Pencil, Plus, Power, Trash2 } from "lucide-react";
 import type { ICellRendererParams } from "ag-grid-community";
 import { Button } from "@/components/ui/button";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { StatusPill } from "@/components/tables/status-column";
 import { RowActions } from "@/components/ui/row-actions";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
-import { fetchSystemTripLinesPage, lineEndpoints, type TripLine } from "@/lib/actions/trip-lines";
+import { EditTripLineDialog } from "@/components/trip-lines/edit-trip-line-dialog";
+import { deleteOwnerTripLine, fetchSystemTripLinesPage, lineEndpoints, updateOwnerTripLine, type TripLine } from "@/lib/actions/trip-lines";
+import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { fetchFleetOwnersPage, fetchOwnerNameMap } from "@/lib/actions/fleet-owners";
-import { qk, useApiQuery } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 
 /**
@@ -21,9 +24,11 @@ import { t } from "@/lib/i18n/t";
  * direction, so its endpoints are the first and last ordered stop — derived
  * here with the same rule the API uses for a trip, never stored on the line.
  * Lines are created here (owner company picked inside the modal) and edited
- * on the line detail page.
+ * in place through the shared line editor.
  */
 export default function TripLinesPage() {
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { data: page, isLoading, error } = useApiQuery(
     qk.systemTripLines,
     () => fetchSystemTripLinesPage(null),
@@ -31,9 +36,23 @@ export default function TripLinesPage() {
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
   const [filters, setFilters] = useState<{ q?: string; ownerId?: string }>({});
   const [createOpen, setCreateOpen] = useState(false);
+  const [lineForEdit, setLineForEdit] = useState<TripLine | null>(null);
 
   const { data: ownerNameEntries } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
   const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
+
+  async function toggleLine(line: TripLine) {
+    const result = await updateOwnerTripLine(line.ownerId, line.id, { isActive: !line.isActive });
+    if (!result.ok) return;
+    applyMutationCache(queryClient, tripLineImpact(line.ownerId, line, "update"), result);
+  }
+
+  async function removeLine(line: TripLine) {
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("tripLines.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
+    const result = await deleteOwnerTripLine(line.ownerId, line.id);
+    if (!result.ok) return;
+    applyMutationCache(queryClient, tripLineImpact(line.ownerId, line, "remove"), result);
+  }
 
   const query = (filters.q ?? "").trim();
   const ownerFilter = filters.ownerId ?? "";
@@ -41,10 +60,12 @@ export default function TripLinesPage() {
     (!ownerFilter || line.ownerId === ownerFilter) &&
     (!query ||
       line.name.includes(query) ||
+      (line.code ?? "").includes(query) ||
       (ownerNames?.get(line.ownerId) ?? "").includes(query));
 
   const columns: CommunityColumnDef<TripLine>[] = [
     { field: "name", headerName: t("tripLines.columns.name"), filter: "agTextColumnFilter" },
+    { field: "code", headerName: t("common.fields.code"), filter: "agTextColumnFilter" },
     {
       field: "isActive",
       headerName: t("common.fields.status"),
@@ -122,12 +143,18 @@ export default function TripLinesPage() {
               </select>
             </div>
           }
+          actionsWidth={400}
           emptyMessage={t("tripLines.empty")}
           renderItem={(line) => (
             <RowActions
               label={t("tripLines.list.rowActions", { lineName: line.name })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/trip-lines/${line.id}?ownerId=${line.ownerId}` },
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setLineForEdit(line) },
+                line.isActive
+                  ? { label: t("common.actions.disable"), icon: Power, tone: "warning", onSelect: () => toggleLine(line) }
+                  : { label: t("common.actions.enable"), icon: Power, tone: "success", onSelect: () => toggleLine(line) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => removeLine(line) },
               ]}
             />
           )}
@@ -137,6 +164,7 @@ export default function TripLinesPage() {
       {/* Unlocked: the owner company is picked inside the modal, so creating
           never requires leaving this page first. */}
       <CreateTripLineDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <EditTripLineDialog line={lineForEdit} onClose={() => setLineForEdit(null)} />
     </div>
   );
 }

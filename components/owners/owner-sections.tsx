@@ -528,6 +528,7 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
 
   const columns: CommunityColumnDef<TripLine>[] = [
     { field: "name", headerName: t("common.fields.tripLine") },
+    { field: "code", headerName: t("common.fields.code") },
     {
       colId: "origin",
       headerName: t("common.fields.origin"),

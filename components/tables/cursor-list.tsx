@@ -15,6 +15,8 @@ type Props<T> = {
   gridId?: string;
   /** Show the pinned actions column (default true). Read-only tables turn it off. */
   withActions?: boolean;
+  /** Actions column width; the default fits three short chips. */
+  actionsWidth?: number;
   initialItems: T[];
   initialCursor: string | null;
   /**
@@ -79,6 +81,7 @@ function isSameFirstPage<T>(previous: T[] | undefined, next: T[], keyOf: (item: 
 export function CursorList<T>({
   gridId = "cursor-list",
   withActions = true,
+  actionsWidth = 330,
   initialItems,
   initialCursor,
   scopeKey = null,
@@ -211,8 +214,8 @@ export function CursorList<T>({
             // Every grid shows at most three short chips (view / edit /
             // delete) — anything else lives on the detail page — so one
             // shared width fits all tables and data columns keep room.
-            width: 330,
-            minWidth: 300,
+            width: actionsWidth,
+            minWidth: Math.min(actionsWidth, 300),
             cellRenderer: (params: ICellRendererParams<T>) => {
               if (!params.data) return null;
               const rendered = renderItem?.(params.data, visible.indexOf(params.data));

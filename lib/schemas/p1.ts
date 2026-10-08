@@ -119,15 +119,20 @@ export const assignDriverSchema = z.object({
   driverUserId: z.uuid(t("validation.driverRequired")),
 });
 
+/** Optional free text: codes and English names accept any characters. */
+const freeText = z.string().nullable().optional();
+
 // ---- Trip lines (owner-scoped; ONE direction, one ordered stop list) ----
 const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
 export const createTripLineSchema = z.object({
   name: name255,
+  code: freeText,
   qrIdentifier: z.string().min(1).max(100).optional(),
   stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
 });
 export const updateTripLineSchema = z.object({
   name: name255.optional(),
+  code: freeText,
   isActive: z.boolean().optional(),
 });
 export const updateLineStopsSchema = z.object({
@@ -254,21 +259,25 @@ export const createMarkazSchema = z.object({
       (value) => z.uuid(t("validation.uuid")).safeParse(value).success,
       t("validation.governorateRequired"),
     ),
+  code: freeText,
   nameAr: name255,
+  nameEn: freeText,
   isActive: z.boolean().optional(),
 });
 export const updateMarkazSchema = z.object({
   governorateId: uuid.optional(),
-  nameAr: name255.optional(), isActive: z.boolean().optional(),
+  code: freeText,
+  nameAr: name255.optional(), nameEn: freeText, isActive: z.boolean().optional(),
 });
 export const createLocalitySchema = z.object({
   markazId: uuid,
   type: z.enum(["CITY", "VILLAGE"], t("validation.localityType")),
   nameAr: name255,
+  nameEn: freeText,
   isActive: z.boolean().optional(),
 });
 export const updateLocalitySchema = z.object({
-  nameAr: name255.optional(), isActive: z.boolean().optional(),
+  nameAr: name255.optional(), nameEn: freeText, isActive: z.boolean().optional(),
 });
 
 // ---- Promotions (platform) ----

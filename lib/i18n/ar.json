@@ -955,8 +955,8 @@
   },
   "localities": {
     "errors": {
-      "nameRequired": "اكتب الاسم.",
-      "hierarchyRequired": "أكمل المحافظة والمركز والاسم."
+      "nameRequired": "اكتب الاسم بالعربي.",
+      "hierarchyRequired": "أكمل المحافظة والمركز والاسم بالعربي."
     },
     "deleteConfirm": {
       "description": "تمسح «{localityNameAr}»؟ لو عليها مواقف مسجلة هتترفض العملية."
@@ -983,7 +983,8 @@
       "pickGovernorate": "اختار المحافظة…",
       "pickMarkaz": "اختار المركز…",
       "pickGovernorateFirst": "اختار محافظة الأول…",
-      "nameAr": "الاسم"
+      "nameAr": "الاسم بالعربي",
+      "nameEn": "الاسم بالإنجليزي (اختياري)"
     },
     "placeholders": {
       "nameAr": "بنها"
@@ -998,14 +999,15 @@
   },
   "markaz": {
     "errors": {
-      "nameRequired": "اكتب الاسم.",
-      "fieldsRequired": "أكمل المحافظة والاسم."
+      "nameRequired": "اكتب الاسم بالعربي.",
+      "fieldsRequired": "أكمل المحافظة والاسم بالعربي."
     },
     "deleteConfirm": {
       "description": "تمسح مركز «{markazNameAr}»؟ لو فيه مدن وقرى تحته هتترفض العملية."
     },
     "columns": {
-      "nameAr": "الاسم"
+      "nameAr": "الاسم (عربي)",
+      "nameEn": "الاسم (إنجليزي)"
     },
     "title": "المراكز",
     "description": "المركز/الحي تحت المحافظة — فلتر المحافظة متاح من القايمة أو من عمود الجدول، أو الاتنين مع بعض.",
@@ -1020,7 +1022,8 @@
     "dialog": {
       "editTitle": "تعديل المركز",
       "createTitle": "مركز جديد",
-      "description": "اختار المحافظة من القايمة واكتب اسم المركز."
+      "description": "عدّل المحافظة والأسماء والكود — الكود والاسم بالإنجليزي اختياريين وتقدر تكتب فيهم أي حروف.",
+      "codeHint": "اختار المحافظة واكتب الاسم بالعربي — الكود والاسم بالإنجليزي اختياريين وتقدر تكتب فيهم أي حروف."
     },
     "toast": {
       "created": "اتضاف المركز بنجاح",
@@ -1442,7 +1445,7 @@
       "actions": {
         "disableLine": "إيقاف الخط",
         "enable": "تفعيل الخط",
-        "editMeta": "تعديل بيانات الخط",
+        "editMeta": "تعديل الخط",
         "deleteLine": "حذف الخط"
       },
       "routeTitle": "مسار الخط",
@@ -1454,9 +1457,12 @@
     "activeBadge": "خط نشط",
     "inactiveBadge": "خط متوقف",
     "metaDialog": {
-      "title": "تعديل بيانات خط الرحلة",
-      "description": "اسم الخط اللي بيظهر للركاب.",
-      "nameLabel": "اسم الخط"
+      "title": "تعديل الخط",
+      "description": "عدّل اسم الخط وكوده وحالته ونقاط التوقف من مكان واحد.",
+      "activeLabel": "الخط نشط",
+      "nameLabel": "اسم الخط",
+      "codeLabel": "كود الخط",
+      "codeFixedHint": "اختياري — تقدر تكتب أي حروف."
     },
     "stopsDialog": {
       "description": "أضف أو احذف أو غيّر الترتيب وحدد ما إذا كانت كل نقطة للركوب أو النزول أو الاثنين.",
@@ -1513,7 +1519,7 @@
     },
     "filters": {
       "searchAria": "بحث في خطوط الرحلات",
-      "searchPlaceholder": "اسم الخط…"
+      "searchPlaceholder": "اسم الخط أو الكود…"
     }
   },
   "trips": {

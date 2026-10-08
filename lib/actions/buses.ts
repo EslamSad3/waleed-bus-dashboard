@@ -48,7 +48,7 @@ export type BusTripRow = {
   departAt: string;
   status: string;
   fare: string;
-  line: { id: string; name: string; origin: string | null; destination: string | null };
+  line: { id: string; name: string; code: string | null; origin: string | null; destination: string | null };
   bus: { id: string; registrationNumber: string; plateNumber: string | null };
   driver: { id: string; name: string | null; nickname?: string | null; picture?: string | null } | null;
   passengerCount: number;
@@ -165,7 +165,7 @@ export type BusRatingRow = {
     id: string;
     departAt: string;
     status: string;
-    line: { id: string; name: string; origin: string | null; destination: string | null };
+    line: { id: string; name: string; code: string | null; origin: string | null; destination: string | null };
     driver: { id: string; name: string | null; nickname?: string | null; picture?: string | null } | null;
   };
   bus: { id: string; registrationNumber: string; plateNumber: string | null };

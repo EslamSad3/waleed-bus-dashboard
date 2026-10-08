@@ -9,6 +9,7 @@ import { apiGet, type ActionResult, type CursorPage } from "@/lib/actions/http";
 export type FeedbackLine = {
   id: string;
   name: string;
+  code: string | null;
   origin: string | null;
   destination: string | null;
 };

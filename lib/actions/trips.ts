@@ -15,6 +15,7 @@ const base = (ownerId: string, lineId: string) =>
 export type TripLineRef = {
   id: string;
   name: string;
+  code: string | null;
   ownerId: string;
   qrIdentifier: string;
   isActive: boolean;

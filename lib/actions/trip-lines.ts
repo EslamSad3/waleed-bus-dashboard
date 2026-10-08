@@ -1,16 +1,20 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
-import { notifyResult } from "@/lib/actions/toast";
+import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import { t } from "@/lib/i18n/t";
 
 export type Governorate = {
   id: string;
+  code: string | null;
   nameAr: string;
+  nameEn: string | null;
 };
 
 export type Markaz = {
   id: string;
   governorateId: string;
+  code: string | null;
   nameAr: string;
+  nameEn: string | null;
   isActive: boolean;
   governorate?: Governorate;
 };
@@ -19,6 +23,7 @@ export type Locality = {
   id: string;
   markazId: string;
   nameAr: string;
+  nameEn: string | null;
   type: "CITY" | "VILLAGE";
   isActive: boolean;
   markaz?: Markaz & { governorate?: Governorate };
@@ -52,6 +57,7 @@ export type TripLine = {
   id: string;
   ownerId: string;
   name: string;
+  code: string | null;
   qrIdentifier: string;
   isActive: boolean;
   stops: TripLineStop[];
@@ -79,9 +85,9 @@ export const fetchMarkaz = (governorateId: string, includeInactive = false) =>
 export const fetchMarkazAll = (includeInactive = true) =>
   apiGet<Markaz[]>(`/api/markaz${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchMarkazById = (id: string) => apiGet<Markaz>(`/api/markaz/${id}`);
-export const createMarkaz = (input: { governorateId: string; nameAr: string; isActive?: boolean }) =>
+export const createMarkaz = (input: { governorateId: string; code?: string | null; nameAr: string; nameEn?: string | null; isActive?: boolean }) =>
   notifyResult(t("markaz.toast.created"), apiSend<Markaz>("/api/markaz", "POST", input));
-export const updateMarkaz = (id: string, input: { governorateId?: string; nameAr?: string; isActive?: boolean }) =>
+export const updateMarkaz = (id: string, input: { code?: string | null; governorateId?: string; nameAr?: string; nameEn?: string | null; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined ? t("markaz.toast.saved") : input.isActive ? t("markaz.toast.activated") : t("markaz.toast.deactivated"),
     apiSend<Markaz>(`/api/markaz/${id}`, "PATCH", input),
@@ -101,9 +107,9 @@ export const fetchLocalitiesAll = (
   return apiGet<Locality[]>(`/api/localities${qs ? `?${qs}` : ""}`);
 };
 export const fetchLocalityById = (id: string) => apiGet<Locality>(`/api/localities/${id}`);
-export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; isActive?: boolean }) =>
+export const createLocality = (input: { markazId: string; type: "CITY" | "VILLAGE"; nameAr: string; nameEn?: string | null; isActive?: boolean }) =>
   notifyResult(t("localities.toast.created"), apiSend<Locality>("/api/localities", "POST", input));
-export const updateLocality = (id: string, input: { nameAr?: string; isActive?: boolean }) =>
+export const updateLocality = (id: string, input: { nameAr?: string; nameEn?: string | null; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined
       ? t("localities.toast.saved")
@@ -145,7 +151,7 @@ export const fetchOwnerTripLine = (ownerId: string, id: string) =>
 
 export const createOwnerTripLine = (
   ownerId: string,
-  input: { name: string; qrIdentifier?: string; stops: LineStopInput[] },
+  input: { name: string; code?: string | null; qrIdentifier?: string; stops: LineStopInput[] },
 ) =>
   notifyResult(
     t("tripLines.toast.created"),
@@ -155,7 +161,8 @@ export const createOwnerTripLine = (
 export const updateOwnerTripLine = (
   ownerId: string,
   id: string,
-  input: { name?: string; isActive?: boolean },
+  input: { name?: string; code?: string | null; isActive?: boolean },
+  opts?: NotifyOptions,
 ) =>
   notifyResult(
     input.isActive === undefined
@@ -164,6 +171,7 @@ export const updateOwnerTripLine = (
         ? t("tripLines.toast.activated")
         : t("tripLines.toast.deactivated"),
     apiSend<TripLine>(`${lineBase(ownerId)}/${id}`, "PATCH", input),
+    opts,
   );
 
 /**
@@ -171,10 +179,11 @@ export const updateOwnerTripLine = (
  * already ran, keep the stops they had (the server freezes them first); every
  * other trip follows the new stops.
  */
-export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[]) =>
+export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[], opts?: NotifyOptions) =>
   notifyResult(
     t("tripLines.toast.stopsSaved"),
     apiSend<TripLine>(`${lineBase(ownerId)}/${lineId}/stops`, "PATCH", { stops }),
+    opts,
   );
 
 export const deleteOwnerTripLine = (ownerId: string, id: string) =>
