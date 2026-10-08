@@ -9,7 +9,7 @@ import { schemaErrors, requiredField } from "@/lib/field-validation";
 import { useFieldValidation } from "@/components/ui/field-validation";
 
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
@@ -48,7 +48,7 @@ import { qk, patchDetail, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, busImpact } from "@/lib/cache/mutations";
 import { DetailPageSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, Trash2, UserPlus } from "lucide-react";
+import { Bus as BusIcon, ImagePlus, Pencil, Phone, Power, Radio, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { t as tr } from "@/lib/i18n/t";
 
 /**
@@ -227,7 +227,7 @@ export default function BusDetailPage({
   }
 
   async function remove() {
-    if (!ownerId || !assignmentTripId) return;
+    if (!ownerId) return;
     if (
       !(await confirm({
         title: tr("common.actions.deleteConfirmTitle"),
@@ -349,28 +349,53 @@ export default function BusDetailPage({
     },
   ];
 
+  const specs: { label: string; value: ReactNode; ltr?: boolean }[] = [
+    { label: tr("common.fields.plateNumber"), value: bus.plateNumber ?? "—", ltr: true },
+    {
+      label: tr("common.fields.color"),
+      value: (
+        <span className="flex items-center gap-2">
+          {bus.color ? <span className="inline-block size-4 shrink-0 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}
+          <span className="truncate">{bus.color ?? "—"}</span>
+        </span>
+      ),
+    },
+    { label: tr("common.fields.brand"), value: bus.brand?.name ?? "—" },
+    { label: tr("common.fields.modelYear"), value: bus.modelYear ?? "—" },
+    { label: tr("common.fields.capacity"), value: `${bus.capacity} ${tr("buses.detail.seatsUnit")}` },
+    { label: tr("common.fields.ac"), value: bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? tr("common.value.yes") : tr("common.value.no") },
+  ];
+  const live = bus.liveDriver ?? null;
+
   return (
     <div className="dashboard-page">
-      <div className="page-heading">
+      <div className="page-heading gap-4">
         <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${bus.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+              {bus.isActive ? tr("common.status.active") : tr("common.status.inactive")}
+            </span>
+            {live ? (
+              <span className="flex items-center gap-1 rounded-full bg-[#eaf6ff] px-3 py-1 text-xs font-extrabold text-[#0369a1]">
+                <Radio className="size-3.5" aria-hidden="true" /> {tr("buses.detail.liveNow")}
+              </span>
+            ) : null}
+          </div>
           <h1 className="page-title break-words">
             {/* The plate is what an operator recognises. */}
             <span dir="ltr">{bus.plateNumber ?? "—"}</span>
           </h1>
           <p className="page-description">{tr("buses.detail.description")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 max-md:w-full">
-          <span
-            className={
-              bus.isActive
-                ? "shrink-0 rounded-full bg-green-100 px-3 py-0.5 text-sm text-green-800"
-                : "shrink-0 rounded-full bg-slate-200 px-3 py-0.5 text-sm text-slate-700"
-            }
-          >
-            {bus.isActive ? tr("common.status.active") : tr("common.status.inactive")}
-          </span>
-          <AsyncButton type="button" variant="destructive" onClick={remove}>
-            <Trash2 className="size-4" /> {tr("buses.detail.deleteBus")}
+        <div className="flex flex-wrap gap-2 max-md:w-full">
+          <Button type="button" className="max-md:flex-1" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" aria-hidden="true" /> {tr("common.actions.edit")}
+          </Button>
+          <AsyncButton type="button" variant="secondary" className="max-md:flex-1" onClick={bus.isActive ? disable : reactivate}>
+            <Power className="size-4" aria-hidden="true" /> {bus.isActive ? tr("common.actions.disable") : tr("buses.detail.actions.reactivate")}
+          </AsyncButton>
+          <AsyncButton type="button" variant="destructive" className="max-md:flex-1" onClick={remove}>
+            <Trash2 className="size-4" aria-hidden="true" /> {tr("buses.detail.deleteBus")}
           </AsyncButton>
         </div>
       </div>
@@ -393,54 +418,97 @@ export default function BusDetailPage({
       {status && <p role="status" className="text-sm text-green-700">{status}</p>}
 
       {tab === "overview" && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="panel-card p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <h2 className="section-title">{tr("buses.detail.sections.details")}</h2>
-                {bus.imageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => setImageOpen(true)}
-                    title={tr("buses.detail.viewImage")}
-                    aria-label={tr("buses.detail.viewImage")}
-                    className="mb-3 block w-full cursor-zoom-in rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059ff8]"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={bus.imageUrl}
-                      alt={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
-                      className="h-32 w-full rounded-xl object-cover"
-                    />
-                  </button>
-                ) : null}
-                <dl className="space-y-2 text-sm">
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.plateNumber")}</dt><dd dir="ltr" className="min-w-0 flex-1 truncate font-semibold">{bus.plateNumber ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.color")}</dt><dd className="flex min-w-0 flex-1 items-center gap-2 font-semibold">{bus.color ? <span className="inline-block size-4 shrink-0 rounded-full border border-[#d8e4ec]" style={{ backgroundColor: busColorHex(bus.color) ?? "#e5e7eb" }} /> : null}<span className="truncate">{bus.color ?? "—"}</span></dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.brand")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.brand?.name ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.ac")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.isAirConditioned == null ? "—" : bus.isAirConditioned ? tr("common.value.yes") : tr("common.value.no")}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.modelYear")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.modelYear ?? "—"}</dd></div>
-                  <div className="flex items-center gap-3"><dt className="shrink-0 text-[#687886]">{tr("common.fields.capacity")}</dt><dd className="min-w-0 flex-1 truncate font-semibold">{bus.capacity} {tr("buses.detail.seatsUnit")}</dd></div>
-                </dl>
+        <div className="grid gap-4 lg:grid-cols-5">
+          <section className="panel-card overflow-hidden lg:col-span-3">
+            {bus.imageUrl ? (
+              <button
+                type="button"
+                onClick={() => setImageOpen(true)}
+                title={tr("buses.detail.viewImage")}
+                aria-label={tr("buses.detail.viewImage")}
+                className="block w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059ff8]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={bus.imageUrl}
+                  alt={tr("buses.detail.imageAlt", { plateNumber: bus.plateNumber ?? "—" })}
+                  className="aspect-[16/7] w-full bg-[#f1f6fa] object-cover"
+                />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="flex aspect-[16/7] w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#eaf6ff] to-[#f8fbfd] text-[#687886] hover:text-[#00134c]"
+              >
+                <BusIcon className="size-10" aria-hidden="true" />
+                <span className="text-sm font-bold">{tr("buses.detail.noImage")}</span>
+                <span className="flex items-center gap-1 text-xs"><ImagePlus className="size-3.5" aria-hidden="true" /> {tr("buses.detail.addImage")}</span>
+              </button>
+            )}
+            <div className="space-y-4 p-5 sm:p-6">
+              <h2 className="section-title">{tr("buses.detail.sections.details")}</h2>
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {specs.map((spec) => (
+                  <div key={spec.label} className="min-w-0 rounded-2xl bg-[#f6fafd] px-4 py-3 ring-1 ring-[#e4eef5]">
+                    <dt className="text-xs text-[#687886]">{spec.label}</dt>
+                    <dd dir={spec.ltr ? "ltr" : undefined} className={`mt-1 truncate font-extrabold text-[#00134c] ${spec.ltr ? "text-end" : ""}`}>{spec.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-[#00134c] px-4 py-3 text-white">
+                  <p className="text-xs text-[#9ed0f0]">{tr("buses.detail.stats.trips")}</p>
+                  <p className="mt-1 text-2xl font-extrabold">{bus.tripCount ?? 0}</p>
+                </div>
+                <div className="rounded-2xl bg-[#fff7e3] px-4 py-3 text-[#00134c] ring-1 ring-[#f6e3b4]">
+                  <p className="text-xs text-[#8a6d1f]">{tr("buses.detail.stats.rating")}</p>
+                  <div className="mt-1.5"><RatingCell value={bus.avgRating ?? null} /></div>
+                </div>
               </div>
-              <Button type="button" variant="secondary" className="max-md:w-full" onClick={() => setEditOpen(true)}>
-                <Pencil className="size-4" aria-hidden="true" /> {tr("common.actions.edit")}
-              </Button>
             </div>
-          </div>
-          <div className="panel-card p-5 sm:p-6">
-            <h2 className="section-title">{tr("buses.detail.sections.statusAndDriver")}</h2>
-            <div className="flex flex-col gap-3">
-<div className="rounded-xl bg-slate-50 px-3 py-3 text-sm"><p>{tr("tripAssignment.notice")}</p><TripAssignmentPicker ownerId={ownerId} busId={id} value={assignmentTripId} onChange={(tripId, trip) => { setAssignmentTripId(tripId); setAssignmentDriverId(trip?.driver?.id ?? ""); }} /></div>
-              <div className="flex flex-wrap gap-2">
-                <AsyncButton type="button" variant="secondary" onClick={disable} disabled={!bus.isActive}>{tr("common.actions.disable")}</AsyncButton>
-                <AsyncButton type="button" variant="secondary" onClick={reactivate} disabled={bus.isActive}>{tr("buses.detail.actions.reactivate")}</AsyncButton>
+          </section>
+
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            <section className="panel-card p-5 sm:p-6">
+              <h2 className="section-title">{tr("buses.detail.sections.liveDriver")}</h2>
+              {live ? (
+                <div className="flex items-center gap-3 rounded-2xl bg-[#eaf6ff] p-4">
+                  <DriverAvatar name={live.name} picture={null} size="lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-lg font-extrabold text-[#00134c]">{live.name || tr("common.value.withoutName")}</p>
+                    {live.phoneNumber ? (
+                      <a href={`tel:${live.phoneNumber}`} dir="ltr" className="mt-0.5 flex w-fit items-center gap-1 text-sm text-[#285778] hover:underline">
+                        <Phone className="size-3.5" aria-hidden="true" /> {live.phoneNumber}
+                      </a>
+                    ) : null}
+                    <Link href={`/trips/${live.tripId}`} className="mt-1 inline-block text-xs font-bold text-[#059ff8] underline">
+                      {tr("buses.detail.liveTripLink")}
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#c9dbe7] px-4 py-6 text-center text-sm text-[#687886]">
+                  {tr("buses.detail.noLiveTrip")}
+                </div>
+              )}
+            </section>
+
+            <section className="panel-card flex flex-1 flex-col gap-4 p-5 sm:p-6">
+              <div>
+                <h2 className="section-title">{tr("buses.detail.sections.assignment")}</h2>
+                <p className="text-xs leading-relaxed text-[#687886]">{tr("tripAssignment.notice")}</p>
               </div>
-              <Button type="button" onClick={() => setAssignOpen(true)}>
-                <UserPlus className="size-4" aria-hidden="true" /> {tr("buses.detail.actions.assignDriver")}
-              </Button>
-              <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!assignmentTripId}>{tr("buses.detail.actions.unassignDriver")}</AsyncButton>
-            </div>
+              <TripAssignmentPicker ownerId={ownerId} busId={id} value={assignmentTripId} onChange={(tripId, trip) => { setAssignmentTripId(tripId); setAssignmentDriverId(trip?.driver?.id ?? ""); }} />
+              <div className="mt-auto grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Button type="button" onClick={() => setAssignOpen(true)}>
+                  <UserPlus className="size-4" aria-hidden="true" /> {tr("buses.detail.actions.assignDriver")}
+                </Button>
+                <AsyncButton type="button" variant="secondary" onClick={unassign} disabled={!assignmentTripId}>
+                  <UserMinus className="size-4" aria-hidden="true" /> {tr("buses.detail.actions.unassignDriver")}
+                </AsyncButton>
+              </div>
+            </section>
           </div>
         </div>
       )}

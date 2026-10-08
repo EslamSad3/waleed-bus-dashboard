@@ -86,6 +86,18 @@ export default function BusesPage() {
     { field: "plateNumber", headerName: t("common.fields.plateNumber"), filter: "agTextColumnFilter", valueFormatter: (params) => params.value ?? "—" },
     { field: "ownerId", headerName: t("common.fields.owner"), valueGetter: (params) => nameOf(params.data?.ownerId ?? ""), filter: "agTextColumnFilter" },
     { field: "capacity", headerName: t("common.fields.capacity"), filter: "agNumberColumnFilter" },
+    {
+      colId: "liveDriver",
+      headerName: t("buses.list.liveDriver"),
+      filter: "agTextColumnFilter",
+      minWidth: 170,
+      valueGetter: (params) => {
+        const live = params.data?.liveDriver;
+        return live ? live.name || live.phoneNumber || "—" : t("buses.list.noLiveTrip");
+      },
+      cellRenderer: (params: { data?: BusRow; value: string }) =>
+        params.data?.liveDriver ? <span className="font-bold text-[#00134c]">{params.value}</span> : <span className="text-[#687886]">{params.value}</span>,
+    },
     { headerName: t("common.fields.avgBusRating"), cellRenderer: (params: { data: BusRow }) => <RatingCell value={params.data.avgRating ?? null} /> },
       { field: "isActive", headerName: t("common.fields.status"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")), cellRenderer: (params: { value: unknown }) => (params.value == null ? null : <StatusPill active={params.value === true} />) },
     { field: "createdAt", headerName: t("common.fields.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—") },
@@ -103,7 +115,7 @@ export default function BusesPage() {
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       {isLoading ? (
-        <TableSkeleton rows={9} columns={6} />
+        <TableSkeleton rows={9} columns={7} />
       ) : (
         <CursorList<BusRow>
           gridId="buses"

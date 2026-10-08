@@ -658,8 +658,19 @@
       "tabTrips": "رحلات العربية",
       "sections": {
         "details": "البيانات",
-        "statusAndDriver": "الحالة والسواق"
+        "statusAndDriver": "الحالة والسواق",
+        "liveDriver": "السواق دلوقتي",
+        "assignment": "سواقين الرحلات الجاية"
       },
+      "stats": {
+        "trips": "عدد الرحلات",
+        "rating": "متوسط التقييم"
+      },
+      "liveNow": "في رحلة دلوقتي",
+      "noLiveTrip": "العربية مش في رحلة دلوقتي.",
+      "liveTripLink": "فتح الرحلة",
+      "noImage": "مفيش صورة للعربية",
+      "addImage": "إضافة صورة",
       "imageAlt": "صورة العربية {plateNumber}",
       "viewImage": "عرض الصورة بالحجم الكامل",
       "seatsUnit": "مقعد",
@@ -713,7 +724,9 @@
       },
       "rowActions": "إجراءات عربية {value}",
       "assignDriver": "تعيين سواق",
-      "unknownOwner": "مالك غير معروف"
+      "unknownOwner": "مالك غير معروف",
+      "liveDriver": "السواق الحالي (رحلة شغالة)",
+      "noLiveTrip": "مفيش رحلة شغالة"
     },
     "title": "العربيات",
     "description": "كل العربيات في بتاعة اصحاب العربيات المسجلة، مع حالتها وبيانات تشغيلها.",

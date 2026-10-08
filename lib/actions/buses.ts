@@ -30,6 +30,8 @@ export type Bus = {
   avgRating?: number | null;
   /** Trips this bus has run, across every line. */
   tripCount?: number;
+  /** Driver of the bus's live (DEPARTED) trip; null when no trip is live. */
+  liveDriver?: { tripId: string; driverId: string; name: string | null; phoneNumber: string | null } | null;
   createdAt: string;
   updatedAt: string;
 };
