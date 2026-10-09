@@ -9,7 +9,7 @@ import { schemaErrors, requiredField } from "@/lib/field-validation";
 import { useFieldValidation } from "@/components/ui/field-validation";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, MapPin, Plus, Route, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, MapPin, Plus, Route, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
@@ -23,6 +23,8 @@ import {
 import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
+import { FareMatrix } from "./fare-matrix";
+import { farePairs, faresPayload } from "@/lib/line-fares";
 
 type StopUse = "BOARDING" | "LANDING";
 type EditableStop = { key: string; stop: Stop; stopType: StopUse };
@@ -56,6 +58,8 @@ export function CreateTripLineDialog({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [stops, setStops] = useState<EditableStop[]>([]);
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const pairs = farePairs(stops.map((s, i) => ({ stationId: s.stop.id, name: s.stop.name, stopType: s.stopType, stopOrder: i + 1 })));
   const [pick, setPick] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -99,11 +103,12 @@ export function CreateTripLineDialog({
     setName("");
     setCode("");
     setStops([]);
+    setPrices({});
     setPick("");
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), code: code.trim(), stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })) }), ownerId: requiredField(ownerId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), code: code.trim(), stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })), fares: faresPayload(pairs, prices) }), ownerId: requiredField(ownerId) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -114,6 +119,7 @@ export function CreateTripLineDialog({
       name: name.trim(),
       code: code.trim() || null,
       stops: stops.map((item) => ({ stopId: item.stop.id, stopType: item.stopType })),
+      fares: faresPayload(pairs, prices),
     });
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
@@ -130,8 +136,14 @@ export function CreateTripLineDialog({
     stops.length >= 2 ? `${stops[0].stop.name} ← ${stops[stops.length - 1].stop.name}` : t("tripLines.incomplete");
 
   return (
-    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("tripLines.createDialog.title")} description={t("tripLines.createDialog.description")} size="lg">
-      <form noValidate className="space-y-6" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={t("tripLines.createDialog.title")} description={t("tripLines.createDialog.description")} size="lg" footer={<div className="flex items-center justify-between gap-3">
+        <p className="hidden text-xs text-slate-500 sm:block">{t("pricing.footerHint")}</p>
+        <div className="flex flex-1 gap-2 sm:flex-none">
+          <Button type="button" variant="secondary" className="flex-1 sm:flex-none" disabled={saving} onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
+          <Button type="submit" form="create-trip-line" className="flex-1 sm:flex-none" loading={saving} disabled={saving}><Check className="size-4" />{saving ? t("common.loading.saving") : t("tripLines.createDialog.submit")}</Button>
+        </div>
+      </div>}>
+      <form id="create-trip-line" noValidate className="space-y-5" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         {lockedOwnerId ? null : (
           <div className="rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] p-4">
             <OwnerPicker ownerId={ownerId} onOwnerChange={setPickedOwnerId} />
@@ -149,9 +161,9 @@ export function CreateTripLineDialog({
           </label>
         </div>
 
-        <section className="overflow-hidden rounded-[1.5rem] border border-[#cfe1ec] bg-gradient-to-br from-[#eaf6ff] via-white to-[#fff7e3]/60">
-          <div className="flex items-center gap-2 border-b border-[#dce8ef] p-4 text-[#00134c] sm:p-5">
-            <Route className="size-5 shrink-0" />
+        <section className="overflow-hidden rounded-[1.5rem] border border-[#cfe1ec] bg-[#f8fbfd]">
+          <div className="flex items-center gap-3 border-b border-[#dce8ef] p-4 text-[#00134c] sm:p-5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e3f1fc]"><Route className="size-5" /></span>
             <div className="min-w-0">
               <h3 className="font-extrabold">{t("tripLines.createDialog.routeTitle")}</h3>
               <p className="mt-0.5 text-xs font-normal text-[#687886]">{t("tripLines.createDialog.routeHint")}</p>
@@ -207,19 +219,14 @@ export function CreateTripLineDialog({
           </div>
         </section>
 
-        <div className="rounded-2xl bg-[#00134c] p-4 text-white">
-          <span className="text-xs text-[#9ed0f0]">{t("tripLines.stopsDialog.summary")}</span>
-          <br />
+        <FareMatrix pairs={pairs} prices={prices} onChange={setPrices} />
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] px-4 py-3 text-[#00134c]">
+          <span className="flex items-center gap-2 text-xs text-[#687886]"><MapPin className="size-4" />{t("tripLines.stopsDialog.summary")}</span>
           <strong>{routeSummary}</strong>
         </div>
 
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
-          <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
-          <Button type="submit" variant="success" loading={saving} disabled={saving}>
-            {saving ? t("common.loading.saving") : t("tripLines.createDialog.submit")}
-          </Button>
-        </div>
+
       </form>
     </Dialog>
   );

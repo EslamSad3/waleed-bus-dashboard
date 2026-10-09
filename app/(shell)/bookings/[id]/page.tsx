@@ -146,15 +146,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     ?? (booking as { totalPrice?: unknown }).totalPrice
     ?? (booking as { amount?: unknown }).amount
     ?? null;
-  const fareNum = Number(booking.trip?.fare) || 0;
-  const seatsNum = Number(booking.seats) || 0;
-  // totalAmount is nullable backend-side (booking can exist before its fare is
-  // set) — fall back to seats × fare so the card never renders a bare "EGP".
-  const computedFallback = fareNum > 0 && seatsNum > 0 ? fareNum * seatsNum : 0;
-  const total = Number(rawTotalAmount) || computedFallback;
+  const hasTotal = rawTotalAmount !== null && rawTotalAmount !== "" && Number.isFinite(Number(rawTotalAmount));
+  const total = hasTotal ? Number(rawTotalAmount) : 0;
   const refunded = Number(booking.refundedAmount) || 0;
   const remaining = Math.max(0, total - refunded);
-  const displayTotal = total.toFixed(2);
+  const displayTotal = hasTotal ? total.toFixed(2) : t("pricing.notSet");
   const displayRefunded = refunded.toFixed(2);
 
   const isCancelled = booking.status === "CANCELLED";
@@ -430,7 +426,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.seatPriceTotal")}</span>
               <span className="font-bold text-[#00134c]" dir="ltr">
-                {booking.trip.fare} {t("bookings.detail.perSeatUnit")}
+                {booking.unitFareSnapshot ?? t("pricing.notSet")} {booking.unitFareSnapshot ? t("bookings.detail.perSeatUnit") : ""}
               </span>
             </div>
 

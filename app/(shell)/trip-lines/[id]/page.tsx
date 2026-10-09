@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { OwnerPicker } from "@/components/owners/owner-picker";
+import { LineFaresEditor } from "@/components/trip-lines/line-fares-editor";
 import { EditTripLineDialog } from "@/components/trip-lines/edit-trip-line-dialog";
 import {
   deleteOwnerTripLine,
   fetchOwnerTripLine,
+  fetchLineFares,
   lineEndpoints,
   updateOwnerTripLine,
   type TripLine,
@@ -53,6 +55,8 @@ export default function TripLineDetailPage({
     () => fetchOwnerTripLine(ownerId, id),
     { enabled: Boolean(ownerId) },
   );
+
+  const { data: pricing, error: pricingError, refetch: refetchPricing } = useApiQuery(["line-fares", ownerId, id], () => fetchLineFares(ownerId, id), { enabled: Boolean(ownerId) });
 
   useEffect(() => {
     if (!ownerId) return;
@@ -159,6 +163,10 @@ export default function TripLineDetailPage({
         </div>
       </section>
 
+      {pricing ? <div className="space-y-2">
+        <p className={`text-sm font-semibold ${pricing.complete ? "text-emerald-700" : "text-amber-700"}`}>{pricing.complete ? t("pricing.ready") : t("pricing.incomplete")}</p>
+        <LineFaresEditor key={`${ownerId}:${id}`} ownerId={ownerId} lineId={id} table={pricing} onReload={refetchPricing} />
+      </div> : <p role={pricingError ? "alert" : "status"}>{pricingError?.message ?? t("pricing.loading")}</p>}
       <section className="grid gap-3 rounded-2xl bg-[#00134c] p-4 text-white sm:grid-cols-2">
         <p>
           <span className="text-xs text-[#9ed0f0]">{t("common.fields.origin")}</span>

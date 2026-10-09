@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ type DialogProps = {
   title: string;
   description?: string;
   children: ReactNode;
+  footer?: ReactNode;
   size?: "sm" | "md" | "lg";
   closeLabel?: string;
 };
@@ -21,18 +22,26 @@ type DialogProps = {
 const focusableSelector =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// Portals need `document`, which the server render lacks. Reading "mounted"
+// through useSyncExternalStore makes the first client render match the server
+// (nothing), then renders the portal — so a dialog that starts open hydrates cleanly.
+const noopSubscribe = () => () => {};
+const useMounted = () => useSyncExternalStore(noopSubscribe, () => true, () => false);
+
 export function Dialog({
   open,
   onOpenChange,
   title,
   description,
   children,
+  footer,
   validation,
   size = "md",
   closeLabel = t("ui.dialog.closeLabel"),
 }: DialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const mounted = useMounted();
   const panelRef = useRef<HTMLDivElement>(null);
   const validationRef = useRef(validation);
   // onOpenChange arrives as a fresh inline arrow on every parent render.
@@ -52,6 +61,7 @@ export function Dialog({
       validationRef.current?.reset();
       return;
     }
+    if (!mounted) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -90,9 +100,9 @@ export function Dialog({
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
-  }, [open]);
+  }, [open, mounted]);
 
-  if (!open || typeof document === "undefined") return null;
+  if (!open || !mounted) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-6">
@@ -110,7 +120,7 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-white/80 bg-white shadow-[0_28px_90px_rgba(14,11,44,.28)] outline-none motion-safe:animate-[dialog-in_200ms_ease-out] sm:rounded-[2rem]",
+          "relative flex max-h-[90dvh] w-full flex-col overflow-clip rounded-t-[2rem] border border-white/80 bg-white shadow-[0_28px_90px_rgba(14,11,44,.28)] outline-none motion-safe:animate-[dialog-in_200ms_ease-out] sm:rounded-[2rem]",
           size === "sm" && "sm:max-w-lg",
           size === "md" && "sm:max-w-2xl",
           size === "lg" && "sm:max-w-4xl",
@@ -130,7 +140,8 @@ export function Dialog({
             <X className="size-5" aria-hidden="true" />
           </button>
         </header>
-        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"><ValidationScope validation={validation}>{children}</ValidationScope></div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"><ValidationScope validation={validation}>{children}</ValidationScope></div>
+        {footer ? <footer className="shrink-0 border-t border-[#e4ecf2] bg-white px-5 py-4 sm:px-7"><ValidationScope validation={validation}>{footer}</ValidationScope></footer> : null}
       </div>
     </div>,
     document.body,

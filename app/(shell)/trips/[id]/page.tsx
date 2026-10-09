@@ -170,7 +170,7 @@ export default function TripDetailPage({
     }
   }
 
-  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined }));
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: tripData?.pricingEnabled ? undefined : fare.trim() || undefined }));
 
   const driverValidation = useFieldValidation(() => schemaErrors(schemas.assignDriverSchema, { driverUserId: driverId, tripId: id }));
 
@@ -179,7 +179,7 @@ export default function TripDetailPage({
     if (!ownerId || !lineId) return;
     const r = await updateTrip(ownerId, lineId, id, {
       departAt: departAt ? new Date(departAt).toISOString() : undefined,
-      fare: fare.trim() || undefined,
+      fare: tripData?.pricingEnabled ? undefined : fare.trim() || undefined,
     });
     if (!r.ok) { setError(validation.failure(r)); return; }
     done(true, t("common.toast.saved"), r.data);
@@ -339,10 +339,10 @@ export default function TripDetailPage({
                 <span className="mb-1 block font-medium">{t("trips.detail.departureAt")}</span>
                 <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} />
               </label>
-              <label className="block text-sm">
+              {tripData?.pricingEnabled ? <p className="self-center text-sm text-slate-600">{t("pricing.managedOnLine")}</p> : <label className="block text-sm">
                 <span className="mb-1 block font-medium">{t("common.fields.fare")}</span>
                 <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(e) => setFare(e.target.value)} />
-              </label>
+              </label>}
             </div>
             <p className="text-xs text-[#687886]">{t("trips.detail.routeFromLineHint", { lineName: trip.line?.name ?? "—" })}</p>
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">

@@ -11,6 +11,11 @@ import { t } from "@/lib/i18n/t";
  * a generic, status-appropriate Arabic line.
  */
 export const AR_ERROR_MAP: Record<string, string> = {
+  PRICING_INCOMPLETE: t("errors.PRICING_INCOMPLETE"),
+  PRICING_REVISION_CONFLICT: t("errors.PRICING_REVISION_CONFLICT"),
+  PRICE_CHANGED: t("errors.PRICE_CHANGED"),
+  PRICE_CONFIRMATION_REQUIRED: t("errors.PRICE_CONFIRMATION_REQUIRED"),
+  TRIP_FARE_MANAGED_ON_LINE: t("errors.TRIP_FARE_MANAGED_ON_LINE"),
 
   // --- identity and access ---
   AUTHENTICATION_FAILED: t("errors.AUTHENTICATION_FAILED"),

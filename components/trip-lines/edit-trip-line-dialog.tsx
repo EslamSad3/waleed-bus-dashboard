@@ -15,12 +15,18 @@ import {
   fetchStops,
   updateOwnerTripLine,
   updateOwnerTripLineStops,
+  fetchLineFares,
+  fetchOwnerTripLine,
+  saveLineFares,
+  type FareTable,
   type Stop,
   type TripLine,
 } from "@/lib/actions/trip-lines";
 import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
+import { FareMatrix } from "./fare-matrix";
+import { fareKey, farePairs, faresPayload } from "@/lib/line-fares";
 
 type StopUse = "BOARDING" | "LANDING";
 // Row identity is the line-stop row id (client key for newly added rows) — NOT
@@ -36,17 +42,8 @@ function stopsPayload(items: EditableStop[]) {
 }
 
 function editableStops(line: TripLine): EditableStop[] {
-  const seen = new Set<string>();
   return [...line.stops]
     .sort((a, b) => a.stopOrder - b.stopOrder)
-    .filter((item) => {
-      // Legacy lines may carry the same station twice (old BOARDING + LANDING
-      // pair). A station is allowed once per line now, so only the first
-      // occurrence survives into the editor — saving persists the deduped list.
-      if (seen.has(item.station.id)) return false;
-      seen.add(item.station.id);
-      return true;
-    })
     .map((item) => ({
       key: item.id,
       stop: item.station,
@@ -71,12 +68,21 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
   const [name, setName] = useState(line.name);
   const [code, setCode] = useState(line.code ?? "");
   const [isActive, setIsActive] = useState(line.isActive);
-  const [initialStops] = useState(() => {
+  const [initialStops, setInitialStops] = useState(() => {
     const initial = editableStops(line);
     // A legacy line whose duplicates were dropped always counts as changed.
     return initial.length === line.stops.length ? initial : [];
   });
   const [editStops, setEditStops] = useState<EditableStop[]>(() => editableStops(line));
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [loadedTable, setLoadedTable] = useState<FareTable | null>(null);
+  const [originalPrices, setOriginalPrices] = useState<Record<string, string>>({});
+  const { data: fareTable, isLoading: faresLoading, error: faresError } = useApiQuery<FareTable>(["line-fares", line.ownerId, line.id], () => fetchLineFares(line.ownerId, line.id));
+  if (fareTable && !loadedTable) {
+    const values = Object.fromEntries(fareTable.fares.map(f => [fareKey(f), f.unitFare]));
+    setLoadedTable(fareTable); setPrices(values); setOriginalPrices(values);
+  }
+  const pairs = farePairs(editStops.map((s, i) => ({ stationId: s.stop.id, name: s.stop.name, stopType: s.stopType, stopOrder: i + 1 })), loadedTable?.pairs.filter(p => p.scope === "FROZEN_TRIP" || p.protectedForStopEdits) ?? []);
   const [pick, setPick] = useState("");
   const [error, setError] = useState<string | null>(null);
   const keySeq = useRef(0);
@@ -90,7 +96,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
 
   const validation = useFieldValidation(() => ({
     ...schemaErrors(schemas.updateTripLineSchema, { name: name.trim(), code: code.trim() || null, isActive }),
-    ...schemaErrors(schemas.updateLineStopsSchema, { stops: stopsPayload(editStops) }),
+    ...schemaErrors(schemas.updateLineStopsSchema, { stops: stopsPayload(editStops), fares: faresPayload(pairs, prices), expectedPricingRevision: loadedTable?.pricingRevision }),
   }));
 
   function addStop() {
@@ -121,22 +127,30 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
    * and reports the outcome with a single toast.
    */
   async function saveAll() {
+    if (!loadedTable) return setError(t("pricing.loadFailed"));
     if (!validation.validate()) return;
     const nextCode = code.trim() || null;
     const metaChanged = name.trim() !== line.name || nextCode !== (line.code ?? null) || isActive !== line.isActive;
     const stopsChanged = JSON.stringify(stopsPayload(editStops)) !== JSON.stringify(stopsPayload(initialStops));
-    if (!metaChanged && !stopsChanged) return onClose();
+    const pricesChanged = pairs.some(p => prices[fareKey(p)] !== originalPrices[fareKey(p)]);
+    if (!metaChanged && !stopsChanged && !pricesChanged) return onClose();
 
-    if (metaChanged) {
-      const result = await updateOwnerTripLine(line.ownerId, line.id, { name: name.trim(), code: nextCode, isActive }, { notify: false });
+    if (stopsChanged || pricesChanged) {
+      const pricing = { fares: faresPayload(pairs, prices), expectedPricingRevision: loadedTable.pricingRevision };
+      const result = stopsChanged
+        ? await updateOwnerTripLineStops(line.ownerId, line.id, stopsPayload(editStops), { notify: false }, pricing)
+        : await saveLineFares(line.ownerId, line.id, pricing, { notify: false });
       if (!result.ok) {
         toast.error(t("common.error.somethingWentWrong"), { description: result.message, duration: 6000 });
         return setError(validation.failure(result));
       }
-      applyMutationCache(queryClient, tripLineImpact(line.ownerId, line, "update"), result);
+      queryClient.invalidateQueries();
+      setLoadedTable({ ...loadedTable, pricingRevision: loadedTable.pricingRevision + 1 });
+      setOriginalPrices(prices);
     }
-    if (stopsChanged) {
-      const result = await updateOwnerTripLineStops(line.ownerId, line.id, stopsPayload(editStops), { notify: false });
+
+    if (metaChanged) {
+      const result = await updateOwnerTripLine(line.ownerId, line.id, { name: name.trim(), code: nextCode, isActive }, { notify: false });
       if (!result.ok) {
         toast.error(t("common.error.somethingWentWrong"), { description: result.message, duration: 6000 });
         return setError(validation.failure(result));
@@ -219,11 +233,21 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
           <br />
           <strong>{editStops.length >= 2 ? `${editStops[0].stop.name} ← ${editStops[editStops.length - 1].stop.name}` : t("tripLines.incomplete")}</strong>
         </div>
+        {faresLoading ? <p role="status">{t("pricing.loading")}</p> : loadedTable ? <FareMatrix pairs={pairs} prices={prices} onChange={setPrices} /> : <p role="alert">{faresError?.message ?? t("pricing.loadFailed")}</p>}
+        <AsyncButton variant="secondary" onClick={async () => {
+          const [result, latestLine] = await Promise.all([fetchLineFares(line.ownerId, line.id), fetchOwnerTripLine(line.ownerId, line.id)]);
+          if (!latestLine.ok) return setError(latestLine.message);
+          const latestStops = editableStops(latestLine.data);
+          setInitialStops(latestStops); setEditStops(latestStops); setName(latestLine.data.name); setCode(latestLine.data.code ?? ""); setIsActive(latestLine.data.isActive);
+          if (!result.ok) return setError(result.message);
+          const values = Object.fromEntries(result.data.fares.map(f => [fareKey(f), f.unitFare]));
+          setLoadedTable(result.data); setOriginalPrices(values); setPrices(values); setError(null);
+        }}>{t("pricing.refresh")}</AsyncButton>
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <p className="text-xs text-[#687886]">{t("tripLines.stopsDialog.saveHint")}</p>
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
           <Button variant="secondary" onClick={onClose}>{t("common.actions.cancel")}</Button>
-          <AsyncButton onClick={saveAll}>{t("common.actions.saveChanges")}</AsyncButton>
+          <AsyncButton onClick={saveAll} disabled={!loadedTable || faresLoading}>{t("common.actions.saveChanges")}</AsyncButton>
         </div>
       </div>
     </Dialog>

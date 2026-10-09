@@ -77,7 +77,11 @@ export type AdminBookingListItem = {
   discountAmount?: string | null;
   seats: number;
   status: BookingStatus;
-  totalAmount: string;
+  unitFareSnapshot?: string | null;
+  subtotalAmount?: string | null;
+  pricedSeatCount?: number | null;
+  pricingRevision?: number | null;
+  totalAmount: string | null;
   refundedAmount: string;
   paymentMethod: string;
   paymentStatus: PaymentStatus;
@@ -163,7 +167,11 @@ export type AdminBookingDetail = {
   landingStationId?: string | null;
   boardingStationName?: string | null;
   landingStationName?: string | null;
-  totalAmount: string;
+  unitFareSnapshot?: string | null;
+  subtotalAmount?: string | null;
+  pricedSeatCount?: number | null;
+  pricingRevision?: number | null;
+  totalAmount: string | null;
   refundedAmount: string;
   paymentMethod: string;
   paymentStatus: PaymentStatus;
@@ -275,7 +283,11 @@ export function refundBookingPayment(
   ActionResult<{
     bookingId: string;
     paymentStatus: string;
-    totalAmount: string;
+    unitFareSnapshot?: string | null;
+  subtotalAmount?: string | null;
+  pricedSeatCount?: number | null;
+  pricingRevision?: number | null;
+  totalAmount: string | null;
     refundedAmount: string;
     remainingRefundableBalance: string;
     refundReference: string;

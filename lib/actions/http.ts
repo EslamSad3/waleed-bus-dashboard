@@ -6,7 +6,7 @@ export const RECORD_MUTATED_EVENT = "dashboard:record-mutated";
 function announceRecordMutation(path: string): void {
   // Upload staging, login and validation do not change dashboard records.
   if (typeof window === "undefined" || /\/api\/(auth|uploads)(\/|$)/.test(path) ||
-      path.includes("/uploads/") || path.endsWith("/promotions/validate")) return;
+      path.includes("/uploads/") || path.endsWith("/promotions/validate") || path.endsWith("/quote")) return;
   window.dispatchEvent(new Event(RECORD_MUTATED_EVENT));
 }
 

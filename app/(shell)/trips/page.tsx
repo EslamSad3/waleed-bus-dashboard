@@ -136,7 +136,7 @@ export default function TripsPage() {
     { field: "driverName", headerName: t("common.fields.snapshottedDriver"), filter: "agTextColumnFilter" },
     { field: "departAt", headerName: t("trips.columns.departAt"), filter: "agDateColumnFilter", valueFormatter: (params) => (params.value ? new Date(params.value).toLocaleString("ar-EG") : "—") },
     { field: "status", headerName: t("common.fields.status"), filter: "agTextColumnFilter", valueFormatter: (params) => TRIP_STATUS_AR[params.value as Trip["status"]] ?? params.value },
-    { field: "fare", headerName: t("common.fields.fare") },
+    { field: "fare", headerName: t("common.fields.fare"), valueFormatter: (p) => p.data?.pricingEnabled ? p.data.pricingComplete ? t("pricing.from", { amount: p.data.fareMin ?? p.value }) : t("pricing.notSet") : p.value },
   ];
 
   function selectOwner(nextOwnerId: string) {
