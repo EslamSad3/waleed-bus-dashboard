@@ -1,6 +1,7 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult, type NotifyOptions } from "@/lib/actions/toast";
 import { t } from "@/lib/i18n/t";
+import type { FareInput, FarePair } from "@/lib/line-fares";
 
 export type Governorate = {
   id: string;
@@ -54,6 +55,9 @@ export type TripLineStop = {
 
 /** An owner trip line IS one direction; a return journey is a separate line. */
 export type TripLine = {
+  pricingRevision?: number;
+  pricingEnabled?: boolean;
+  fares?: FareInput[];
   id: string;
   ownerId: string;
   name: string;
@@ -151,7 +155,7 @@ export const fetchOwnerTripLine = (ownerId: string, id: string) =>
 
 export const createOwnerTripLine = (
   ownerId: string,
-  input: { name: string; code?: string | null; qrIdentifier?: string; stops: LineStopInput[] },
+  input: { name: string; code?: string | null; qrIdentifier?: string; stops: LineStopInput[]; fares?: FareInput[] },
 ) =>
   notifyResult(
     t("tripLines.toast.created"),
@@ -179,10 +183,10 @@ export const updateOwnerTripLine = (
  * already ran, keep the stops they had (the server freezes them first); every
  * other trip follows the new stops.
  */
-export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[], opts?: NotifyOptions) =>
+export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[], opts?: NotifyOptions, pricing?: { fares: FareInput[]; expectedPricingRevision: number }) =>
   notifyResult(
     t("tripLines.toast.stopsSaved"),
-    apiSend<TripLine>(`${lineBase(ownerId)}/${lineId}/stops`, "PATCH", { stops }),
+    apiSend<TripLine>(`${lineBase(ownerId)}/${lineId}/stops`, "PATCH", { stops, ...pricing }),
     opts,
   );
 
@@ -196,3 +200,7 @@ export const fetchSystemTripLinesPage = (cursor: string | null) => {
 };
 
 export type { ActionResult };
+
+export type FareTable = { lineId: string; lastUpdated?: string | null; pricingRevision: number; pricingEnabled: boolean; complete: boolean; pairs: (FarePair & { unitFare: string | null; protectedForStopEdits?: boolean })[]; fares: FareInput[] };
+export const fetchLineFares = (ownerId: string, lineId: string) => apiGet<FareTable>(`${lineBase(ownerId)}/${lineId}/fares`);
+export const saveLineFares = (ownerId: string, lineId: string, input: { expectedPricingRevision: number; fares: FareInput[] }, opts?: NotifyOptions) => notifyResult(t("tripLines.toast.saved"), apiSend<FareTable>(`${lineBase(ownerId)}/${lineId}/fares`, "PUT", input), opts);

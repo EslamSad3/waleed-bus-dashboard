@@ -95,7 +95,7 @@ export function CreateTripDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: fare.trim() || undefined }), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined }), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -108,7 +108,7 @@ export function CreateTripDialog({
       busId,
       driverUserId,
       departAt: new Date(departAt).toISOString(),
-      fare: fare.trim() || undefined,
+      fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined,
     });
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
@@ -202,10 +202,10 @@ export function CreateTripDialog({
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.departAt")}</span>
             <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
           </label>
-          <label className="block text-sm">
+          {selectedLine?.pricingEnabled ? <p className="self-center text-sm text-slate-600">{t("pricing.managedOnLine")}</p> : <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fare")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
             <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} placeholder="50.00" />
-          </label>
+          </label>}
         </div>
 
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}

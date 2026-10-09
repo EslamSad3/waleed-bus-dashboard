@@ -64,7 +64,7 @@ export function EditTripDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}) }));
+  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -77,7 +77,7 @@ export function EditTripDialog({
     setSaving(true);
     const result = await updateTrip(tripOwnerId, lineId, trip.id, {
       departAt: editedDeparture(trip.departAt, departAt),
-      fare: fare.trim() || undefined,
+      fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined,
       status,
       ...(trip.status === "SCHEDULED" && driverUserId !== trip.driverUserId ? { driverUserId } : {}),
     });
@@ -128,10 +128,10 @@ export function EditTripDialog({
             <span className="mb-1.5 block font-bold text-[#334454]">{t("trips.columns.departAt")}</span>
             <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
           </label>
-          <label className="block text-sm">
+          {trip?.pricingEnabled ? <p className="self-center text-sm text-slate-600">{t("pricing.managedOnLine")}</p> : <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fare")}</span>
             <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} />
-          </label>
+          </label>}
         </div>
         {trip?.status === "SCHEDULED" ? <fieldset disabled={saving}><DriverPicker ownerId={trip.ownerId} value={driverUserId} onChange={setDriverUserId} /><p className="text-xs text-[#687886]">{t("tripAssignment.notice")}</p></fieldset> : null}
         <label className="block text-sm">

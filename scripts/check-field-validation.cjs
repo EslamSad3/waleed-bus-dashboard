@@ -46,8 +46,8 @@ fields(schemas.updateDriverSchema, { status: 'SUSPENDED' }, []);
 fields(schemas.updateDriverSchema, { status: 'ACTIVE' }, []);
 fields(schemas.createBusSchema, { plateNumber: '', color: '', capacity: 0, modelYear: 1979, imageUrl: '' }, ['plateNumber', 'color', 'capacity', 'modelYear', 'imageUrl']);
 fields(schemas.createBusSchema, { plateNumber: 'ABC', color: 'WHITE', capacity: 40, modelYear: 2025, imageUrl: 'https://storage.example/bus.jpg', brandId: null }, []);
-fields(schemas.createTripSchema, { busId: '', departAt: 'bad', fare: '-5' }, ['busId', 'departAt', 'fare']);
-fields(schemas.createTripSchema, { busId: id, departAt: '2026-10-05T09:00:00Z', fare: '10.50' }, []);
+fields(schemas.createTripSchema, { busId: '', driverUserId: id, departAt: 'bad', fare: '-5' }, ['busId', 'departAt', 'fare']);
+fields(schemas.createTripSchema, { busId: id, driverUserId: id, departAt: '2026-10-05T09:00:00Z', fare: '10.50' }, []);
 fields(schemas.createTripLineSchema, { name: 'Line', code: 'L1', stops: [{ stopId: id, stopType: 'BAD' }] }, ['stops', 'stops.0.stopType']);
 fields(admin.createUserSchema, { email: 'bad', password: 'x' }, ['email', 'password']);
 fields(admin.updateUserSchema, { name: 'New', password: undefined, maxBookingSeats: null }, []);
@@ -80,4 +80,9 @@ assert.deepEqual(coordinatesFromMapLink('https://www.google.com/maps/@20,21,10z/
 for (const [method, route] of [['POST', '/users'], ['PATCH', `/users/${id}`], ['PUT', `/users/${id}/roles`], ['PUT', `/roles/${id}/permissions`], ['POST', '/platform/notifications'], ['PUT', '/platform/config/customer-service']]) {
   assert.ok(schemas.findRegistryEntry(method, route)); checks++;
 }
+fields(schemas.saveLineFaresSchema, { expectedPricingRevision: 0, fares: [{ boardingStationId: id, landingStationId: id, unitFare: '0' }] }, ['fares.0.unitFare']);
+fields(schemas.saveLineFaresSchema, { expectedPricingRevision: 0, fares: [{ boardingStationId: id, landingStationId: id, unitFare: '10.001' }] }, ['fares.0.unitFare']);
+fields(schemas.quoteSchema, { boardingStationId: id, landingStationId: id, seatCount: 0 }, ['seatCount']);
+assert.ok(schemas.findRegistryEntry('POST', `/trips/${id}/quote`)); checks++;
+assert.ok(schemas.findRegistryEntry('PUT', `/fleet-owners/${id}/trip-lines/${id}/fares`)); checks++;
 console.log(`${checks} field-validation regression checks passed.`);

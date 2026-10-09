@@ -40,6 +40,14 @@ export type Trip = {
   origin: string | null;
   destination: string | null;
   departAt: string;
+  pricingEnabled?: boolean;
+  pricingComplete?: boolean;
+  pricingRevision?: number;
+  fareMin?: string | null;
+  fareMax?: string | null;
+  fareType?: "FROM" | "EXACT";
+  stopSnapshot?: TripLineStop[];
+  fares?: { boardingStationId: string; landingStationId: string; unitFare: string | null }[];
   fare: string;
   status: "SCHEDULED" | "DEPARTED" | "COMPLETED" | "CANCELLED";
   createdAt: string;
@@ -136,3 +144,17 @@ export function fetchSystemTripsPage(cursor: string | null, ownerId?: string): P
 
 /** One row of the owner trip index: a Trip plus the line it runs. */
 export type OwnerTripRow = Trip;
+
+export type TripPricingDetails = {
+  id: string; pricingEnabled: boolean; pricingComplete: boolean;
+  line: { stations: { id: string; name: string; stopOrder: number; stopType: string }[] };
+  fares: { boardingStationId: string; landingStationId: string; unitFare: string | null }[];
+};
+export type TripQuote = {
+  tripId: string; boardingStationId: string; landingStationId: string;
+  unitFare: string; seatCount: number; subtotalAmount: string; discountAmount: string;
+  totalAmount: string; pricingRevision: number; pricingEnabled: boolean;
+};
+export const fetchTripPricing = (id: string) => apiGet<TripPricingDetails>(`/api/trips/${id}`);
+export const quoteTrip = (id: string, input: { boardingStationId: string; landingStationId: string; seatCount: number }) =>
+  apiSend<TripQuote>(`/api/trips/${id}/quote`, "POST", input);

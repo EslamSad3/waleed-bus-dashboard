@@ -43,6 +43,10 @@ const datetime = z
   .string(t("validation.date"))
   .refine((s) => !Number.isNaN(Date.parse(s)), t("validation.date"));
 const fare = z.string(t("validation.fare")).trim().regex(/^\d+(?:\.\d{1,2})?$/, t("validation.fare"));
+const priceAmount = z.string(t("pricing.amountError")).trim().regex(/^\d{1,8}(?:\.\d{1,2})?$/, t("pricing.amountError"));
+const lineFare = z.object({ boardingStationId: uuid, landingStationId: uuid, unitFare: priceAmount.refine(v => Number(v) > 0, t("pricing.amountError")) });
+export const saveLineFaresSchema = z.object({ expectedPricingRevision: z.number().int().min(0), fares: z.array(lineFare).min(1, t("pricing.noPairs")) });
+export const quoteSchema = z.object({ boardingStationId: uuid, landingStationId: uuid, seatCount: z.number().int().min(1), promoCode: z.string().max(32).optional() });
 
 const memberStatus = z.enum(["ACTIVE", "SUSPENDED", "REVOKED"]);
 const tripStatus = z.enum(["SCHEDULED", "DEPARTED", "COMPLETED", "CANCELLED"]);
@@ -125,6 +129,7 @@ const freeText = z.string().nullable().optional();
 // ---- Trip lines (owner-scoped; ONE direction, one ordered stop list) ----
 const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: z.number().int().min(0).optional() });
 export const createTripLineSchema = z.object({
+  fares: z.array(lineFare).min(1, t("pricing.noPairs")).optional(),
   name: name255,
   code: freeText,
   qrIdentifier: z.string().min(1).max(100).optional(),
@@ -136,6 +141,8 @@ export const updateTripLineSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export const updateLineStopsSchema = z.object({
+  fares: z.array(lineFare).min(1, t("pricing.noPairs")).optional(),
+  expectedPricingRevision: z.number().int().min(0).optional(),
   stops: z.array(tripLineStop).min(2, t("validation.lineStops")),
 });
 
@@ -157,6 +164,11 @@ export const updateTripSchema = z.object({
 
 // ---- Bookings ----
 export const createBookingSchema = z.object({
+  boardingStationId: uuid.optional(),
+  landingStationId: uuid.optional(),
+  seatCount: z.number().int().min(1).optional(),
+  expectedUnitFare: priceAmount.optional(),
+  expectedTotalAmount: priceAmount.optional(),
   tripId: uuid,
   passengerName: name255,
   passengerPhone: egyptPhone,
@@ -345,6 +357,8 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "POST", pattern: new RegExp(`${OWNER}/buses/${SEG}/driver$`), schema: assignDriverSchema },
   // ---- Owner trip lines ----
   { method: "POST", pattern: new RegExp(`${OWNER}/trip-lines$`), schema: createTripLineSchema },
+  { method: "PUT", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/fares$`), schema: saveLineFaresSchema },
+  { method: "POST", pattern: new RegExp(`^/trips/${SEG}/quote$`), schema: quoteSchema },
   { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}$`), schema: updateTripLineSchema },
   { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/stops$`), schema: updateLineStopsSchema },
   // ---- Owner trips (nested under their line) ----
