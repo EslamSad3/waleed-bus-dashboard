@@ -61,6 +61,7 @@ export function CreateTripLineDialog({
   // A locked owner (opened from a company tab) wins over anything picked here.
   const ownerId = lockedOwnerId ?? pickedOwnerId;
   const [name, setName] = useState("");
+  const [nameEn, setNameEn] = useState("");
   const [code, setCode] = useState("");
   const [stops, setStops] = useState<EditableStop[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
@@ -107,6 +108,7 @@ export function CreateTripLineDialog({
   function resetForm() {
     validation.reset();
     setName("");
+    setNameEn("");
     setCode("");
     setStops([]);
     setPrices({});
@@ -114,7 +116,7 @@ export function CreateTripLineDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), code: code.trim(), stops: stopsPayload(stops), fares: faresPayload(pairs, prices) }), ownerId: requiredField(ownerId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), nameEn: nameEn.trim() || null, code: code.trim(), stops: stopsPayload(stops), fares: faresPayload(pairs, prices) }), ownerId: requiredField(ownerId) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -123,6 +125,7 @@ export function CreateTripLineDialog({
     setSaving(true);
     const result = await createOwnerTripLine(ownerId, {
       name: name.trim(),
+      nameEn: nameEn.trim() || null,
       code: code.trim() || null,
       stops: stopsPayload(stops),
       fares: faresPayload(pairs, prices),
@@ -165,6 +168,7 @@ export function CreateTripLineDialog({
             <span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.codeLabel")}</span>
             <Input fieldName="code" dir="auto" value={code} onChange={(event) => setCode(event.target.value)} />
           </label>
+          <label className="block text-sm sm:col-span-2"><span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.nameEnLabel")}</span><Input fieldName="nameEn" dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} /><small className="mt-1 block text-xs text-[#687886]">{t("tripLines.metaDialog.nameEnHint")}</small></label>
         </div>
 
         <section className="overflow-hidden rounded-[1.5rem] border border-[#cfe1ec] bg-[#f8fbfd]">

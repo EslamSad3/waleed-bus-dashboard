@@ -33,7 +33,10 @@ export type Locality = {
 export type Stop = {
   id: string;
   name: string;
+  /** English name for passengers using the app in English; null = falls back to `name`. */
+  nameEn?: string | null;
   address?: string | null;
+  addressEn?: string | null;
   latitude: number;
   longitude: number;
   governorateId: string;
@@ -61,6 +64,7 @@ export type TripLine = {
   id: string;
   ownerId: string;
   name: string;
+  nameEn?: string | null;
   code: string | null;
   qrIdentifier: string;
   isActive: boolean;
@@ -155,7 +159,7 @@ export const fetchOwnerTripLine = (ownerId: string, id: string) =>
 
 export const createOwnerTripLine = (
   ownerId: string,
-  input: { name: string; code?: string | null; qrIdentifier?: string; stops: LineStopInput[]; fares?: FareInput[] },
+  input: { name: string; nameEn?: string | null; code?: string | null; qrIdentifier?: string; stops: LineStopInput[]; fares?: FareInput[] },
 ) =>
   notifyResult(
     t("tripLines.toast.created"),
@@ -165,7 +169,7 @@ export const createOwnerTripLine = (
 export const updateOwnerTripLine = (
   ownerId: string,
   id: string,
-  input: { name?: string; code?: string | null; isActive?: boolean },
+  input: { name?: string; nameEn?: string | null; code?: string | null; isActive?: boolean },
   opts?: NotifyOptions,
 ) =>
   notifyResult(

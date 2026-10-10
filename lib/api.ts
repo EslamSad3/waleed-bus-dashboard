@@ -37,7 +37,9 @@ export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Pro
   const store = await cookies();
   const access = store.get(ACCESS_COOKIE)?.value;
 
-  const headers: Record<string, string> = {};
+  // The dashboard is Arabic-only: ask for Arabic messages and names explicitly
+  // instead of relying on the API default.
+  const headers: Record<string, string> = { "Accept-Language": "ar" };
   if (access) headers.Authorization = `Bearer ${access}`;
   if (ownerId) headers["x-owner-id"] = ownerId;
   if (rawBody) headers["Content-Type"] = rawBody.contentType;
