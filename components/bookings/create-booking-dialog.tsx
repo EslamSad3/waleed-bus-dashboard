@@ -97,7 +97,7 @@ export function CreateBookingDialog({
     setOwnerId(ownerId);
     setOwnerScopeCookie(ownerId);
     if (!quoteReady || !quote) return setFormError(tr("pricing.quoteRequired"));
-    const r = await createBooking(ownerId, { ...values, seatCount, expectedUnitFare: quote.unitFare, expectedTotalAmount: quote.totalAmount });
+    const r = await createBooking(ownerId, { ...values, seatCount, expectedTotalAmount: quote.totalAmount });
     if (!r.ok) {
       if (r.code === "PRICE_CHANGED") {
         setFormError(tr("pricing.changed"));

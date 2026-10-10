@@ -26,6 +26,7 @@ import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queri
 import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
+import { TripStopTimes, stopTimesError, stopTimesPayload, type ScheduleStop, type StopMinutes } from "./trip-stop-times";
 
 /**
  * نافذة إنشاء رحلة — الخط هو اللي بيحدد الوجهة، فاختيار العربية بس هو اللي
@@ -62,6 +63,7 @@ export function CreateTripDialog({
   const [driverUserId, setDriverUserId] = useState("");
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
+  const [stopMinutes, setStopMinutes] = useState<StopMinutes>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -83,6 +85,11 @@ export function CreateTripDialog({
   );
   const selectedLine = lines.find((line) => line.id === lineId);
   const endpoints = selectedLine ? lineEndpoints(selectedLine) : null;
+  // The line's schedule is the default; edits override it for this trip only.
+  const scheduleStops: ScheduleStop[] = useMemo(
+    () => [...(selectedLine?.stops ?? [])].sort((a, b) => a.stopOrder - b.stopOrder).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.station.name, defaultMinutes: stop.estimatedStopMinutes ?? null })),
+    [selectedLine],
+  );
 
   function resetForm() {
     validation.reset();
@@ -92,10 +99,11 @@ export function CreateTripDialog({
     setDriverUserId("");
     setDepartAt("");
     setFare("");
+    setStopMinutes({});
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined }), ownerId: requiredField(ownerId), lineId: requiredField(lineId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined, stopTimes: stopTimesPayload(scheduleStops, stopMinutes) }), ownerId: requiredField(ownerId), lineId: requiredField(lineId), stopTimes: stopTimesError(scheduleStops, stopMinutes) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -109,6 +117,7 @@ export function CreateTripDialog({
       driverUserId,
       departAt: new Date(departAt).toISOString(),
       fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined,
+      stopTimes: stopTimesPayload(scheduleStops, stopMinutes),
     });
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
@@ -157,7 +166,7 @@ export function CreateTripDialog({
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.tripLine")}</span>
           <Select fieldName="lineId"
             value={lineId}
-            onChange={(event) => setLineId(event.target.value)}
+            onChange={(event) => { setLineId(event.target.value); setStopMinutes({}); }}
             disabled={!ownerId || Boolean(lockedLineId)}
             className="select-field w-full"
           >
@@ -207,6 +216,8 @@ export function CreateTripDialog({
             <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} placeholder="50.00" />
           </label>}
         </div>
+
+        {selectedLine ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={saving} /> : null}
 
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">

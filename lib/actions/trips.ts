@@ -30,6 +30,17 @@ export type TripLineStop = {
   station: { id: string; name: string; address?: string | null };
 };
 
+/** A stop of one trip with the time the bus is due there (departAt + minutes). */
+export type TripScheduledStop = {
+  stationId: string;
+  name: string;
+  address: string | null;
+  stopOrder: number;
+  stopType: "BOARDING" | "LANDING";
+  estimatedStopMinutes: number | null;
+  scheduledAt: string | null;
+};
+
 export type Trip = {
   id: string;
   ownerId: string;
@@ -47,6 +58,10 @@ export type Trip = {
   fareMax?: string | null;
   fareType?: "FROM" | "EXACT";
   stopSnapshot?: TripLineStop[];
+  /** Stops this trip runs, each with its due time. */
+  stops?: TripScheduledStop[];
+  /** LINE = follows the line live; TRIP = keeps its own copy (custom times or frozen). */
+  stopsSource?: "LINE" | "TRIP";
   fares?: { boardingStationId: string; landingStationId: string; unitFare: string | null }[];
   fare: string;
   status: "SCHEDULED" | "DEPARTED" | "COMPLETED" | "CANCELLED";

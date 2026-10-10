@@ -9,7 +9,7 @@ import { schemaErrors } from "@/lib/field-validation";
 
 import { useFieldValidation } from "@/components/ui/field-validation";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { qk, upsertInCursorList, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 import { editedDeparture, toLocalDateTimeInput } from "@/lib/trip-edit-time";
+import { TripStopTimes, stopTimesError, stopTimesPayload, type ScheduleStop, type StopMinutes } from "./trip-stop-times";
 
 type TripRow = Trip & { busName?: string; driverName?: string };
 
@@ -47,6 +48,13 @@ export function EditTripDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [stopMinutes, setStopMinutes] = useState<StopMinutes>({});
+  // The trip's current schedule (its own copy or the line's) is the default.
+  const scheduleStops: ScheduleStop[] = useMemo(
+    () => (trip?.stops ?? []).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.name, defaultMinutes: stop.estimatedStopMinutes })),
+    [trip],
+  );
+  const editableSchedule = trip?.status === "SCHEDULED" && scheduleStops.length > 0;
 
   if (trip && trip.id !== loadedFor) {
     setLoadedFor(trip.id);
@@ -55,6 +63,7 @@ export function EditTripDialog({
     setFare(trip.fare ?? "");
     setStatus(trip.status);
     setDriverUserId(trip.driverUserId ?? "");
+    setStopMinutes({});
     setError(null);
   }
 
@@ -64,7 +73,7 @@ export function EditTripDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => schemaErrors(schemas.updateTripSchema, { departAt, fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateTripSchema, { departAt, fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}), stopTimes: stopTimesPayload(scheduleStops, stopMinutes) }), stopTimes: stopTimesError(scheduleStops, stopMinutes) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -80,6 +89,7 @@ export function EditTripDialog({
       fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined,
       status,
       ...(trip.status === "SCHEDULED" && driverUserId !== trip.driverUserId ? { driverUserId } : {}),
+      ...(editableSchedule ? { stopTimes: stopTimesPayload(scheduleStops, stopMinutes) } : {}),
     });
     setSaving(false);
     if (!result.ok) {
@@ -142,6 +152,7 @@ export function EditTripDialog({
             ))}
           </Select>
         </label>
+        {scheduleStops.length > 0 ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={saving || !editableSchedule} /> : null}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
