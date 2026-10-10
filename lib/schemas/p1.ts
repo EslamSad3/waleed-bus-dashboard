@@ -125,6 +125,9 @@ export const assignDriverSchema = z.object({
 
 /** Optional free text: codes and English names accept any characters. */
 const freeText = z.string().nullable().optional();
+/** Optional English display name; empty/null makes passengers see the Arabic one. */
+const englishName = z.string().trim().max(255, t("validation.maxLength", { max: 255 })).nullable().optional();
+const englishAddress = z.string().trim().max(500, t("validation.maxLength", { max: 500 })).nullable().optional();
 
 // ---- Trip lines (owner-scoped; ONE direction, one ordered stop list) ----
 /** Whole minutes after departure that the bus is due at a stop. */
@@ -143,12 +146,14 @@ export const tripStopTimes = z.array(z.object({ stopOrder: z.number().int().min(
 export const createTripLineSchema = z.object({
   fares: z.array(lineFare).min(1, t("pricing.noPairs")).optional(),
   name: name255,
+  nameEn: englishName,
   code: freeText,
   qrIdentifier: z.string().min(1).max(100).optional(),
   stops: lineStops,
 });
 export const updateTripLineSchema = z.object({
   name: name255.optional(),
+  nameEn: englishName,
   code: freeText,
   isActive: z.boolean().optional(),
 });
@@ -265,7 +270,9 @@ const latitude = z.number(t("validation.latitude")).min(-90, t("validation.latit
 const longitude = z.number(t("validation.longitude")).min(-180, t("validation.longitude")).max(180, t("validation.longitude"));
 export const createStopSchema = z.object({
   name: name255,
+  nameEn: englishName,
   address: z.string().min(1).max(500).optional(),
+  addressEn: englishAddress,
   latitude,
   longitude,
   governorateId: uuid,
@@ -273,7 +280,7 @@ export const createStopSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export const updateStopSchema = z.object({
-  name: name255.optional(), address: z.string().min(1).max(500).nullable().optional(),
+  name: name255.optional(), nameEn: englishName, address: z.string().min(1).max(500).nullable().optional(), addressEn: englishAddress,
   latitude: latitude.optional(), longitude: longitude.optional(), governorateId: uuid.optional(), localityId: uuid.nullable().optional(), isActive: z.boolean().optional(),
 });
 export const createMarkazSchema = z.object({

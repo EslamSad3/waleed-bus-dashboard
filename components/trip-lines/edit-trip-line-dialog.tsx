@@ -69,6 +69,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { data: allStops } = useApiQuery<Stop[]>(qk.stops, fetchStops);
   const [name, setName] = useState(line.name);
+  const [nameEn, setNameEn] = useState(line.nameEn ?? "");
   const [code, setCode] = useState(line.code ?? "");
   const [isActive, setIsActive] = useState(line.isActive);
   const [initialStops, setInitialStops] = useState(() => {
@@ -98,7 +99,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
   );
 
   const validation = useFieldValidation(() => ({
-    ...schemaErrors(schemas.updateTripLineSchema, { name: name.trim(), code: code.trim() || null, isActive }),
+    ...schemaErrors(schemas.updateTripLineSchema, { name: name.trim(), nameEn: nameEn.trim() || null, code: code.trim() || null, isActive }),
     ...schemaErrors(schemas.updateLineStopsSchema, { stops: stopsPayload(editStops), fares: faresPayload(pairs, prices), expectedPricingRevision: loadedTable?.pricingRevision }),
   }));
 
@@ -133,7 +134,8 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
     if (!loadedTable) return setError(t("pricing.loadFailed"));
     if (!validation.validate()) return;
     const nextCode = code.trim() || null;
-    const metaChanged = name.trim() !== line.name || nextCode !== (line.code ?? null) || isActive !== line.isActive;
+    const nextNameEn = nameEn.trim() || null;
+    const metaChanged = name.trim() !== line.name || nextNameEn !== (line.nameEn ?? null) || nextCode !== (line.code ?? null) || isActive !== line.isActive;
     const stopsChanged = JSON.stringify(stopsPayload(editStops)) !== JSON.stringify(stopsPayload(initialStops));
     const pricesChanged = pairs.some(p => prices[fareKey(p)] !== originalPrices[fareKey(p)]);
     if (!metaChanged && !stopsChanged && !pricesChanged) return onClose();
@@ -153,7 +155,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
     }
 
     if (metaChanged) {
-      const result = await updateOwnerTripLine(line.ownerId, line.id, { name: name.trim(), code: nextCode, isActive }, { notify: false });
+      const result = await updateOwnerTripLine(line.ownerId, line.id, { name: name.trim(), nameEn: nextNameEn, code: nextCode, isActive }, { notify: false });
       if (!result.ok) {
         toast.error(t("common.error.somethingWentWrong"), { description: result.message, duration: 6000 });
         return setError(validation.failure(result));
@@ -177,6 +179,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
             <Input fieldName="code" dir="auto" value={code} onChange={(event) => setCode(event.target.value)} />
             <small className="mt-1 block text-xs text-[#687886]">{t("tripLines.metaDialog.codeFixedHint")}</small>
           </label>
+          <label className="block text-sm sm:col-span-2"><span className="mb-1.5 block font-bold text-[#334454]">{t("tripLines.metaDialog.nameEnLabel")}</span><Input fieldName="nameEn" dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} /><small className="mt-1 block text-xs text-[#687886]">{t("tripLines.metaDialog.nameEnHint")}</small></label>
         </div>
         <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-[#d8e4ec] bg-[#f8fbfd] px-3 py-2 text-sm font-bold text-[#334454]">
           <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="size-4" />
@@ -247,7 +250,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
           const [result, latestLine] = await Promise.all([fetchLineFares(line.ownerId, line.id), fetchOwnerTripLine(line.ownerId, line.id)]);
           if (!latestLine.ok) return setError(latestLine.message);
           const latestStops = editableStops(latestLine.data);
-          setInitialStops(latestStops); setEditStops(latestStops); setName(latestLine.data.name); setCode(latestLine.data.code ?? ""); setIsActive(latestLine.data.isActive);
+          setInitialStops(latestStops); setEditStops(latestStops); setName(latestLine.data.name); setNameEn(latestLine.data.nameEn ?? ""); setCode(latestLine.data.code ?? ""); setIsActive(latestLine.data.isActive);
           if (!result.ok) return setError(result.message);
           const values = Object.fromEntries(result.data.fares.map(f => [fareKey(f), f.unitFare]));
           setLoadedTable(result.data); setOriginalPrices(values); setPrices(values); setError(null);
