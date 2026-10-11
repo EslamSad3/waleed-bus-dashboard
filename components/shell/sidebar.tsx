@@ -25,6 +25,7 @@ const NAV = [
   { href: "/buses", label: t("common.nav.buses"), icon: Bus },
   { href: "/brands", label: t("common.nav.brands"), icon: Bus },
   { href: "/vip-tiers", label: t("common.nav.vipTiers"), icon: Bus },
+  { href: "/governorates", label: t("common.nav.governorates"), icon: MapPin },
   { href: "/markaz", label: t("common.nav.markaz"), icon: MapPin },
   { href: "/localities", label: t("common.nav.localities"), icon: MapPin },
   { href: "/stops", label: t("common.nav.stops"), icon: MapPin },

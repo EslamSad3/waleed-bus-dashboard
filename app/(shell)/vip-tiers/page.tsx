@@ -32,6 +32,7 @@ export default function VipTiersPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VipTier | null>(null);
   const [name, setName] = useState("");
+  const [nameEn, setNameEn] = useState("");
   const [rank, setRank] = useState("1");
   const [dialogError, setDialogError] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export default function VipTiersPage() {
     validation.reset();
     setEditing(null);
     setName("");
+    setNameEn("");
     setRank(String((rows?.length ?? 0) + 1));
     setDialogError(null);
     setCreating(true);
@@ -49,6 +51,7 @@ export default function VipTiersPage() {
     setCreating(false);
     setEditing(tier);
     setName(tier.name);
+    setNameEn(tier.nameEn ?? "");
     setRank(String(tier.rank));
     setDialogError(null);
   }
@@ -60,14 +63,14 @@ export default function VipTiersPage() {
     setDialogError(null);
   }
 
-  const validation = useFieldValidation(() => schemaErrors(schemas.createVipTierSchema, { name: name.trim(), rank: Number(rank) }));
+  const validation = useFieldValidation(() => schemaErrors(schemas.createVipTierSchema, { name: name.trim(), nameEn: nameEn.trim(), rank: Number(rank) }));
 
   async function save() {
     if (!validation.validate()) return;
 
     const result = editing
-      ? await updateVipTier(editing.id, { name: name.trim(), rank: Number(rank) })
-      : await createVipTier({ name: name.trim(), rank: Number(rank) });
+      ? await updateVipTier(editing.id, { name: name.trim(), nameEn: nameEn.trim() || null, rank: Number(rank) })
+      : await createVipTier({ name: name.trim(), nameEn: nameEn.trim() || null, rank: Number(rank) });
     if (!result.ok) return setDialogError(validation.failure(result));
     // Instant cache write → الجدول بيتحدث في نفس اللحظة، ومعاه أي شاشة
     // بتعرض المستوى ده (دليل أصحاب العربيات).
@@ -103,6 +106,7 @@ export default function VipTiersPage() {
       cellRenderer: (params: { data?: VipTier }) => params.data ? <span className="font-bold">{rankOrdinalAr(params.data.rank)}</span> : null,
     },
     { field: "name", headerName: t("common.fields.name") },
+    { field: "nameEn", headerName: t("common.fields.nameEn"), valueFormatter: (params) => (params.value as string | null) ?? "—" },
     activeStatusColumn<VipTier>(),
   ];
 
@@ -140,6 +144,7 @@ export default function VipTiersPage() {
       <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }} title={editing ? t("vipTiers.dialog.editTitle") : t("vipTiers.dialog.createTitle")} description={t("vipTiers.dialog.description")} size="sm">
         <div className="space-y-4">
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.name")}</span><Input fieldName="name" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("vipTiers.placeholders.name")} /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.nameEn")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input fieldName="nameEn" dir="ltr" value={nameEn} onChange={(event) => setNameEn(event.target.value)} placeholder="Gold" /><small className="mt-1 block text-xs text-[#687886]">{t("common.value.englishFallbackHint")}</small></label>
           <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.order")}</span><Input fieldName="rank" dir="ltr" inputMode="numeric" type="number" min={1} value={rank} onChange={(event) => setRank(event.target.value)} /></label>
           {dialogError ? <p role="alert" className="text-sm text-red-600">{dialogError}</p> : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">

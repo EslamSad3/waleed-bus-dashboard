@@ -5,6 +5,8 @@ import { t } from "@/lib/i18n/t";
 export type ServiceConfigEntry = {
   id: string;
   text: string;
+  /** English label for passengers using the app in English; null = they see `text`. */
+  textEn: string | null;
   type: "PHONE" | "WHATSAPP" | "WEBSITE";
   value: string;
   isActive: boolean;
@@ -14,6 +16,7 @@ export type ServiceConfigEntry = {
 export type ServiceConfigEntryInput = {
   id?: string;
   text: string;
+  textEn?: string | null;
   type: "PHONE" | "WHATSAPP" | "WEBSITE";
   value: string;
   isActive?: boolean;

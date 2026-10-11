@@ -22,7 +22,7 @@ export const notificationSchema = z.object({
   if (value.category === "DISCOUNT_CODE" && !value.promotionId) context.addIssue({ code: "custom", path: ["promotionId"], message: t("notifications.send.errors.promoRequired") });
 });
 
-export const serviceEntrySchema = z.object({ id: uuid.optional(), text: required(200), type: z.enum(["PHONE", "WHATSAPP", "WEBSITE"], t("validation.invalid")), value: required(500), isActive: z.boolean().optional() }).superRefine((value, context) => {
+export const serviceEntrySchema = z.object({ id: uuid.optional(), text: required(200), textEn: z.string().trim().max(200, t("validation.maxLength", { max: 200 })).nullable().optional(), type: z.enum(["PHONE", "WHATSAPP", "WEBSITE"], t("validation.invalid")), value: required(500), isActive: z.boolean().optional() }).superRefine((value, context) => {
   if (value.type === "WEBSITE") {
     const parsed = z.url().safeParse(value.value);
     if (!parsed.success || !/^https?:\/\//i.test(value.value)) context.addIssue({ code: "custom", path: ["value"], message: t("validation.serviceUrl") });
