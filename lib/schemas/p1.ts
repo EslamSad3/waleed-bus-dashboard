@@ -136,19 +136,10 @@ const englishName = z.string().trim().max(255, t("validation.maxLength", { max: 
 const englishAddress = z.string().trim().max(500, t("validation.maxLength", { max: 500 })).nullable().optional();
 
 // ---- Trip lines (owner-scoped; ONE direction, one ordered stop list) ----
-/** Whole minutes after departure that the bus is due at a stop. */
-const stopMinutes = z.number(t("validation.stopMinutes")).int(t("validation.stopMinutes")).min(0, t("validation.stopMinutes"));
-const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")), estimatedStopMinutes: stopMinutes });
-/** Same rule as the API: the first stop is 0 and no stop comes before the one ahead of it. */
-export function stopTimesInOrder(minutes: number[]): boolean {
-  return minutes.length === 0 || (minutes[0] === 0 && minutes.every((value, index) => index === 0 || value >= minutes[index - 1]));
-}
-const lineStops = z
-  .array(tripLineStop)
-  .min(2, t("validation.lineStops"))
-  .refine((stops) => stopTimesInOrder(stops.map((stop) => stop.estimatedStopMinutes)), t("validation.stopMinutesOrder"));
-/** Per-trip override: the trip's own minutes for each stop (by stopOrder). */
-export const tripStopTimes = z.array(z.object({ stopOrder: z.number().int().min(1), estimatedStopMinutes: stopMinutes }));
+const tripLineStop = z.object({ stopId: uuid, stopType: z.enum(["BOARDING", "LANDING"], t("validation.stopType")) });
+const lineStops = z.array(tripLineStop).min(2, t("validation.lineStops"));
+/** A trip's own stop times: the date-time the bus is due at each stop (by stopOrder). */
+export const tripStopTimes = z.array(z.object({ stopOrder: z.number().int().min(1), scheduledAt: datetime }));
 export const createTripLineSchema = z.object({
   fares: z.array(lineFare).min(1, t("pricing.noPairs")).optional(),
   name: name255,
@@ -176,7 +167,7 @@ export const createTripSchema = z.object({
   departAt: datetime,
   fare: fare.optional(),
   status: tripStatus.optional(),
-  stopTimes: tripStopTimes.optional(),
+  stopTimes: tripStopTimes,
 });
 export const updateTripSchema = z.object({
   departAt: datetime.optional(),

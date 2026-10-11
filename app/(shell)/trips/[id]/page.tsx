@@ -37,7 +37,7 @@ import { DetailPageSkeleton, InlineBlockSkeleton, TableSkeleton } from "@/compon
 import { Trash2 } from "lucide-react";
 import { t } from "@/lib/i18n/t";
 import { editedDeparture, toLocalDateTimeInput } from "@/lib/trip-edit-time";
-import { TripStopTimes, stopTimesError, stopTimesPayload, type ScheduleStop, type StopMinutes } from "@/components/trips/trip-stop-times";
+import { TripStopTimes, changedStopTimes, stopTimesError, type ScheduleStop, type StopTimes } from "@/components/trips/trip-stop-times";
 
 /**
  * Trip detail. The line owns the route, so origin/destination are read-only
@@ -69,7 +69,7 @@ export default function TripDetailPage({
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
   const [status, setStatus] = useState<Trip["status"]>("SCHEDULED");
-  const [stopMinutes, setStopMinutes] = useState<StopMinutes>({});
+  const [stopTimes, setStopTimes] = useState<StopTimes>({});
 
   // A deep link may carry the line; otherwise resolve it from the owner.
   const { error: foundError } = useApiQuery(
@@ -92,7 +92,7 @@ export default function TripDetailPage({
     // datetime-local is the operator's wall clock, not UTC.
     setDepartAt(toLocalDateTimeInput(tripData.departAt));
     setFare(tripData.fare ?? "");
-    setStopMinutes({});
+    setStopTimes({});
     setStatus(tripData.status);
   }
 
@@ -176,12 +176,12 @@ export default function TripDetailPage({
   }
 
   const scheduleStops: ScheduleStop[] = useMemo(
-    () => (tripData?.stops ?? []).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.name, defaultMinutes: stop.estimatedStopMinutes })),
+    () => (tripData?.stops ?? []).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.name, scheduledAt: stop.scheduledAt })),
     [tripData],
   );
   const scheduleEditable = tripData?.status === "SCHEDULED";
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateTripSchema, { departAt, fare: tripData?.pricingEnabled ? undefined : fare.trim() || undefined, stopTimes: stopTimesPayload(scheduleStops, stopMinutes) }), stopTimes: stopTimesError(scheduleStops, stopMinutes) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateTripSchema, { departAt, fare: tripData?.pricingEnabled ? undefined : fare.trim() || undefined, stopTimes: tripData ? changedStopTimes(scheduleStops, stopTimes, departAt, tripData.departAt) : undefined }), stopTimes: tripData ? stopTimesError(scheduleStops, stopTimes, departAt, tripData.departAt) : undefined }));
 
   const driverValidation = useFieldValidation(() => schemaErrors(schemas.assignDriverSchema, { driverUserId: driverId, tripId: id }));
 
@@ -191,7 +191,7 @@ export default function TripDetailPage({
     const r = await updateTrip(ownerId, lineId, id, {
       departAt: departAt && trip ? editedDeparture(trip.departAt, departAt) : undefined,
       fare: tripData?.pricingEnabled ? undefined : fare.trim() || undefined,
-      ...(scheduleEditable ? { stopTimes: stopTimesPayload(scheduleStops, stopMinutes) } : {}),
+      ...(scheduleEditable && tripData ? { stopTimes: changedStopTimes(scheduleStops, stopTimes, departAt, tripData.departAt) } : {}),
     });
     if (!r.ok) { setError(validation.failure(r)); return; }
     done(true, t("common.toast.saved"), r.data);
@@ -358,7 +358,7 @@ export default function TripDetailPage({
               </label>}
             </div>
             <p className="text-xs text-[#687886]">{t("trips.detail.routeFromLineHint", { lineName: trip.line?.name ?? "—" })}</p>
-            {scheduleStops.length > 0 ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={!scheduleEditable} /> : null}
+            {scheduleStops.length > 0 ? <TripStopTimes stops={scheduleStops} departAt={departAt} originalDepartAt={tripData?.departAt} edited={stopTimes} onChange={setStopTimes} disabled={!scheduleEditable} /> : null}
             <div className="rounded-xl bg-[#f8fbfd] p-3 text-sm">
               <span className="block text-[#606060]">{t("trips.detail.bus")}</span>
               {bus ? <strong dir="ltr">{bus.plateNumber ?? "—"}</strong> : <InlineBlockSkeleton className="h-5 w-36" />}

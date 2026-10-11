@@ -26,32 +26,24 @@ import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 import { FareMatrix } from "./fare-matrix";
-import { StopMinutesInput } from "./stop-minutes-input";
 import { fareKey, farePairs, faresPayload } from "@/lib/line-fares";
 
 type StopUse = "BOARDING" | "LANDING";
 // Row identity is the line-stop row id (client key for newly added rows) — NOT
 // the station id, so reordering never collapses rows.
-type EditableStop = { key: string; stop: Stop; stopType: StopUse; estimatedStopMinutes?: number };
+type EditableStop = { key: string; stop: Stop; stopType: StopUse };
 
 function stopsPayload(items: EditableStop[]) {
-  return items.map((item) => ({
-    stopId: item.stop.id,
-    stopType: item.stopType,
-    // Minutes after departure; the API requires one per stop (first = 0).
-    estimatedStopMinutes: item.estimatedStopMinutes,
-  }));
+  return items.map((item) => ({ stopId: item.stop.id, stopType: item.stopType }));
 }
 
 function editableStops(line: TripLine): EditableStop[] {
   return [...line.stops]
     .sort((a, b) => a.stopOrder - b.stopOrder)
-    .map((item, index) => ({
+    .map((item) => ({
       key: item.id,
       stop: item.station,
       stopType: item.stopType === "LANDING" ? "LANDING" : "BOARDING",
-      // Legacy lines may have no times yet; the first stop is always 0.
-      estimatedStopMinutes: item.estimatedStopMinutes ?? (index === 0 ? 0 : undefined),
     }));
 }
 
@@ -188,7 +180,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
         <div className="border-t border-[#e4ecf2] pt-4">
           <h3 className="font-extrabold text-[#00134c]">{t("tripLines.detail.routeTitle")}</h3>
           <p className="mt-0.5 text-xs text-[#687886]">{t("tripLines.stopsDialog.description")}</p>
-          <p className="mt-0.5 text-xs text-[#687886]">{t("tripLines.stopsDialog.minutesHint")}</p>
+          <p className="mt-0.5 text-xs text-[#687886]">{t("tripLines.stopsDialog.timesPerTrip")}</p>
         </div>
         <div className="flex gap-2 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-[#dbe7ee]">
           <Select fieldName="stops" aria-label={t("tripLines.stopsDialog.pickStop")} value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent">
@@ -225,11 +217,6 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
                     <option value="BOARDING">{t("enums.stopUse.boarding")}</option>
                     <option value="LANDING">{t("enums.stopUse.landing")}</option>
                   </Select>
-                  <StopMinutesInput
-                    index={index}
-                    value={item.estimatedStopMinutes}
-                    onChange={(minutes) => setEditStops((items) => items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, estimatedStopMinutes: minutes } : entry)))}
-                  />
                   <div className="flex shrink-0">
                     <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveUp")} onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp /></Button>
                     <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveDown")} onClick={() => move(index, 1)} disabled={index === editStops.length - 1}><ArrowDown /></Button>

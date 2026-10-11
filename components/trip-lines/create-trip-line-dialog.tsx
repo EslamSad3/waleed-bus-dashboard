@@ -24,14 +24,13 @@ import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queri
 import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 import { FareMatrix } from "./fare-matrix";
-import { StopMinutesInput } from "./stop-minutes-input";
 import { farePairs, faresPayload } from "@/lib/line-fares";
 
 type StopUse = "BOARDING" | "LANDING";
-type EditableStop = { key: string; stop: Stop; stopType: StopUse; estimatedStopMinutes?: number };
+type EditableStop = { key: string; stop: Stop; stopType: StopUse };
 
 function stopsPayload(items: EditableStop[]) {
-  return items.map((item) => ({ stopId: item.stop.id, stopType: item.stopType, estimatedStopMinutes: item.estimatedStopMinutes }));
+  return items.map((item) => ({ stopId: item.stop.id, stopType: item.stopType }));
 }
 
 const stopUseLabels: Record<StopUse, string> = {
@@ -84,8 +83,7 @@ export function CreateTripLineDialog({
     const stop = activeStops.find((item) => item.id === pick);
     if (!stop) return;
     if (stops.some((item) => item.stop.id === stop.id)) return;
-    // The first stop is the departure point, so its time is 0 from the start.
-    setStops((items) => [...items, { key: `${stop.id}#new-${keySeq}`, stop, stopType: "BOARDING", ...(items.length === 0 ? { estimatedStopMinutes: 0 } : {}) }]);
+    setStops((items) => [...items, { key: `${stop.id}#new-${keySeq}`, stop, stopType: "BOARDING" }]);
     setKeySeq((seq) => seq + 1);
     setPick("");
     setError(null);
@@ -177,7 +175,7 @@ export function CreateTripLineDialog({
             <div className="min-w-0">
               <h3 className="font-extrabold">{t("tripLines.createDialog.routeTitle")}</h3>
               <p className="mt-0.5 text-xs font-normal text-[#687886]">{t("tripLines.createDialog.routeHint")}</p>
-              <p className="mt-0.5 text-xs font-normal text-[#687886]">{t("tripLines.stopsDialog.minutesHint")}</p>
+              <p className="mt-0.5 text-xs font-normal text-[#687886]">{t("tripLines.stopsDialog.timesPerTrip")}</p>
             </div>
           </div>
           <div className="p-4 sm:p-5">
@@ -217,11 +215,6 @@ export function CreateTripLineDialog({
                         <option value="BOARDING">{t("enums.stopUse.boarding")}</option>
                         <option value="LANDING">{t("enums.stopUse.landing")}</option>
                       </Select>
-                      <StopMinutesInput
-                        index={index}
-                        value={item.estimatedStopMinutes}
-                        onChange={(minutes) => setStops((items) => items.map((entry, entryIndex) => (entryIndex === index ? { ...entry, estimatedStopMinutes: minutes } : entry)))}
-                      />
                       <div className="flex shrink-0">
                         <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveUp")} onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp /></Button>
                         <Button type="button" variant="ghost" size="icon" aria-label={t("tripLines.stopsDialog.moveDown")} onClick={() => move(index, 1)} disabled={index === stops.length - 1}><ArrowDown /></Button>

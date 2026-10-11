@@ -51,7 +51,6 @@ export type TripLineStop = {
   id: string;
   stationId: string;
   stopOrder: number;
-  estimatedStopMinutes?: number | null;
   stopType: "BOARDING" | "LANDING";
   station: Stop;
 };
@@ -145,7 +144,6 @@ const lineBase = (ownerId: string) => `/api/fleet-owners/${ownerId}/trip-lines`;
 export type LineStopInput = {
   stopId: string;
   stopType: "BOARDING" | "LANDING";
-  estimatedStopMinutes?: number;
 };
 
 export function fetchOwnerTripLinesPage(

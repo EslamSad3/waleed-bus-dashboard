@@ -19,7 +19,7 @@ import { qk, upsertInCursorList, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 import { editedDeparture, toLocalDateTimeInput } from "@/lib/trip-edit-time";
-import { TripStopTimes, stopTimesError, stopTimesPayload, type ScheduleStop, type StopMinutes } from "./trip-stop-times";
+import { TripStopTimes, changedStopTimes, stopTimesError, type ScheduleStop, type StopTimes } from "./trip-stop-times";
 
 type TripRow = Trip & { busName?: string; driverName?: string };
 
@@ -48,10 +48,10 @@ export function EditTripDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
-  const [stopMinutes, setStopMinutes] = useState<StopMinutes>({});
-  // The trip's current schedule (its own copy or the line's) is the default.
+  const [stopTimes, setStopTimes] = useState<StopTimes>({});
+  // The trip's saved stop times; a moved departure moves them too.
   const scheduleStops: ScheduleStop[] = useMemo(
-    () => (trip?.stops ?? []).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.name, defaultMinutes: stop.estimatedStopMinutes })),
+    () => (trip?.stops ?? []).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.name, scheduledAt: stop.scheduledAt })),
     [trip],
   );
   const editableSchedule = trip?.status === "SCHEDULED" && scheduleStops.length > 0;
@@ -63,7 +63,7 @@ export function EditTripDialog({
     setFare(trip.fare ?? "");
     setStatus(trip.status);
     setDriverUserId(trip.driverUserId ?? "");
-    setStopMinutes({});
+    setStopTimes({});
     setError(null);
   }
 
@@ -73,7 +73,7 @@ export function EditTripDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateTripSchema, { departAt, fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}), stopTimes: stopTimesPayload(scheduleStops, stopMinutes) }), stopTimes: stopTimesError(scheduleStops, stopMinutes) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.updateTripSchema, { departAt, fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined, status, ...(trip?.status === "SCHEDULED" ? { driverUserId } : {}), stopTimes: trip ? changedStopTimes(scheduleStops, stopTimes, departAt, trip.departAt) : undefined }), stopTimes: trip ? stopTimesError(scheduleStops, stopTimes, departAt, trip.departAt) : undefined }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -89,7 +89,7 @@ export function EditTripDialog({
       fare: trip?.pricingEnabled ? undefined : fare.trim() || undefined,
       status,
       ...(trip.status === "SCHEDULED" && driverUserId !== trip.driverUserId ? { driverUserId } : {}),
-      ...(editableSchedule ? { stopTimes: stopTimesPayload(scheduleStops, stopMinutes) } : {}),
+      ...(editableSchedule ? { stopTimes: changedStopTimes(scheduleStops, stopTimes, departAt, trip.departAt) } : {}),
     });
     setSaving(false);
     if (!result.ok) {
@@ -153,7 +153,7 @@ export function EditTripDialog({
             ))}
           </Select>
         </label>
-        {scheduleStops.length > 0 ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={saving || !editableSchedule} /> : null}
+        {scheduleStops.length > 0 ? <TripStopTimes stops={scheduleStops} departAt={departAt} originalDepartAt={trip?.departAt} edited={stopTimes} onChange={setStopTimes} disabled={saving || !editableSchedule} /> : null}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>

@@ -26,18 +26,18 @@ export type TripLineStop = {
   stationId: string;
   stopOrder: number;
   stopType: "BOARDING" | "LANDING";
-  estimatedStopMinutes?: number | null;
+  /** Only a trip's own stops carry a time. */
+  scheduledAt?: string | null;
   station: { id: string; name: string; address?: string | null };
 };
 
-/** A stop of one trip with the time the bus is due there (departAt + minutes). */
+/** A stop of one trip with the date-time the bus is due there. */
 export type TripScheduledStop = {
   stationId: string;
   name: string;
   address: string | null;
   stopOrder: number;
   stopType: "BOARDING" | "LANDING";
-  estimatedStopMinutes: number | null;
   scheduledAt: string | null;
 };
 

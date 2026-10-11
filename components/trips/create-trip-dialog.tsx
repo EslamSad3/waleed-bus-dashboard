@@ -27,7 +27,7 @@ import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
 import { cairoInputToIso } from "@/lib/trip-edit-time";
-import { TripStopTimes, stopTimesError, stopTimesPayload, type ScheduleStop, type StopMinutes } from "./trip-stop-times";
+import { TripStopTimes, allStopTimes, stopTimesError, type ScheduleStop, type StopTimes } from "./trip-stop-times";
 
 /**
  * نافذة إنشاء رحلة — الخط هو اللي بيحدد الوجهة، فاختيار العربية بس هو اللي
@@ -64,7 +64,7 @@ export function CreateTripDialog({
   const [driverUserId, setDriverUserId] = useState("");
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
-  const [stopMinutes, setStopMinutes] = useState<StopMinutes>({});
+  const [stopTimes, setStopTimes] = useState<StopTimes>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -86,9 +86,9 @@ export function CreateTripDialog({
   );
   const selectedLine = lines.find((line) => line.id === lineId);
   const endpoints = selectedLine ? lineEndpoints(selectedLine) : null;
-  // The line's schedule is the default; edits override it for this trip only.
+  // The line gives the stops; the operator sets each stop's date and time.
   const scheduleStops: ScheduleStop[] = useMemo(
-    () => [...(selectedLine?.stops ?? [])].sort((a, b) => a.stopOrder - b.stopOrder).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.station.name, defaultMinutes: stop.estimatedStopMinutes ?? null })),
+    () => [...(selectedLine?.stops ?? [])].sort((a, b) => a.stopOrder - b.stopOrder).map((stop) => ({ stopOrder: stop.stopOrder, name: stop.station.name, scheduledAt: null })),
     [selectedLine],
   );
 
@@ -100,11 +100,11 @@ export function CreateTripDialog({
     setDriverUserId("");
     setDepartAt("");
     setFare("");
-    setStopMinutes({});
+    setStopTimes({});
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined, stopTimes: stopTimesPayload(scheduleStops, stopMinutes) }), ownerId: requiredField(ownerId), lineId: requiredField(lineId), stopTimes: stopTimesError(scheduleStops, stopMinutes) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined, stopTimes: allStopTimes(scheduleStops, stopTimes, departAt).filter((stop) => stop.scheduledAt) }), ownerId: requiredField(ownerId), lineId: requiredField(lineId), stopTimes: stopTimesError(scheduleStops, stopTimes, departAt) }));
 
   async function submit() {
     if (!validation.validate()) return;
@@ -118,7 +118,7 @@ export function CreateTripDialog({
       driverUserId,
       departAt: cairoInputToIso(departAt),
       fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined,
-      stopTimes: stopTimesPayload(scheduleStops, stopMinutes),
+      stopTimes: allStopTimes(scheduleStops, stopTimes, departAt),
     });
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
@@ -169,7 +169,7 @@ export function CreateTripDialog({
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.tripLine")}</span>
           <Select fieldName="lineId"
             value={lineId}
-            onChange={(event) => { setLineId(event.target.value); setStopMinutes({}); }}
+            onChange={(event) => { setLineId(event.target.value); setStopTimes({}); }}
             disabled={!ownerId || Boolean(lockedLineId)}
             className="select-field w-full"
           >
@@ -223,7 +223,7 @@ export function CreateTripDialog({
 
         </div>
         <div className="min-w-0">
-          {selectedLine ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={saving} /> : <p className="rounded-2xl border border-dashed border-[#dce8ef] p-6 text-center text-sm text-[#687886]">{t("trips.stopTimes.pickLineFirst")}</p>}
+          {selectedLine ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopTimes} onChange={setStopTimes} disabled={saving} /> : <p className="rounded-2xl border border-dashed border-[#dce8ef] p-6 text-center text-sm text-[#687886]">{t("trips.stopTimes.pickLineFirst")}</p>}
         </div>
         </div>
 
