@@ -143,12 +143,14 @@ export function CreateTripDialog({
       onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }}
       title={t("trips.createDialog.title")}
       description={t("trips.createDialog.description")}
-      size="sm"
+      size="xl"
     >
       <form noValidate
         className="space-y-4"
         onSubmit={(event) => { event.preventDefault(); void submit(); }}
       >
+        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4">
         {lockedOwnerId ? null : (
           <div className="rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] p-3">
             <OwnerPicker
@@ -219,7 +221,11 @@ export function CreateTripDialog({
           </label>}
         </div>
 
-        {selectedLine ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={saving} /> : null}
+        </div>
+        <div className="min-w-0">
+          {selectedLine ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopMinutes} onChange={setStopMinutes} disabled={saving} /> : <p className="rounded-2xl border border-dashed border-[#dce8ef] p-6 text-center text-sm text-[#687886]">{t("trips.stopTimes.pickLineFirst")}</p>}
+        </div>
+        </div>
 
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">

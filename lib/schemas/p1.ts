@@ -98,23 +98,29 @@ export const updateBusSchema = z.object({
   capacity: capacity.optional(),
   isActive: z.boolean().optional(),
 });
+/** Optional English name of a catalog entry (API caps it at 100); empty = passengers see the Arabic. */
+const englishShortName = z.string().trim().max(100, t("validation.maxLength", { max: 100 })).nullable().optional();
 export const createBrandSchema = z.object({
   name: z.string(t("validation.brandNameRequired")).min(1, t("validation.brandNameRequired")).max(100),
+  nameEn: englishShortName,
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
 export const updateBrandSchema = z.object({
   name: z.string().min(1, t("validation.brandNameRequired")).max(100).optional(),
+  nameEn: englishShortName,
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
 });
 export const createVipTierSchema = z.object({
   name: z.string(t("validation.tierNameRequired")).min(1, t("validation.tierNameRequired")).max(100),
+  nameEn: englishShortName,
   rank: z.number(t("validation.rankRequired")).int(t("validation.rankRequired")).min(1, t("validation.rankRequired")),
   isActive: z.boolean().optional(),
 });
 export const updateVipTierSchema = z.object({
   name: z.string().min(1, t("validation.tierNameRequired")).max(100).optional(),
+  nameEn: englishShortName,
   rank: z.number().int().min(1).optional(),
   isActive: z.boolean().optional(),
 });
@@ -293,23 +299,29 @@ export const createMarkazSchema = z.object({
     ),
   code: freeText,
   nameAr: name255,
-  nameEn: freeText,
+  nameEn: englishName,
   isActive: z.boolean().optional(),
 });
 export const updateMarkazSchema = z.object({
   governorateId: uuid.optional(),
   code: freeText,
-  nameAr: name255.optional(), nameEn: freeText, isActive: z.boolean().optional(),
+  nameAr: name255.optional(), nameEn: englishName, isActive: z.boolean().optional(),
 });
 export const createLocalitySchema = z.object({
   markazId: uuid,
   type: z.enum(["CITY", "VILLAGE"], t("validation.localityType")),
   nameAr: name255,
-  nameEn: freeText,
+  nameEn: englishName,
   isActive: z.boolean().optional(),
 });
 export const updateLocalitySchema = z.object({
-  nameAr: name255.optional(), nameEn: freeText, isActive: z.boolean().optional(),
+  nameAr: name255.optional(), nameEn: englishName, isActive: z.boolean().optional(),
+});
+/** Built-in governorates are only edited (names/code), never created or deleted. */
+export const updateGovernorateSchema = z.object({
+  code: freeText,
+  nameAr: name255.optional(),
+  nameEn: englishName,
 });
 
 // ---- Promotions (platform) ----
@@ -401,6 +413,7 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "PATCH", pattern: new RegExp(`^/vip-tiers/${SEG}$`), schema: updateVipTierSchema },
   { method: "POST", pattern: /^\/stops$/, schema: createStopSchema },
   { method: "PATCH", pattern: new RegExp(`^/stops/${SEG}$`), schema: updateStopSchema },
+  { method: "PATCH", pattern: new RegExp(`^/governorates/${SEG}$`), schema: updateGovernorateSchema },
   { method: "POST", pattern: /^\/markaz$/, schema: createMarkazSchema },
   { method: "PATCH", pattern: new RegExp(`^/markaz/${SEG}$`), schema: updateMarkazSchema },
   { method: "POST", pattern: /^\/localities$/, schema: createLocalitySchema },

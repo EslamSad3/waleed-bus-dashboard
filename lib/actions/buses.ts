@@ -9,6 +9,8 @@ const base = (ownerId: string) => `/api/fleet-owners/${ownerId}/buses`;
 export type VehicleBrand = {
   id: string;
   name: string;
+  /** English name for passengers using the app in English; null = they see `name`. */
+  nameEn: string | null;
   isActive: boolean;
   sortOrder: number;
 };
@@ -186,9 +188,9 @@ export function fetchBusRatingsPage(
 export const fetchBrands = (includeInactive = false) =>
   apiGet<VehicleBrand[]>(`/api/brands${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchBrandById = (id: string) => apiGet<VehicleBrand>(`/api/brands/${id}`);
-export const createBrand = (input: { name: string; sortOrder?: number; isActive?: boolean }) =>
+export const createBrand = (input: { name: string; nameEn?: string | null; sortOrder?: number; isActive?: boolean }) =>
   notifyResult(t("brands.toast.created"), apiSend<VehicleBrand>("/api/brands", "POST", input));
-export const updateBrand = (id: string, input: { name?: string; sortOrder?: number; isActive?: boolean }) =>
+export const updateBrand = (id: string, input: { name?: string; nameEn?: string | null; sortOrder?: number; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined ? t("brands.toast.saved") : input.isActive ? t("brands.toast.activated") : t("brands.toast.deactivated"),
     apiSend<VehicleBrand>(`/api/brands/${id}`, "PATCH", input),

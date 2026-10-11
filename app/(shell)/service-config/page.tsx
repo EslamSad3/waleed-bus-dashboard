@@ -27,6 +27,8 @@ const TYPE_AR: Record<string, string> = {
 
 type Draft = ServiceConfigEntryInput & { key: string };
 
+const toDraft = (e: ServiceConfigEntry): Draft => ({ key: e.id, id: e.id, text: e.text, textEn: e.textEn ?? "", type: e.type, value: e.value, isActive: e.isActive });
+
 export default function ServiceConfigPage() {
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<Draft[] | null>(null);
@@ -44,12 +46,12 @@ export default function ServiceConfigPage() {
       config
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((e) => ({ key: e.id, id: e.id, text: e.text, type: e.type, value: e.value, isActive: e.isActive })),
+        .map(toDraft),
     );
   }
 
   function add() {
-    setRows((items) => [...(items ?? []), { key: `new-${Date.now()}`, text: "", type: "PHONE", value: "", isActive: true }]);
+    setRows((items) => [...(items ?? []), { key: `new-${Date.now()}`, text: "", textEn: "", type: "PHONE", value: "", isActive: true }]);
   }
 
   function patch(key: string, field: keyof Draft, val: string | boolean) {
@@ -84,7 +86,8 @@ export default function ServiceConfigPage() {
     if (!rows) return;
     setSaving(true);
     const result = await replaceServiceConfig(
-      rows.map(({ key: _key, ...rest }) => rest),
+      // Blank English is sent as null so the API clears it.
+      rows.map(({ key: _key, textEn, ...rest }) => ({ ...rest, textEn: textEn?.trim() || null })),
     );
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
@@ -99,7 +102,7 @@ export default function ServiceConfigPage() {
       result.data
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((e) => ({ key: e.id, id: e.id, text: e.text, type: e.type, value: e.value, isActive: e.isActive })),
+        .map(toDraft),
     );
     setError(null);
     setSaved(true);
@@ -134,6 +137,7 @@ export default function ServiceConfigPage() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.text")}</span><Input fieldName={`entries.${idx}.text`} value={row.text} onChange={(event) => patch(row.key, "text", event.target.value)} placeholder={t("serviceConfig.placeholders.text")} /></label>
+                <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.textEn")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span><Input fieldName={`entries.${idx}.textEn`} dir="ltr" value={row.textEn ?? ""} onChange={(event) => patch(row.key, "textEn", event.target.value)} placeholder="Contact customer service" /></label>
                 <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("serviceConfig.fields.value")}</span><Input fieldName={`entries.${idx}.value`} dir="ltr" value={row.value} onChange={(event) => patch(row.key, "value", event.target.value)} placeholder={t("serviceConfig.placeholders.value")} /></label>
                 <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.type")}</span><Select fieldName={`entries.${idx}.type`} className="w-full rounded-xl border border-[#d7e1ea] bg-white p-2.5" value={row.type} onChange={(event) => patch(row.key, "type", event.target.value)}><option value="PHONE">{t("enums.serviceConfigType.phone")}</option><option value="WHATSAPP">{t("enums.serviceConfigType.whatsapp")}</option><option value="WEBSITE">{t("enums.serviceConfigType.website")}</option></Select></label>
                 <label className="flex items-center gap-2 rounded-xl bg-[#f8fbfd] p-3 text-sm"><input type="checkbox" checked={row.isActive ?? true} onChange={(event) => patch(row.key, "isActive", event.target.checked)} className="size-4 accent-[#059ff8]" /> {t("serviceConfig.visibleInApp")}</label>

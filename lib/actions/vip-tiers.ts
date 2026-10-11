@@ -11,15 +11,17 @@ import { t } from "@/lib/i18n/t";
 export type VipTier = {
   id: string;
   name: string;
+  /** English name for passengers using the app in English; null = they see `name`. */
+  nameEn: string | null;
   rank: number;
   isActive: boolean;
 };
 
 export const fetchVipTiers = (includeInactive = false) =>
   apiGet<VipTier[]>(`/api/vip-tiers${includeInactive ? "?includeInactive=true" : ""}`);
-export const createVipTier = (input: { name: string; rank: number; isActive?: boolean }) =>
+export const createVipTier = (input: { name: string; nameEn?: string | null; rank: number; isActive?: boolean }) =>
   notifyResult(t("vipTiers.toast.created"), apiSend<VipTier>("/api/vip-tiers", "POST", input));
-export const updateVipTier = (id: string, input: { name?: string; rank?: number; isActive?: boolean }) =>
+export const updateVipTier = (id: string, input: { name?: string; nameEn?: string | null; rank?: number; isActive?: boolean }) =>
   notifyResult(
     input.isActive === undefined ? t("vipTiers.toast.saved") : input.isActive ? t("vipTiers.toast.activated") : t("vipTiers.toast.deactivated"),
     apiSend<VipTier>(`/api/vip-tiers/${id}`, "PATCH", input),

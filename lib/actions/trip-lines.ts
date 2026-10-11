@@ -88,6 +88,8 @@ export function lineEndpoints(line: Pick<TripLine, "stops">): {
 
 export const fetchStops = () => apiGet<Stop[]>("/api/stops");
 export const fetchGovernorates = () => apiGet<Governorate[]>("/api/governorates");
+export const updateGovernorate = (id: string, input: { code?: string | null; nameAr?: string; nameEn?: string | null }) =>
+  notifyResult(t("governorates.toast.saved"), apiSend<Governorate>(`/api/governorates/${id}`, "PATCH", input));
 export const fetchMarkaz = (governorateId: string, includeInactive = false) =>
   apiGet<Markaz[]>(`/api/governorates/${governorateId}/markaz${includeInactive ? "?includeInactive=true" : ""}`);
 export const fetchMarkazAll = (includeInactive = true) =>
