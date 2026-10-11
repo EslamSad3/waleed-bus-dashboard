@@ -48,10 +48,13 @@ fields(schemas.createBusSchema, { plateNumber: '', color: '', capacity: 0, model
 fields(schemas.createBusSchema, { plateNumber: 'ABC', color: 'WHITE', capacity: 40, modelYear: 2025, imageUrl: 'https://storage.example/bus.jpg', brandId: null }, []);
 fields(schemas.createTripSchema, { busId: '', driverUserId: id, departAt: 'bad', fare: '-5' }, ['busId', 'departAt', 'fare']);
 fields(schemas.createTripSchema, { busId: id, driverUserId: id, departAt: '2026-10-05T09:00:00Z', fare: '10.50' }, []);
-fields(schemas.createTripLineSchema, { name: 'Line', code: 'L1', stops: [{ stopId: id, stopType: 'BAD' }] }, ['stops', 'stops.0.stopType']);
+fields(schemas.createTripLineSchema, { name: 'Line', code: 'L1', stops: [{ stopId: id, stopType: 'BAD', estimatedStopMinutes: 0 }] }, ['stops', 'stops.0.stopType']);
 fields(admin.createUserSchema, { email: 'bad', password: 'x' }, ['email', 'password']);
 fields(admin.updateUserSchema, { name: 'New', password: undefined, maxBookingSeats: null }, []);
 fields(admin.updateUserSchema, { maxBookingSeats: 1.5 }, ['maxBookingSeats']);
+fields(admin.platformSettingsSchema, { maxSearchDays: 0 }, ['maxSearchDays']);
+fields(admin.platformSettingsSchema, { maxSearchDays: 91 }, ['maxSearchDays']);
+fields(admin.platformSettingsSchema, { maxSearchDays: 14 }, []);
 fields(admin.createRoleSchema, { name: '', slug: 'bad_slug' }, ['name', 'slug']);
 fields(admin.rolePermissionsSchema, { permissionKeys: [] }, ['permissionKeys']);
 fields(admin.rolePermissionsSchema, { permissionKeys: ['buses.read'] }, []);

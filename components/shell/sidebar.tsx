@@ -14,6 +14,7 @@ import {
   KeyRound,
   ChartNoAxesCombined,
   Sparkles,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n/t";
@@ -35,6 +36,7 @@ const NAV = [
   { href: "/promotions", label: t("common.nav.promotions"), icon: Ticket },
   { href: "/notifications", label: t("common.nav.notifications"), icon: Ticket },
   { href: "/service-config", label: t("common.nav.serviceConfig"), icon: Ticket },
+  { href: "/settings", label: t("common.nav.settings"), icon: Settings },
   { href: "/users", label: t("common.nav.adminUsers"), icon: Users },
   { href: "/reports", label: t("common.nav.reports"), icon: ChartNoAxesCombined },
   { href: "/roles", label: t("common.nav.roles"), icon: UserRoundCog },

@@ -101,6 +101,7 @@ export const qk = {
   notifications: ["notifications"] as const,
   promotions: ["promotions"] as const,
   serviceConfig: ["service-config"] as const,
+  platformSettings: ["platform-settings"] as const,
   ownerMembers: (ownerId: string) => ["owner-members", ownerId] as const,
   ownerBuses: (ownerId: string) => ["owner-buses", ownerId] as const,
   ownerBookings: (ownerId: string) => ["owner-bookings", ownerId] as const,

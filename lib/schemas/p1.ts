@@ -9,7 +9,7 @@ import {
   adminResolveReportSchema,
 } from "./admin-bookings";
 import { t } from "@/lib/i18n/t";
-import { createUserSchema, updateUserSchema, createRoleSchema, updateRoleSchema, userRolesSchema, rolePermissionsSchema, notificationSchema, serviceConfigSchema } from "./admin-forms";
+import { createUserSchema, updateUserSchema, createRoleSchema, updateRoleSchema, userRolesSchema, rolePermissionsSchema, notificationSchema, serviceConfigSchema, platformSettingsSchema } from "./admin-forms";
 
 /**
  * Per-resource zod schemas + proxy registry.
@@ -377,6 +377,7 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "PUT", pattern: new RegExp(`^/roles/${SEG}/permissions$`), schema: rolePermissionsSchema },
   { method: "POST", pattern: /^\/platform\/notifications$/, schema: notificationSchema },
   { method: "PUT", pattern: /^\/platform\/config\/customer-service$/, schema: serviceConfigSchema },
+  { method: "PATCH", pattern: /^\/platform\/settings$/, schema: platformSettingsSchema },
   // ---- Owner accounts (platform) ----
   { method: "POST", pattern: /^\/fleet-owners$/, schema: createFleetOwnerSchema },
   { method: "PATCH", pattern: new RegExp(`^/fleet-owners/${SEG}$`), schema: updateFleetOwnerSchema },
