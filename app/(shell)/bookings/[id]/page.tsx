@@ -49,6 +49,7 @@ import {
   X,
   Building2,
   Settings2,
+  StickyNote,
 } from "lucide-react";
 import { t } from "@/lib/i18n/t";
 
@@ -336,6 +337,18 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {booking.note ? (
+        <section aria-labelledby="booking-note-title" className="flex items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm sm:gap-4 sm:p-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-400 text-white shadow-sm">
+            <StickyNote className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 id="booking-note-title" className="text-base font-extrabold text-amber-900">{t("bookings.detail.noteCard.title")}</h2>
+            <p className="mt-1 whitespace-pre-wrap break-words text-[15px] font-semibold leading-relaxed text-[#1a1a1a]" dir="auto">{booking.note}</p>
+          </div>
+        </section>
+      ) : null}
+
       {/* Grid: 2 columns for structured relational inspection */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Card 1: Passenger Profile */}
@@ -361,7 +374,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.nationalIdInline")}</span>
               <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">
-                {booking.passenger?.nationalId || t("bookings.detail.noAccount")}
+                {booking.passenger || booking.passengerUserId
+                  ? booking.passenger?.nationalId || t("bookings.detail.noNationalId")
+                  : t("bookings.detail.noAccount")}
               </span>
             </div>
 
@@ -375,7 +390,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-[#5e6b78]">{t("bookings.detail.fields.savedPhone")}</span>
                 <span dir="ltr" className="min-w-0 font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
               </div>
-              {booking.note ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">{t("bookings.detail.fields.note")} {booking.note}</p> : null}
               {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">{t("bookings.detail.fields.promoCode")} <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> {t("bookings.detail.promoDiscountPrefix")} {booking.discountAmount} {t("bookings.detail.promoDiscountSuffix")}</span> : null}</p> : null}
             </div>
           </div>

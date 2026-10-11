@@ -54,20 +54,36 @@ export function useFieldValidation(check: () => Record<string, string | undefine
       return unmatched ? result.message : null;
     },
     reset() { setTouched({}); setSubmitted(false); setServer({}); },
+    /** Messages no control on screen shows; ValidationScope renders them so a blocked submit never fails silently. */
+    unbound(): string[] {
+      const covered = (key: string) => key.split(".").some((_, index, parts) => controls.current.has(parts.slice(0, index + 1).join(".")));
+      return [...new Set(Object.entries(errors).filter(([key]) => !covered(key)).map(([, message]) => message))];
+    },
   };
 }
 
 export type FieldValidation = ReturnType<typeof useFieldValidation>;
 const ValidationContext = createContext<FieldValidation | undefined>(undefined);
 
-export function ValidationScope({ validation, children }: { validation?: FieldValidation; children: ReactNode }) {
+export function ValidationScope({ validation, children, showUnbound = true }: { validation?: FieldValidation; children: ReactNode; showUnbound?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const attempt = validation?.attempt ?? 0;
   useEffect(() => {
-    if (attempt) ref.current?.querySelector<HTMLElement>('[aria-invalid="true"], button[data-invalid="true"]')?.focus();
+    if (!attempt || !ref.current) return;
+    const invalid = ref.current.querySelector<HTMLElement>('[aria-invalid="true"], button[data-invalid="true"]');
+    if (invalid) invalid.focus();
+    else ref.current.querySelector<HTMLElement>('[role="alert"]')?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [attempt]);
   if (!validation) return children;
-  return <ValidationContext.Provider value={validation}><div ref={ref} className="contents">{children}</div></ValidationContext.Provider>;
+  const unbound = showUnbound ? validation.unbound() : [];
+  return (
+    <ValidationContext.Provider value={validation}>
+      <div ref={ref} className="contents">
+        {children}
+        {unbound.length ? <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{unbound.join(" · ")}</p> : null}
+      </div>
+    </ValidationContext.Provider>
+  );
 }
 
 export function useValidatedField(name?: string) {
