@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StopMinutesInput } from "@/components/trip-lines/stop-minutes-input";
 import { t } from "@/lib/i18n/t";
 import { stopTimesInOrder } from "@/lib/schemas/p1";
+import { cairoInputToIso } from "@/lib/trip-edit-time";
 
 /** One stop of a trip as the editor needs it: the default minutes it falls back to. */
 export type ScheduleStop = {
@@ -43,9 +44,9 @@ export function stopTimesError(stops: ScheduleStop[], edited: StopMinutes): stri
 
 /** Clock time the bus is due at a stop, from a datetime-local departure. */
 function dueAt(departAt: string, minutes: number | undefined): string | null {
-  const start = new Date(departAt);
+  const start = new Date(cairoInputToIso(departAt));
   if (!departAt || Number.isNaN(start.getTime()) || minutes === undefined) return null;
-  return new Date(start.getTime() + minutes * 60_000).toLocaleString("ar-EG", { weekday: "short", hour: "numeric", minute: "2-digit" });
+  return new Date(start.getTime() + minutes * 60_000).toLocaleString("ar-EG", { timeZone: "Africa/Cairo", weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
 /**

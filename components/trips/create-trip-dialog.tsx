@@ -26,6 +26,7 @@ import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queri
 import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { useFilterStore } from "@/stores/filters";
 import { t } from "@/lib/i18n/t";
+import { cairoInputToIso } from "@/lib/trip-edit-time";
 import { TripStopTimes, stopTimesError, stopTimesPayload, type ScheduleStop, type StopMinutes } from "./trip-stop-times";
 
 /**
@@ -115,7 +116,7 @@ export function CreateTripDialog({
     const result = await createTrip(ownerId, lineId, {
       busId,
       driverUserId,
-      departAt: new Date(departAt).toISOString(),
+      departAt: cairoInputToIso(departAt),
       fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined,
       stopTimes: stopTimesPayload(scheduleStops, stopMinutes),
     });
@@ -210,6 +211,7 @@ export function CreateTripDialog({
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.departAt")}</span>
             <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
+            <small className="mt-1 block text-xs text-[#687886]">{t("trips.cairoTimeHint")}</small>
           </label>
           {selectedLine?.pricingEnabled ? <p className="self-center text-sm text-slate-600">{t("pricing.managedOnLine")}</p> : <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fare")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>

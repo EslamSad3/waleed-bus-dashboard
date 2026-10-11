@@ -1653,7 +1653,8 @@
       "saved": "اتحفظت بيانات الرحلة",
       "deleted": "اتمسحت الرحلة"
     },
-    "pickOwnerDescription": "اختار العربيات الأول عشان تشوف رحلاتها"
+    "pickOwnerDescription": "اختار العربيات الأول عشان تشوف رحلاتها",
+    "cairoTimeHint": "الموعد بتوقيت القاهرة"
   },
   "users": {
     "errors": {

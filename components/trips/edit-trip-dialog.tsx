@@ -137,6 +137,7 @@ export function EditTripDialog({
           <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("trips.columns.departAt")}</span>
             <Input fieldName="departAt" dir="ltr" type="datetime-local" value={departAt} onChange={(event) => setDepartAt(event.target.value)} />
+            <small className="mt-1 block text-xs text-[#687886]">{t("trips.cairoTimeHint")}</small>
           </label>
           {trip?.pricingEnabled ? <p className="self-center text-sm text-slate-600">{t("pricing.managedOnLine")}</p> : <label className="block text-sm">
             <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.fare")}</span>
