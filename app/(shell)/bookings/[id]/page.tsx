@@ -96,7 +96,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     },
   );
   // Render-phase sync from the query cache (setState-in-effect is not allowed)
-  const [seenBooking, setSeenBooking] = useState<AdminBookingDetail | undefined>(bookingData);
+  // The marker starts undefined — never bookingData — so cached data on remount still syncs into local state.
+  const [seenBooking, setSeenBooking] = useState<AdminBookingDetail | undefined>(undefined);
   if (bookingData && bookingData !== seenBooking) {
     setSeenBooking(bookingData);
     setBooking(bookingData);
@@ -374,9 +375,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex justify-between items-center">
               <span className="text-[#5e6b78]">{t("bookings.detail.fields.nationalIdInline")}</span>
               <span className="min-w-0 font-mono text-[#1a1a1a]" dir="ltr">
-                {booking.passenger || booking.passengerUserId
-                  ? booking.passenger?.nationalId || t("bookings.detail.noNationalId")
-                  : t("bookings.detail.noAccount")}
+                {booking.passenger?.nationalId || t("bookings.detail.noNationalId")}
               </span>
             </div>
 
