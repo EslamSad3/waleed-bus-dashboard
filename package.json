@@ -13,7 +13,8 @@
     "test:auth": "node --experimental-strip-types --test test/auth-identity.test.mjs",
     "test:notifications": "node --experimental-strip-types --test test/notification-realtime.test.mjs test/notification-realtime-provider.test.mjs",
     "test:trip-edit": "node --experimental-strip-types --test test/trip-edit-time.test.mjs",
-    "test:booking-detail": "node --experimental-strip-types --test test/booking-detail-cache.test.mjs"
+    "test:booking-detail": "node --experimental-strip-types --test test/booking-detail-cache.test.mjs",
+    "test:group-booking": "node --experimental-strip-types --test test/group-booking-idempotency.test.mjs"
   },
   "dependencies": {
     "@ag-grid-community/locale": "^36.2.0",

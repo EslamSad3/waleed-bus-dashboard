@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { schemaErrors, requiredField } from "@/lib/field-validation";
 import { useFieldValidation } from "@/components/ui/field-validation";
 import { Select, Textarea } from "@/components/ui/select";
@@ -14,6 +14,14 @@ import { OwnerPicker } from "@/components/owners/owner-picker";
 import { fetchOwnerTripLinesPage, lineEndpoints } from "@/lib/actions/trip-lines";
 import { fetchTripsPage, fetchTripPricing } from "@/lib/actions/trips";
 import { quoteStaffBookingOrder, createStaffBookingOrder } from "@/lib/actions/booking-orders";
+import {
+  fingerprintOrderPayload,
+  keyForPayload,
+  normalizeOrderPhone,
+  resolveOrderPayload,
+  settleFailedPayload,
+  type PendingOrderKeys,
+} from "@/lib/booking-order-idempotency";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
 import { useFilterStore } from "@/stores/filters";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -78,15 +86,11 @@ export function CreateGroupBookingDialog({
   const [ownerId, setLocalOwnerId] = useState(scopedOwnerId ?? "");
   const [lineId, setLineId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  // One idempotency key per dialog session: retries of the same submit reuse
-  // it, a success or a reopen mints a fresh one. Adjusted during render (the
-  // sanctioned previous-render pattern), never in an effect.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setIdempotencyKey(crypto.randomUUID());
-  }
+  // Replay keys are bound to exact submitted payloads, not to the dialog
+  // session: an unchanged retry reuses its key, any edit mints a fresh one,
+  // and several unresolved submissions coexist. The map survives closing and
+  // reopening while the page is mounted; a success removes only its own entry.
+  const pendingRef = useRef<PendingOrderKeys>(new Map());
 
   const form = useForm<Values>({
     resolver: zodResolver(staffBookingOrderFormSchema),
@@ -171,21 +175,28 @@ export function CreateGroupBookingDialog({
     setOwnerId(ownerId);
     setOwnerScopeCookie(ownerId);
     if (!quoteFresh || !quote) return setFormError(tr("pricing.quoteRequired"));
+    const note = values.note?.trim() ? values.note.trim() : undefined;
+    const orderItems = values.items.map((item) => ({
+      boardingStationId: item.boardingStationId,
+      landingStationId: item.landingStationId,
+      seatCount: Number(item.seatCount),
+      passengerName: item.passengerName.trim(),
+      passengerPhone: normalizeOrderPhone(item.passengerPhone.trim()),
+    }));
+    const fingerprint = fingerprintOrderPayload({ tripId: values.tripId, paymentMethod: values.paymentMethod, note, items: orderItems });
+    const keyed = keyForPayload(pendingRef.current, fingerprint, () => crypto.randomUUID());
+    pendingRef.current = keyed.pending;
+    const key = keyed.key;
     const r = await createStaffBookingOrder({
       tripId: values.tripId,
       paymentMethod: values.paymentMethod,
       expectedTotalAmount: quote.totalAmount,
-      note: values.note?.trim() ? values.note.trim() : undefined,
-      idempotencyKey: idempotencyKey || undefined,
-      items: values.items.map((item) => ({
-        boardingStationId: item.boardingStationId,
-        landingStationId: item.landingStationId,
-        seatCount: Number(item.seatCount),
-        passengerName: item.passengerName.trim(),
-        passengerPhone: item.passengerPhone.trim(),
-      })),
+      note,
+      idempotencyKey: key,
+      items: orderItems,
     });
     if (!r.ok) {
+      pendingRef.current = settleFailedPayload(pendingRef.current, fingerprint, r.code);
       if (r.code === "PRICE_CHANGED") {
         setFormError(tr("pricing.changed"));
         await quoteQuery.refetch();
@@ -195,7 +206,7 @@ export function CreateGroupBookingDialog({
       return;
     }
     queryClient.invalidateQueries({ queryKey: qk.adminBookings });
-    setIdempotencyKey(crypto.randomUUID());
+    pendingRef.current = resolveOrderPayload(pendingRef.current, fingerprint);
     resetForm();
     onClose();
   }
@@ -204,7 +215,7 @@ export function CreateGroupBookingDialog({
   const quoteLoading = quoteQuery.isFetching || debouncedKey !== key;
 
   return (
-    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { resetForm(); onClose(); } }} title={tr("bookings.groupOrder.title")} description={tr("bookings.groupOrder.description")} size="lg">
+    <Dialog validation={validation} open={open} onOpenChange={(next) => { if (!next) { if (form.formState.isSubmitting) return; resetForm(); onClose(); } }} title={tr("bookings.groupOrder.title")} description={tr("bookings.groupOrder.description")} size="lg">
       <div>
         <div className="mb-4">
           <OwnerPicker ownerId={ownerId} onOwnerChange={(id) => { setLocalOwnerId(id); setLineId(""); form.setValue("tripId", ""); clearRowStations(); }} />
@@ -288,8 +299,8 @@ export function CreateGroupBookingDialog({
                       </label>
                       {fare ? (
                         <dl className="grid grid-cols-2 content-center gap-2 rounded-xl bg-white p-3 text-sm">
-                          <dt>{tr("pricing.unitFare")}</dt><dd dir="ltr" className="text-end font-bold">{fare.unitFare} EGP</dd>
-                          <dt>{tr("bookings.groupOrder.rowTotal")}</dt><dd dir="ltr" className="text-end font-bold text-[#00134c]">{fare.totalAmount} EGP</dd>
+                          <dt>{tr("pricing.unitFare")}</dt><dd dir="ltr" className="text-end font-bold">{fare.unitFare} {tr("pricing.currencyLabel")}</dd>
+                          <dt>{tr("bookings.groupOrder.rowTotal")}</dt><dd dir="ltr" className="text-end font-bold text-[#00134c]">{fare.totalAmount} {tr("pricing.currencyLabel")}</dd>
                         </dl>
                       ) : null}
                     </div>
@@ -310,8 +321,8 @@ export function CreateGroupBookingDialog({
               {quoteFresh && quote ? (
                 <dl className="grid grid-cols-2 gap-2 rounded-xl bg-white p-3 text-sm ring-1 ring-[#cfe1ec]">
                   <dt>{tr("bookings.groupOrder.combinedSeats")}</dt><dd className="text-end font-bold">{quote.totalSeats}</dd>
-                  <dt>{tr("pricing.subtotal")}</dt><dd dir="ltr" className="text-end font-bold">{quote.subtotalAmount} EGP</dd>
-                  <dt>{tr("bookings.groupOrder.combinedTotal")}</dt><dd dir="ltr" className="text-end font-bold text-[#00134c]">{quote.totalAmount} EGP</dd>
+                  <dt>{tr("pricing.subtotal")}</dt><dd dir="ltr" className="text-end font-bold">{quote.subtotalAmount} {tr("pricing.currencyLabel")}</dd>
+                  <dt>{tr("bookings.groupOrder.combinedTotal")}</dt><dd dir="ltr" className="text-end font-bold text-[#00134c]">{quote.totalAmount} {tr("pricing.currencyLabel")}</dd>
                 </dl>
               ) : null}
             </div>
@@ -329,7 +340,7 @@ export function CreateGroupBookingDialog({
           </label>
           {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{tr("common.actions.cancel")}</Button>
+            <Button type="button" variant="danger" disabled={form.formState.isSubmitting} onClick={() => { resetForm(); onClose(); }}>{tr("common.actions.cancel")}</Button>
             <Button type="submit" variant="success" loading={form.formState.isSubmitting} disabled={!quoteFresh}>
               {form.formState.isSubmitting ? tr("common.loading.saving") : tr("bookings.groupOrder.submit")}
             </Button>

@@ -200,19 +200,27 @@ const staffOrderSeats = z
   .number(t("pricing.positiveSeats"))
   .int(t("pricing.positiveSeats"))
   .min(1, t("pricing.positiveSeats"));
+/**
+ * The backend (`@IsUUID()`, any version) accepts every PostgreSQL UUID shape,
+ * while strict `z.uuid()` rejects some the database holds — so the new order
+ * schemas match on the shape instead. Existing schemas stay untouched.
+ */
+const pgUuid = z
+  .string(t("validation.uuid"))
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, t("validation.uuid"));
 const staffOrderQuoteItem = z.object({
-  boardingStationId: uuid,
-  landingStationId: uuid,
+  boardingStationId: pgUuid,
+  landingStationId: pgUuid,
   seatCount: staffOrderSeats,
 });
 export const quoteStaffBookingOrderSchema = z.object({
-  tripId: uuid,
+  tripId: pgUuid,
   items: z.array(staffOrderQuoteItem).min(1, t("validation.groupOrderItems")).max(10, t("validation.groupOrderItems")),
 });
 export const staffPaymentMethod = z.enum(["CASH", "VODAFONE_CASH", "ORANGE_MONEY", "ETISALAT_CASH", "WE_PAY", "CARD"]);
 const staffOrderItem = z.object({
-  boardingStationId: uuid,
-  landingStationId: uuid,
+  boardingStationId: pgUuid,
+  landingStationId: pgUuid,
   seatCount: staffOrderSeats,
   passengerName: name255,
   passengerPhone: egyptPhone,
@@ -220,7 +228,7 @@ const staffOrderItem = z.object({
 const staffOrderItems = z.array(staffOrderItem).min(1, t("validation.groupOrderItems")).max(10, t("validation.groupOrderItems"));
 /** Client form: everything the operator fills (the total + idempotency are added at submit). */
 export const staffBookingOrderFormSchema = z.object({
-  tripId: uuid,
+  tripId: pgUuid,
   paymentMethod: staffPaymentMethod,
   note: z.string().max(1000, t("validation.maxLength", { max: 1000 })).optional(),
   items: staffOrderItems,

@@ -52,7 +52,7 @@ export function BookingOrderSection({
               {tr("bookings.detail.orderSection.totalSeats")}: {order.totalSeats} {tr("bookings.detail.orderSection.seatsUnit")}
             </span>
             <span className="rounded-lg bg-[#d6eeff] px-2.5 py-1 font-extrabold text-[#00134c]">
-              {tr("bookings.detail.orderSection.orderTotal")}: <span dir="ltr">{order.totalAmount} EGP</span>
+              {tr("bookings.detail.orderSection.orderTotal")}: <span dir="ltr">{order.totalAmount} {tr("pricing.currencyLabel")}</span>
             </span>
           </div>
         ) : null}
@@ -106,7 +106,7 @@ export function BookingOrderSection({
                       {BOOKING_STATUS_AR[child.status] ?? child.status}
                     </span>
                     <span className="font-extrabold text-[#00134c]" dir="ltr">
-                      {child.totalAmount ?? "—"}{child.totalAmount ? " EGP" : ""}
+                      {child.totalAmount ?? "—"}{child.totalAmount ? ` ${tr("pricing.currencyLabel")}` : ""}
                     </span>
                   </span>
                 </Link>
