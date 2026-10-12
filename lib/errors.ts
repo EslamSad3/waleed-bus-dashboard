@@ -19,6 +19,8 @@ export const AR_ERROR_MAP: Record<string, string> = {
   TRIP_FARE_MANAGED_ON_LINE: t("errors.TRIP_FARE_MANAGED_ON_LINE"),
 
   // --- identity and access ---
+  PRIVILEGE_ESCALATION: t("errors.PRIVILEGE_ESCALATION"),
+  COMPANY_ROLE_NOT_GLOBAL: t("errors.COMPANY_ROLE_NOT_GLOBAL"),
   AUTHENTICATION_FAILED: t("errors.AUTHENTICATION_FAILED"),
   ACCOUNT_ALREADY_EXISTS: t("errors.ACCOUNT_ALREADY_EXISTS"),
   ROLE_CONFIGURATION_INVALID: t("errors.ROLE_CONFIGURATION_INVALID"),
@@ -31,6 +33,13 @@ export const AR_ERROR_MAP: Record<string, string> = {
   OTP_EXPIRED: t("errors.OTP_EXPIRED"),
   OTP_INVALID: t("errors.OTP_INVALID"),
   OTP_RATE_LIMITED: t("errors.OTP_RATE_LIMITED"),
+  EMAIL_CODE_INVALID: t("errors.EMAIL_CODE_INVALID"),
+  PHONE_NOT_REGISTERED: t("errors.PHONE_NOT_REGISTERED"),
+  EMAIL_NOT_REGISTERED: t("errors.EMAIL_NOT_REGISTERED"),
+  EMAIL_NOT_VERIFIED: t("errors.EMAIL_NOT_VERIFIED"),
+  ACCOUNT_DISABLED: t("errors.ACCOUNT_DISABLED"),
+  EMAIL_CODE_EXPIRED: t("errors.EMAIL_CODE_EXPIRED"),
+  INVALID_CURRENT_PASSWORD: t("errors.INVALID_CURRENT_PASSWORD"),
   JUSTIFICATION_REQUIRED: t("errors.JUSTIFICATION_REQUIRED"),
 
   // --- generic request/validation ---
@@ -214,22 +223,25 @@ export function conflictMessage(key: ConflictKey | undefined): string {
 export type BackendFailure = {
   statusCode: number;
   code?: string;
-  /** English server text. Logged, never rendered. */
+  /** Server text; rendered only when Arabic and the code is unmapped (see toArabicError). */
   message?: string;
   details?: { fields?: Record<string, string | string[]> } & Record<string, unknown>;
   retryAfter?: number;
 };
 
 /**
- * Backend code → Arabic copy. An unknown code falls back to the status-specific
- * line, so a new server-side code degrades to useful guidance rather than
- * leaking English or showing a blank toast.
+ * Backend code → Arabic copy, most specific first:
+ *   1. the dashboard's own copy for a known code;
+ *   2. the API's message, when it is Arabic (busFetch asks for `Accept-Language:
+ *      ar`, so every coded API error describes itself) — a code this map does
+ *      not know yet still reads clearly instead of a generic status line;
+ *   3. the status-specific line. English API text never reaches the screen.
  */
-export function toArabicError(code: string | undefined, status?: number): string {
-  if (status === 429) return AR_ERROR_MAP.RATE_LIMITED_429;
+export function toArabicError(code: string | undefined, status?: number, apiMessage?: string): string {
   if (code && AR_ERROR_MAP[code]) return AR_ERROR_MAP[code];
+  if (apiMessage && ARABIC_SCRIPT.test(apiMessage)) return apiMessage;
+  if (status === 429) return AR_ERROR_MAP.RATE_LIMITED_429;
   if (status && UNKNOWN_BY_STATUS[status]) return UNKNOWN_BY_STATUS[status];
-  if (!code) return AR_ERROR_MAP.UNKNOWN;
   return AR_ERROR_MAP.UNKNOWN;
 }
 

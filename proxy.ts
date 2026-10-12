@@ -5,6 +5,7 @@ import {
   REMEMBER_COOKIE,
   deleteSessionCookies,
   fetchIdentity,
+  isDashboardRole,
   rotateRefreshToken,
   writeSessionCookies,
 } from "@/lib/auth";
@@ -16,6 +17,9 @@ import {
  */
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Forgot password is for signed-out users: never redirect it to /login.
+  if (pathname === "/forgot-password") return NextResponse.next();
   const accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
   const remembered = req.cookies.get(REMEMBER_COOKIE)?.value === "1";
@@ -23,14 +27,15 @@ export async function proxy(req: NextRequest) {
   if (pathname === "/login") {
     if (accessToken) {
       const identity = await fetchIdentity(accessToken);
-      if (identity?.appRole === "super_admin") {
+      if (isDashboardRole(identity?.appRole)) {
         return NextResponse.redirect(new URL("/", req.url));
       }
     }
 
     if (refreshToken) {
       const rotated = await rotateRefreshToken(refreshToken);
-      if (rotated) {
+      const identity = rotated ? await fetchIdentity(rotated.accessToken) : null;
+      if (rotated && isDashboardRole(identity?.appRole)) {
         const response = NextResponse.redirect(new URL("/", req.url));
         writeSessionCookies(response.cookies, rotated.accessToken, rotated.refreshToken, remembered);
         return response;
@@ -48,7 +53,8 @@ export async function proxy(req: NextRequest) {
   if (!accessToken) {
     if (refreshToken) {
       const rotated = await rotateRefreshToken(refreshToken);
-      if (rotated) {
+      const identity = rotated ? await fetchIdentity(rotated.accessToken) : null;
+      if (rotated && isDashboardRole(identity?.appRole)) {
         const response = NextResponse.redirect(req.nextUrl);
         writeSessionCookies(response.cookies, rotated.accessToken, rotated.refreshToken, remembered);
         return response;

@@ -95,10 +95,10 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
       {
         statusCode: status,
         code: result.code,
-        // TRANSLATION BOUNDARY: the API's `message` is English by contract and
-        // is deliberately dropped here. `code` is what gets translated, so raw
-        // server text can never reach the Arabic UI.
-        message: toArabicError(result.code, result.status),
+        // TRANSLATION BOUNDARY: `code` is translated first; an unmapped code
+        // falls back to the API's own message only when it is Arabic (we ask
+        // for `Accept-Language: ar`). English server text never reaches the UI.
+        message: toArabicError(result.code, result.status, result.rawMessage),
         ...(result.details ? { details: arabiciseDetails(result.details) } : {}),
         ...(result.retryAfter ? { retryAfter: result.retryAfter } : {}),
       },

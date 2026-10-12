@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { loginSchema } from "@/lib/schemas/auth";
-import { clearSessionCookies, fetchIdentity, setSessionCookies } from "@/lib/auth";
+import { loginCredentials, loginSchema } from "@/lib/schemas/auth";
+import { clearSessionCookies, fetchIdentity, isDashboardRole, setSessionCookies } from "@/lib/auth";
 import { busApiUrl, originAllowed } from "@/lib/config";
 import { toArabicError } from "@/lib/errors";
 import { t } from "@/lib/i18n/t";
 
 /**
- * POST /api/auth/login — validates (trust boundary), forwards WITHOUT loginType
- * (backend platform login resolves by email), stores tokens in httpOnly cookies,
- * and admits ONLY super_admin (anyone else gets the generic error).
+ * Credentials-only login; the server derives app_role. Admission uses the
+ * authenticated JWT claim, and tokens stay in httpOnly cookies.
  */
 export async function POST(req: Request) {
   if (!originAllowed(req)) {
@@ -46,7 +45,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const { email, password, rememberMe } = parsed.data;
+  const { identifier, password, rememberMe } = parsed.data;
+  const credentials = loginCredentials(identifier);
+  // Logs never carry the full identifier.
+  const who = identifier.length > 4 ? `…${identifier.slice(-4)}` : "…";
 
   // The API talks to the database through a pooled connection: a dropped
   // pool connection surfaces as a one-off 5xx even with correct credentials.
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
       res = await fetch(`${busApiUrl()}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ ...credentials, password }),
         cache: "no-store",
       });
     } catch {
@@ -72,7 +74,7 @@ export async function POST(req: Request) {
   }
 
   if (!res || networkFailed) {
-    console.error(`[dashboard login] upstream unreachable after retry for ${email}`);
+    console.error(`[dashboard login] upstream unreachable after retry for ${who}`);
     return NextResponse.json(
       { statusCode: 503, code: "NETWORK_ERROR", message: toArabicError("NETWORK_ERROR") },
       { status: 503 },
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
     // 5xx here means the API stayed broken across the retry — report it as a
     // server problem so the operator retries instead of doubting the password.
     if (res.status >= 500) {
-      console.error(`[dashboard login] upstream ${res.status} after retry for ${email}`);
+      console.error(`[dashboard login] upstream ${res.status} after retry for ${who}`);
       return NextResponse.json(
         { statusCode: 503, code: "NETWORK_ERROR", message: toArabicError("NETWORK_ERROR") },
         { status: 503 },
@@ -115,7 +117,7 @@ export async function POST(req: Request) {
   if (!identity) {
     // The credentials were accepted but the identity read flaked: retryable
     // server error, not wrong credentials. Never store a half session.
-    console.error(`[dashboard login] identity read failed after 201 for ${email}`);
+    console.error(`[dashboard login] identity read failed after 201 for ${who}`);
     await clearSessionCookies();
     return NextResponse.json(
       {
@@ -126,7 +128,7 @@ export async function POST(req: Request) {
       { status: 503 },
     );
   }
-  if (identity.appRole !== "super_admin") {
+  if (!isDashboardRole(identity.appRole)) {
     await clearSessionCookies();
     return NextResponse.json(
       {

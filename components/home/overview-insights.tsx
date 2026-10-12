@@ -25,6 +25,8 @@ import { qk, useApiQuery, useDataQuery } from "@/lib/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCardsSkeleton } from "@/components/ui/skeletons";
 import { ApexChart } from "@/components/charts/apex-chart";
+import type { DashboardAccess } from "@/lib/access";
+import { canNavigate } from "@/lib/nav-permissions";
 import { t } from "@/lib/i18n/t";
 
 async function fetchCountPage(path: string): Promise<number> {
@@ -63,23 +65,24 @@ function KpiCard({ label, value, href, icon: Icon, tint }: Kpi) {
 }
 
 /** كروت مؤشرات (كل كارت لينك لصفحته) + رسوم ApexCharts ثلاثية الإحساس. */
-export function OverviewInsights() {
-  const ownersPageQuery = useApiQuery(["owners", "kpi"], () => fetchFleetOwnersPage(null));
+export function OverviewInsights({ access }: { access: DashboardAccess }) {
+  const allowed = (href: string) => canNavigate(access, href);
+  const ownersPageQuery = useApiQuery(["owners", "kpi"], () => fetchFleetOwnersPage(null), { enabled: allowed("/fleet-owners") });
   // Cross-owner driver roster lives under /fleet-owners/drivers; there is no global /drivers index.
   const driversQuery = useDataQuery<number>(["drivers", "kpi"], () =>
-    fetchCountPage("/api/fleet-owners/drivers?limit=100"),
+    fetchCountPage("/api/fleet-owners/drivers?limit=100"), { enabled: allowed("/drivers") },
   );
-  const ownersQuery = useDataQuery<number>(["fleet-owners", "kpi"], () => fetchCountPage("/api/fleet-owners?limit=100"));
-  const usersQuery = useDataQuery<number>(["users", "kpi"], () => fetchCountPage("/api/users?limit=100"));
-  const stopsQuery = useApiQuery<Stop[]>(qk.stops, fetchStops);
-  const tripLinesQuery = useApiQuery(["trip-lines", "kpi"], () => fetchSystemTripLinesPage(null));
-  const busesQuery = useApiQuery(["buses", "kpi"], () => fetchSystemBusesPage(null));
-  const tripsQuery = useApiQuery(["trips", "kpi"], () => fetchSystemTripsPage(null));
+  const ownersQuery = useDataQuery<number>(["fleet-owners", "kpi"], () => fetchCountPage("/api/fleet-owners?limit=100"), { enabled: allowed("/fleet-owners") });
+  const usersQuery = useDataQuery<number>(["users", "kpi"], () => fetchCountPage("/api/users?limit=100"), { enabled: allowed("/users") });
+  const stopsQuery = useApiQuery<Stop[]>(qk.stops, fetchStops, { enabled: allowed("/stops") });
+  const tripLinesQuery = useApiQuery(["trip-lines", "kpi"], () => fetchSystemTripLinesPage(null), { enabled: allowed("/trip-lines") });
+  const busesQuery = useApiQuery(["buses", "kpi"], () => fetchSystemBusesPage(null), { enabled: allowed("/buses") });
+  const tripsQuery = useApiQuery(["trips", "kpi"], () => fetchSystemTripsPage(null), { enabled: allowed("/trips") });
   const bookingsQuery = useDataQuery<Booking[]>(["bookings", "kpi"], async () => {
     const result = await fetchAdminBookingsPage({ limit: 100 }, null);
     if (!result.ok) throw new Error(result.message);
     return result.data.items;
-  });
+  }, { enabled: allowed("/bookings") });
 
   const owners = useMemo(() => ownersPageQuery.data?.items ?? [], [ownersPageQuery.data?.items]);
   const activeOwners = owners.filter((owner) => owner.isActive).length;
@@ -171,6 +174,8 @@ export function OverviewInsights() {
       tint: "bg-[#e9f7f0] text-[#147353]",
     },
   ];
+
+  const visibleKpis = kpis.filter((kpi) => allowed(kpi.href));
 
   const baseOptions = useMemo<ApexOptions>(
     () => ({
@@ -291,6 +296,8 @@ export function OverviewInsights() {
     tripsQuery,
   ].some((query) => query.isLoading);
 
+  if (visibleKpis.length === 0) return null;
+
   return (
     <section className="dashboard-page">
       <div className="page-heading">
@@ -302,10 +309,10 @@ export function OverviewInsights() {
 
       {/* ٩ كروت — شبكة ٣ أعمدة متزنة من غير خانة فاضية */}
       {kpisLoading ? (
-        <KpiCardsSkeleton count={kpis.length} columns={3} />
+        <KpiCardsSkeleton count={visibleKpis.length} columns={3} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {kpis.map((kpi) => (
+          {visibleKpis.map((kpi) => (
             <KpiCard key={kpi.label} {...kpi} />
           ))}
         </div>
@@ -313,7 +320,7 @@ export function OverviewInsights() {
 
       {hasData ? (
         <div className="grid gap-4 xl:grid-cols-3">
-          <div className={chartFrame}>
+          {allowed("/bookings") ? <div className={chartFrame}>
             <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.bookingsStatusTitle")}</h3>
             <ApexChart
               type="donut"
@@ -321,8 +328,8 @@ export function OverviewInsights() {
               series={bookingStatusSlices.map((slice) => slice.count)}
               height={280}
             />
-          </div>
-          <div className={chartFrame}>
+          </div> : null}
+          {allowed("/fleet-owners") ? <div className={chartFrame}>
             <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.ownersOperatingTitle")}</h3>
             <ApexChart
               type="radialBar"
@@ -330,8 +337,8 @@ export function OverviewInsights() {
               series={[ownerRunningPercent]}
               height={280}
             />
-          </div>
-          <div className={chartFrame}>
+          </div> : null}
+          {allowed("/fleet-owners") && allowed("/buses") ? <div className={chartFrame}>
             <h3 className="mb-2 text-base font-extrabold text-[#00134c]">{t("home.insights.busesPerOwnerTitle")}</h3>
             <ApexChart
               type="bar"
@@ -339,7 +346,7 @@ export function OverviewInsights() {
               series={[{ name: t("home.insights.busesSeries"), data: busesPerOwner.map((row) => row.count) }]}
               height={280}
             />
-          </div>
+          </div> : null}
         </div>
       ) : (
         <div role="status" className="grid gap-4 xl:grid-cols-3">

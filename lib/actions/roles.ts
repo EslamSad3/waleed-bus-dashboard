@@ -6,6 +6,7 @@ export type Role = {
   id: string;
   name: string;
   slug: string;
+  scope: "PLATFORM" | "COMPANY";
   description?: string | null;
   isSystem: boolean;
   isActive: boolean;
@@ -24,7 +25,7 @@ export function fetchRole(id: string): Promise<ActionResult<RoleDetail>> {
   return apiGet<RoleDetail>(`/api/roles/${id}`);
 }
 
-export function createRole(input: { name: string; slug: string; description?: string }): Promise<ActionResult<Role>> {
+export function createRole(input: { name: string; slug: string; description?: string; scope?: Role["scope"] }): Promise<ActionResult<Role>> {
   return notifyResult(t("roles.toast.created"), apiSend<Role>("/api/roles", "POST", input));
 }
 

@@ -5,6 +5,23 @@ PRD: `PRD.md` (single source of truth). Backend: `../bus_api` (do not modify).
 
 ## Current status
 
+- **2026-10-12 - Users list filters + email-or-phone login:** `/users` still lists every account; chips (all / platform team / passengers / owners / drivers) and a debounced name/email/phone search narrow it via `GET /users?type=&q=`, and an account-type column labels each row. Page copy (title, description, nav label, empty state, dialog, toasts) now speaks of all accounts, not only management users; the roles section says platform roles are for the management team only. Login takes an email OR a phone number in one field (`identifier`; the route sends `{email}` or `{phone}` to the credentials-only API). Passed: typecheck, lint (one existing warning), i18n:check, check:validation, test:auth.
+- **2026-10-12 - Platform staff dashboard access:** JWT admission now accepts `super_admin` and `platform_staff`; live `/me` permissions filter desktop/mobile navigation and overview links, KPIs and queries. Realtime requires `notifications.read`; the personal inbox bell stays available. Roles expose immutable PLATFORM/COMPANY scope at creation and in list/detail badges; user global-role choices include only PLATFORM roles. Added permission labels, privilege/scope error copy and mocked auth coverage. Passed: `typecheck`, `lint` (0 errors; one existing permissions-page warning), `i18n:check` (1728 keys; 91 unused-key notices), `check:validation` (70 checks), `test:auth` (9/9). No backend changes or live API walkthrough.
+
+
+### Login sends credentials only; identity from the JWT (bus_api spec 022, 2026-10-12)
+
+- The login route forwards `{email, password}` only (no role selector). Identity (`id`, `email`, `appRole`) is read from the access JWT's claims after the API validates that exact token/session via `GET /me` (revoked or expired sessions still fail); `/me` is no longer the role source. Admission stays `super_admin`.
+- `test/auth-identity.test.mjs` (`pnpm test:auth`) covers claim decoding and rejection of stale tokens.
+- Passed: typecheck, lint (one existing permissions-page warning), i18n check, 66 field-validation checks, `test:auth` (4/4).
+
+### Password recovery and visibility controls (2026-10-12)
+
+- Forgot password supports email or SMS, with one reset call that verifies the code and changes the password. SMS uses the account's registered phone and the configured fixed code; a successful forgot response for an unknown phone creates no challenge.
+- Users admin now displays the phone in the table and supports adding, editing, or clearing it. Client validation and the proxy schema retain the field, including `null` to clear it; the API normalizes admin-entered phones.
+- Shared `PasswordInput` provides independent show/hide controls in login, reset, account password change, owner creation, driver creation/editing, and user administration. It forwards refs, labels and validation attributes to the input, preserves autocomplete and supports RTL and keyboard controls.
+- Passed: typecheck, lint (zero errors; one existing permissions-page warning), i18n check, build, and 66 field-validation regression checks. Browser checks verified login show/hide, correctly associated labels, and independent reset toggles. A temporary account reset through the live dashboard SMS proxy with `123456`; password storage and replay rejection were verified, and the account was removed. Authenticated admin/account browser walkthrough remains separate.
+
 ### Owners are drivers: one account, one roster (2026-10-05)
 
 Dashboard half of `bus_api` spec 015 (owner and driver share one account;

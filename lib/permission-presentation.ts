@@ -8,6 +8,15 @@ type PermissionPresentation = {
 };
 
 const RESOURCES: Record<string, { group: string; name: string }> = {
+  "fares": { group: t("permissions.groups.operations"), name: t("permissions.resources.fares") },
+  "notifications": { group: t("permissions.groups.operations"), name: t("permissions.resources.notifications") },
+  "settings": { group: t("permissions.groups.systemAdmin"), name: t("permissions.resources.settings") },
+  "promotions": { group: t("permissions.groups.operations"), name: t("permissions.resources.promotions") },
+  "vehicle-brands": { group: t("permissions.groups.operations"), name: t("permissions.resources.vehicle-brands") },
+  "vip-tiers": { group: t("permissions.groups.operations"), name: t("permissions.resources.vip-tiers") },
+  "fleet-owners.schedules": { group: t("permissions.groups.fleetOperations"), name: t("permissions.resources.ownerSchedules") },
+  "fleet-owners.feedback": { group: t("permissions.groups.fleetOperations"), name: t("permissions.resources.ownerFeedback") },
+  "fleet-owners.members": { group: t("permissions.groups.fleetOperations"), name: t("permissions.resources.ownerMembers") },
   users: { group: t("permissions.groups.accounts"), name: t("permissions.resources.users") },
   buses: { group: t("permissions.groups.operations"), name: t("permissions.resources.buses") },
   trips: { group: t("permissions.groups.operations"), name: t("permissions.resources.trips") },
@@ -44,6 +53,7 @@ const RESOURCES: Record<string, { group: string; name: string }> = {
 };
 
 const ACTIONS: Record<string, string> = {
+  refund: t("permissions.actions.refund"),
   read: t("permissions.actions.read"),
   create: t("permissions.actions.create"),
   update: t("permissions.actions.update"),

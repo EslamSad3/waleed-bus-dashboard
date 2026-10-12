@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { AsyncButton } from "@/components/ui/async-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { fetchDriver, updateDriver, MEMBER_STATUS_AR, type DriverRow, type Member } from "@/lib/actions/members";
@@ -156,7 +157,7 @@ export function EditDriverDialog({
         />
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("drivers.editDialog.newPasswordLabel")} <span className="font-normal text-slate-400">{t("common.value.optional")}</span></span>
-          <Input fieldName="password" dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("drivers.placeholders.keepPasswordEmpty")} autoComplete="new-password" />
+          <PasswordInput fieldName="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("drivers.placeholders.keepPasswordEmpty")} autoComplete="new-password" />
         </label>
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("drivers.editDialog.membershipStatus")}</span>

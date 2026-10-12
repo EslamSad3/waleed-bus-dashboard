@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/auth";
 import {
   Form,
@@ -16,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { useSessionStore } from "@/stores/session";
 import { t } from "@/lib/i18n/t";
@@ -29,13 +31,12 @@ type ApiError = {
 export default function LoginPage() {
   const router = useRouter();
   const setSession = useSessionStore((s) => s.setSession);
-  const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     mode: "onBlur",
-    defaultValues: { email: "", password: "", rememberMe: false },
+    defaultValues: { identifier: "", password: "", rememberMe: false },
   });
 
   async function onSubmit(values: LoginFormValues) {
@@ -61,8 +62,8 @@ export default function LoginPage() {
       if (fields) {
         for (const [key, messages] of Object.entries(fields)) {
           const msg = Array.isArray(messages) ? messages.join(t("common.listSeparator")) : messages;
-          if (key === "email" || key === "password") {
-            form.setError(key as "email" | "password", { message: msg });
+          if (key === "identifier" || key === "password") {
+            form.setError(key, { message: msg });
           }
         }
       }
@@ -134,15 +135,16 @@ export default function LoginPage() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
             <FormField
               control={form.control}
-              name="email"
+              name="identifier"
               render={({ field }) => (
                 <FormItem className="space-y-2.5">
-                  <FormLabel className="text-sm font-bold text-[#334454]">{t("common.fields.email")}</FormLabel>
+                  <FormLabel className="text-sm font-bold text-[#334454]">{t("auth.login.identifierLabel")}</FormLabel>
                   <FormControl>
                     <Input
-                      type="email"
+                      type="text"
                       dir="rtl"
-                      placeholder="admin@waleed-express.local"
+                      inputMode="email"
+                      placeholder={t("auth.login.identifierPlaceholder")}
                       autoComplete="username"
                       className="h-12 rounded-2xl px-4 text-right text-base"
                       {...field}
@@ -160,28 +162,13 @@ export default function LoginPage() {
                 <FormItem className="space-y-2.5">
                   <FormLabel className="text-sm font-bold text-[#334454]">{t("common.fields.password")}</FormLabel>
                   <FormControl>
-                    <div className="relative" dir="rtl">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        dir="rtl"
-                        placeholder="••••••••"
-                        autoComplete="current-password"
-                        className="h-12 rounded-2xl px-4 pe-12 text-right text-base"
-                        {...field}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
-                        className="absolute end-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#667786] transition hover:bg-[#eaf6ff] hover:text-[#00134c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059ff8]/30"
-                      >
-                        {showPassword ? (
-                          <EyeOff aria-hidden="true" />
-                        ) : (
-                          <Eye aria-hidden="true" />
-                        )}
-                      </button>
-                    </div>
+                    <PasswordInput
+                      dir="rtl"
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      className="h-12 rounded-2xl px-4 text-right text-base"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,6 +199,12 @@ export default function LoginPage() {
                 </div>
               )}
             />
+
+            <div className="flex justify-end">
+              <Link href="/forgot-password" className="text-sm font-bold text-[#059ff8] hover:underline">
+                {t("auth.login.forgotLink")}
+              </Link>
+            </div>
 
             {formError && (
               <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100">

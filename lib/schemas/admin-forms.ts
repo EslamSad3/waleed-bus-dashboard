@@ -1,15 +1,17 @@
 import { z } from "zod";
 import { t } from "@/lib/i18n/t";
+import { forgotPhoneSchema } from "@/lib/schemas/auth";
 
 const required = (max: number) => z.string(t("validation.required")).trim().min(1, t("validation.required")).max(max, t("validation.maxLength", { max }));
 const optionalText = (max: number) => z.string().max(max, t("validation.maxLength", { max })).optional();
 const uuid = z.uuid(t("validation.uuid"));
 const password = z.string().min(8, t("validation.passwordMin")).max(128, t("validation.maxLength", { max: 128 }));
+const phoneNumber = forgotPhoneSchema.shape.phoneNumber;
 
-export const createUserSchema = z.object({ email: z.email(t("validation.email")).max(255, t("validation.maxLength", { max: 255 })), password, name: optionalText(255), globalRoleSlugs: z.array(required(100)).optional() });
-export const updateUserSchema = z.object({ name: optionalText(255), password: password.optional(), isActive: z.boolean().optional(), picture: optionalText(1024), maxBookingSeats: z.number(t("common.validation.seatLimit")).int(t("common.validation.seatLimit")).min(1, t("common.validation.seatLimit")).nullable().optional() });
-export const createRoleSchema = z.object({ name: required(100), slug: required(100).min(2, t("validation.invalid")).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, t("validation.invalid")), description: optionalText(500), permissionKeys: z.array(required(100)).min(1, t("validation.permissionsRequired")).optional(), isActive: z.boolean().optional() });
-export const updateRoleSchema = createRoleSchema.omit({ slug: true, permissionKeys: true }).partial();
+export const createUserSchema = z.object({ email: z.email(t("validation.email")).max(255, t("validation.maxLength", { max: 255 })), password, name: optionalText(255), phoneNumber: phoneNumber.optional(), globalRoleSlugs: z.array(required(100)).optional() });
+export const updateUserSchema = z.object({ name: optionalText(255), email: z.email(t("validation.email")).max(255, t("validation.maxLength", { max: 255 })).optional(), phoneNumber: phoneNumber.nullable().optional(), password: password.optional(), isActive: z.boolean().optional(), picture: optionalText(1024), maxBookingSeats: z.number(t("common.validation.seatLimit")).int(t("common.validation.seatLimit")).min(1, t("common.validation.seatLimit")).nullable().optional() });
+export const createRoleSchema = z.object({ scope: z.enum(["PLATFORM", "COMPANY"], t("validation.invalid")).optional(), name: required(100), slug: required(100).min(2, t("validation.invalid")).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, t("validation.invalid")), description: optionalText(500), permissionKeys: z.array(required(100)).min(1, t("validation.permissionsRequired")).optional(), isActive: z.boolean().optional() });
+export const updateRoleSchema = createRoleSchema.omit({ slug: true, permissionKeys: true, scope: true }).partial();
 export const userRolesSchema = z.object({ roleSlugs: z.array(required(100)) });
 export const rolePermissionsSchema = z.object({ permissionKeys: z.array(required(100)).min(1, t("validation.permissionsRequired")) });
 

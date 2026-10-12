@@ -1,3 +1,5 @@
+import { readSession } from "@/lib/auth";
+import { canNavigate } from "@/lib/nav-permissions";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -45,7 +47,9 @@ const OPERATIONS = [
   { href: "/bookings", label: t("common.nav.bookings"), description: t("home.operations.bookings"), icon: TicketCheck },
 ] as const;
 
-export default function OverviewPage() {
+export default async function OverviewPage() {
+  const session = await readSession();
+  if (!session) return null;
   return (
     <div className="dashboard-page">
       <section className="navy-band relative overflow-hidden rounded-[2rem] px-5 py-7 text-white shadow-[0_22px_60px_rgba(0,19,76,.22)] sm:px-8 sm:py-9">
@@ -63,17 +67,17 @@ export default function OverviewPage() {
             {t("home.hero.description")}
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="bg-white text-[#00134c] shadow-none hover:bg-[#eaf6ff]">
+            {canNavigate(session, "/fleet-owners") ? <Button asChild size="lg" className="bg-white text-[#00134c] shadow-none hover:bg-[#eaf6ff]">
               <Link href="/fleet-owners">{t("home.hero.ctaCreateOwner")}</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+            </Button> : null}
+            {canNavigate(session, "/drivers") ? <Button asChild size="lg" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white">
               <Link href="/drivers">{t("common.actions.addDriver")}</Link>
-            </Button>
+            </Button> : null}
           </div>
         </div>
       </section>
 
-      <OverviewInsights />
+      <OverviewInsights access={{ appRole: session.appRole, permissions: session.permissions }} />
 
       <section>
         <div className="page-heading mb-4">
@@ -83,7 +87,7 @@ export default function OverviewPage() {
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {MODULES.map(({ href, title, description, action, icon: Icon, tint }) => (
+          {MODULES.filter(({ href }) => canNavigate(session, href)).map(({ href, title, description, action, icon: Icon, tint }) => (
             <article key={href} className="panel-card group flex min-h-64 flex-col p-5 transition-transform duration-200 hover:-translate-y-1">
               <span className={`grid size-12 place-items-center rounded-2xl ${tint}`}>
                 <Icon className="size-6" aria-hidden="true" />
@@ -110,7 +114,7 @@ export default function OverviewPage() {
           <p className="mt-1 text-sm text-[#5e6b78]">{t("home.dailyOpsDescription")}</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {OPERATIONS.map(({ href, label, description, icon: Icon }) => (
+          {OPERATIONS.filter(({ href }) => canNavigate(session, href)).map(({ href, label, description, icon: Icon }) => (
             <Link key={href} href={href} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-[#f8fbfd] p-4 transition hover:border-[#8fd2ff] hover:bg-[#eaf6ff]">
               <span className="grid size-11 place-items-center rounded-xl bg-white text-[#059ff8] shadow-sm">
                 <Icon className="size-5" aria-hidden="true" />

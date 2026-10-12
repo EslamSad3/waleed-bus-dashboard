@@ -6,6 +6,7 @@ export type AdminUser = {
   id: string;
   email: string | null;
   name: string | null;
+  phoneNumber: string | null;
   maxBookingSeats?: number | null;
   effectiveMaxBookingSeats?: number;
   isActive: boolean;
@@ -13,19 +14,29 @@ export type AdminUser = {
   createdAt: string;
   updatedAt: string;
   globalRoles?: { role: { id: string; slug: string; name: string } }[];
+  /** List rows only: what the account is (an owner is also a driver). */
+  accountTypes?: AccountType[];
 };
+
+export type AccountType = "super_admin" | "platform_staff" | "fleet_owner" | "driver" | "passenger";
+/** `GET /users?type=`; "" = every account (the default). */
+export type UserListType = "" | "staff" | "passenger" | "fleet_owner" | "driver";
+export type UserListFilters = { type?: UserListType; q?: string };
 
 export const PLATFORM_DEFAULT_MAX_BOOKING_SEATS = 5;
 
-export function fetchAdminUsers(cursor: string | null): Promise<ActionResult<CursorPage<AdminUser>>> {
-  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=30` : "?limit=30";
-  return apiGet<CursorPage<AdminUser>>(`/api/users${query}`);
+export function fetchAdminUsers(cursor: string | null, filters: UserListFilters = {}): Promise<ActionResult<CursorPage<AdminUser>>> {
+  const params = new URLSearchParams({ limit: "30" });
+  if (cursor) params.set("cursor", cursor);
+  if (filters.type) params.set("type", filters.type);
+  if (filters.q?.trim()) params.set("q", filters.q.trim());
+  return apiGet<CursorPage<AdminUser>>(`/api/users?${params.toString()}`);
 }
 
 export const fetchAdminUser = (id: string) => apiGet<AdminUser>(`/api/users/${id}`);
-export const createAdminUser = (input: { email: string; password: string; name?: string; globalRoleSlugs?: string[] }) =>
+export const createAdminUser = (input: { email: string; password: string; name?: string; phoneNumber?: string; globalRoleSlugs?: string[] }) =>
   notifyResult(t("users.toast.created"), apiSend<AdminUser>("/api/users", "POST", input));
-export const updateAdminUser = (id: string, input: { name?: string; isActive?: boolean; password?: string; maxBookingSeats?: number | null }) =>
+export const updateAdminUser = (id: string, input: { name?: string; email?: string; phoneNumber?: string | null; isActive?: boolean; password?: string; maxBookingSeats?: number | null }) =>
   notifyResult(
     input.isActive === undefined ? t("users.toast.saved") : input.isActive ? t("users.toast.activated") : t("users.toast.deactivated"),
     apiSend<AdminUser>(`/api/users/${id}`, "PATCH", input),

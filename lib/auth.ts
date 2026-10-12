@@ -1,3 +1,6 @@
+import { platformPermissions } from "./access";
+export { can, isDashboardRole } from "./access";
+
 import { cookies } from "next/headers";
 import { busApiUrl } from "./config";
 
@@ -18,8 +21,9 @@ export const REFRESH_MAX_AGE = 60 * 60 * 24 * 7;
 export type SessionIdentity = {
   id: string;
   email: string | null;
-  /** AccountDto.appRole (GET /me) — the ONLY role source the dashboard trusts. */
+  /** app_role from the access JWT after backend validation of that token/session. */
   appRole: string;
+  permissions: string[];
 };
 
 const secure = process.env.NODE_ENV === "production";
@@ -115,17 +119,42 @@ export async function rotateRefreshToken(
   }
 }
 
-/** Direct backend call — no proxy recursion (used by route handlers only). */
+/**
+ * Decode identity for routing only. The caller MUST first validate this exact
+ * token with the API; decoding alone does not authenticate its signature.
+ */
+export function identityFromValidatedToken(accessToken: string): SessionIdentity | null {
+  try {
+    const parts = accessToken.split(".");
+    if (parts.length !== 3 || parts.some((part) => !part)) return null;
+    const header = JSON.parse(Buffer.from(parts[0], "base64url").toString());
+    const claims = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+    if (
+      header.alg !== "HS256" ||
+      typeof claims.sub !== "string" || !claims.sub ||
+      typeof claims.app_role !== "string" || !claims.app_role ||
+      (claims.email !== null && typeof claims.email !== "string") ||
+      typeof claims.exp !== "number" || claims.exp <= Date.now() / 1000
+    ) return null;
+    return { id: claims.sub, email: claims.email, appRole: claims.app_role, permissions: [] };
+  } catch {
+    return null;
+  }
+}
+
+/** Validate the live token/session; routing identity comes from its JWT claims. */
 export async function fetchIdentity(accessToken: string): Promise<SessionIdentity | null> {
+  const identity = identityFromValidatedToken(accessToken);
+  if (!identity) return null;
   try {
     const res = await fetch(`${busApiUrl()}/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
     });
     if (!res.ok) return null;
-    const body = (await res.json()) as { data?: SessionIdentity };
-    if (!body?.data || typeof body.data.appRole !== "string") return null;
-    return body.data;
+    const body = (await res.json()) as { data?: { id?: string; platformPermissions?: unknown } };
+    if (body?.data?.id !== identity.id) return null;
+    return { ...identity, permissions: platformPermissions(body.data.platformPermissions) };
   } catch {
     return null;
   }

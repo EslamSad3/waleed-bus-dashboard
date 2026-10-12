@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { OwnerPicker } from "@/components/owners/owner-picker";
 import { createDriverAccount, type SystemDriverRow } from "@/lib/actions/members";
@@ -160,8 +161,8 @@ export function CreateDriverDialog({
             uploading={saving && Boolean(imageFile)}
             hint={t("common.image.hintUploadFile")}
           />
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><Input fieldName="password" dir="ltr" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><Input fieldName="passwordConfirmation" dir="ltr" type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.password")}</span><PasswordInput fieldName="password" dir="ltr" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.passwordConfirm")}</span><PasswordInput fieldName="passwordConfirmation" dir="ltr" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" /></label>
           {error && <p role="alert" className="text-sm text-red-600 md:col-span-2">{error}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row md:col-span-2">
             <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>

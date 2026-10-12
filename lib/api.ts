@@ -9,7 +9,7 @@ export type BusResult<T> =
       ok: false;
       status: number;
       code: string;
-      /** Raw English API text — for logs only, never for the UI. */
+      /** The API's message (Arabic, since we send Accept-Language: ar); shown only for unmapped codes. */
       rawMessage?: string;
       details?: BackendFailure["details"];
       retryAfter?: number;
@@ -103,8 +103,8 @@ export async function busFetch<T>(path: string, opts: BusFetchOptions = {}): Pro
       ok: false,
       status: res.status,
       code,
-      // Kept for server logs and debugging only: the proxy translates `code`
-      // into Egyptian Arabic, so this English text never reaches the UI.
+      // The proxy translates `code` first and falls back to this message only
+      // when it is Arabic, so English server text never reaches the UI.
       rawMessage: failure.message,
       details: failure.details,
       retryAfter: failure.retryAfter,

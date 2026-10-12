@@ -1,17 +1,19 @@
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import Image from "next/image";
+import type { DashboardAccess } from "@/lib/access";
 import { t } from "@/lib/i18n/t";
 
-export function Topbar({ email, userId }: { email: string | null; userId: string }) {
+export function Topbar({ email, userId, access }: { email: string | null; userId: string; access: DashboardAccess }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-[#f4f8fc]/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3 lg:px-8">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Phone-only drawer toggle; the drawer it controls lives in mobile-nav.tsx */}
-          <MobileNav />
+          <MobileNav access={access} />
           <span className="flex h-10 shrink-0 items-center overflow-hidden rounded-xl bg-white px-1.5 shadow-lg shadow-[#00134c]/15 ring-1 ring-[#dce6ee] sm:h-11">
             <Image
               src="/logo.png"
@@ -42,6 +44,14 @@ export function Topbar({ email, userId }: { email: string | null; userId: string
           >
             {(email ?? t("shell.topbar.avatarInitial")).slice(0, 1).toUpperCase()}
           </span>
+          <Link
+            href="/account"
+            aria-label={t("shell.topbar.accountLink")}
+            title={t("shell.topbar.accountLink")}
+            className="grid size-9 shrink-0 place-items-center rounded-full text-[#5e6b78] transition hover:bg-[#eaf6ff] hover:text-[#00134c]"
+          >
+            <KeyRound className="size-[18px]" aria-hidden="true" />
+          </Link>
           <SignOutButton />
           <NotificationBell userId={userId} />
         </div>

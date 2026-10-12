@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarLinks } from "@/components/shell/sidebar";
+import type { DashboardAccess } from "@/lib/access";
 import { t } from "@/lib/i18n/t";
 
 /** Stable no-op subscription: the client snapshot never changes. */
@@ -17,7 +18,7 @@ const subscribeToNothing = () => () => {};
  * sidebar sits on in RTL. Overlay click, Escape, navigation, link tap, or
  * resizing up to md all close it; body scroll is locked while open.
  */
-export function MobileNav() {
+export function MobileNav({ access }: { access: DashboardAccess }) {
   const [open, setOpen] = useState(false);
   // The overlay and drawer are portalled to <body>: this component lives inside
   // the sticky topbar, and a `backdrop-filter` on an ancestor (that header has
@@ -134,7 +135,7 @@ export function MobileNav() {
                   </button>
                 </div>
                 <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pb-3">
-                  <SidebarLinks />
+                  <SidebarLinks access={access} />
                 </nav>
               </div>
             </>,

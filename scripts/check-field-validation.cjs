@@ -52,12 +52,26 @@ fields(schemas.createTripSchema, { busId: id, driverUserId: id, departAt: '2026-
 fields(schemas.createTripSchema, { busId: id, driverUserId: id, departAt: '2026-10-05T09:00:00Z', stopTimes: [{ stopOrder: 2, scheduledAt: 'bad' }] }, ['stopTimes.0.scheduledAt']);
 fields(schemas.createTripLineSchema, { name: 'Line', code: 'L1', stops: [{ stopId: id, stopType: 'BAD' }] }, ['stops', 'stops.0.stopType']);
 fields(admin.createUserSchema, { email: 'bad', password: 'x' }, ['email', 'password']);
+fields(admin.createUserSchema, { email: 'staff@example.test', password: 'Passw0rd!123', phoneNumber: 'bad' }, ['phoneNumber']);
+fields(admin.updateUserSchema, { phoneNumber: '' }, ['phoneNumber']);
+assert.equal(admin.createUserSchema.parse({ email: 'staff@example.test', password: 'Passw0rd!123', phoneNumber: '+201012345678' }).phoneNumber, '+201012345678'); checks++;
+assert.deepEqual(admin.updateUserSchema.parse({ phoneNumber: '01012345678' }), { phoneNumber: '01012345678' }); checks++;
+assert.deepEqual(admin.updateUserSchema.parse({ phoneNumber: null }), { phoneNumber: null }); checks++;
 fields(admin.updateUserSchema, { name: 'New', password: undefined, maxBookingSeats: null }, []);
+// every edit field blank: nothing is required
+fields(admin.updateUserSchema, { name: '', email: undefined, phoneNumber: null, password: undefined, maxBookingSeats: null }, []);
 fields(admin.updateUserSchema, { maxBookingSeats: 1.5 }, ['maxBookingSeats']);
+fields(admin.updateUserSchema, { email: 'not-an-email' }, ['email']);
+assert.deepEqual(admin.updateUserSchema.parse({ email: 'new@example.com' }), { email: 'new@example.com' }); checks++;
 fields(admin.platformSettingsSchema, { maxSearchDays: 0 }, ['maxSearchDays']);
 fields(admin.platformSettingsSchema, { maxSearchDays: 91 }, ['maxSearchDays']);
 fields(admin.platformSettingsSchema, { maxSearchDays: 14 }, []);
 fields(admin.createRoleSchema, { name: '', slug: 'bad_slug' }, ['name', 'slug']);
+fields(admin.createRoleSchema, { name: 'Role', slug: 'test-role', scope: 'TENANT' }, ['scope']);
+for (const scope of ['PLATFORM', 'COMPANY']) {
+  assert.equal(admin.createRoleSchema.parse({ name: 'Role', slug: 'test-role', scope }).scope, scope); checks++;
+}
+assert.equal(admin.updateRoleSchema.parse({ name: 'Role', scope: 'COMPANY' }).scope, undefined); checks++;
 fields(admin.rolePermissionsSchema, { permissionKeys: [] }, ['permissionKeys']);
 fields(admin.rolePermissionsSchema, { permissionKeys: ['buses.read'] }, []);
 assert.deepEqual(admin.updateUserSchema.parse({ picture: 'https://example.com/photo.jpg' }), { picture: 'https://example.com/photo.jpg' }); checks++;
