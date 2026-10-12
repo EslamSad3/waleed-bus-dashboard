@@ -89,6 +89,8 @@ export type AdminBookingListItem = {
   boardedAt?: string | null;
   dropStatus?: DropStatus | null;
   hasReports: boolean;
+  /** Set when this booking belongs to a staff grouped order (spec 024). */
+  orderId?: string | null;
   tripDepartureTime?: string | null;
   originName?: string | null;
   destinationName?: string | null;
@@ -178,6 +180,8 @@ export type AdminBookingDetail = {
   paymentReference?: string | null;
   paymentNotes?: string | null;
   paidAt?: string | null;
+  /** Set when this booking belongs to a staff grouped order (spec 024). */
+  orderId?: string | null;
   paymentMarkedBy?: string | null;
   confirmedAt?: string | null;
   cancelledAt?: string | null;

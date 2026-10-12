@@ -394,6 +394,19 @@
       "noteCard": {
         "title": "ملاحظة على الحجز"
       },
+      "orderSection": {
+        "title": "الحجز الجماعي",
+        "description": "الحجز ده جزء من طلب جماعي واحد — كل حجوزات الطلب:",
+        "totalSeats": "إجمالي المقاعد",
+        "orderTotal": "إجمالي الطلب",
+        "seatsUnit": "مقعد",
+        "currentBadge": "الحجز الحالي",
+        "routeSeparator": "←",
+        "rowLabel": "حجز {value}",
+        "loadFailed": "تعذر تحميل بيانات الطلب المجمّع",
+        "loading": "جاري تحميل حجوزات الطلب…",
+        "empty": "الطلب ده مفيهوش حجوزات"
+      },
       "bookingStatusLabel": "حالة الحجز",
       "paymentStatusLabel": "حالة الدفع"
     },
@@ -408,11 +421,13 @@
       "tripDetails": "تفاصيل الرحلة",
       "showAllBookings": "عرض كل الحجوزات",
       "empty": "لا توجد حجوزات مطابقة لمعايير البحث الحالية.",
-      "rowActions": "إجراءات حجز {value}"
+      "rowActions": "إجراءات حجز {value}",
+      "groupedBadge": "حجز جماعي"
     },
     "columns": {
       "passengerName": "الراكب",
       "hasReports": "بلاغات",
+      "groupedOrder": "طلب مجمّع",
       "createdAt": "تاريخ الحجز"
     },
     "filters": {
@@ -568,6 +583,38 @@
       "submit": "إضافة الحجز",
       "pickLineOption": "اختار خط الرحلة"
     },
+    "groupOrder": {
+      "errors": {
+        "pickOwner": "اختار العربيات الأول"
+      },
+      "title": "حجز جماعي جديد",
+      "description": "احجز لعدة ركاب على رحلة واحدة — كل راكب بمحطاته وعدد مقاعده.",
+      "tripLabel": "الرحلة (من نفس العربيه)",
+      "pickTripOption": "اختار الرحلة",
+      "pickLineOption": "اختار خط الرحلة",
+      "passengersTitle": "الركاب ({count})",
+      "passengerTitle": "راكب {index}",
+      "addPassenger": "إضافة راكب",
+      "removePassenger": "إزالة الراكب {index}",
+      "passengerNameLabel": "اسم الراكب",
+      "passengerNamePlaceholder": "اسم الراكب",
+      "passengerPhoneLabel": "موبايل الراكب",
+      "seatsLabel": "عدد المقاعد",
+      "pickBoardingOption": "اختار محطة الركوب",
+      "pickLandingOption": "اختار محطة النزول",
+      "rowTotal": "إجمالي الصف",
+      "quoteWaiting": "كمّل محطات ومقاعد كل الصفوف عشان نحسب السعر",
+      "quoteStale": "البيانات اتغيرت — مستنيين تحديث السعر",
+      "combinedTotal": "الإجمالي الكلي",
+      "combinedSeats": "إجمالي المقاعد",
+      "paymentMethodLabel": "طريقة الدفع",
+      "noteLabel": "ملاحظة (اختياري)",
+      "notePlaceholder": "ملاحظة بتتسجل على كل حجوزات الطلب",
+      "submit": "تأكيد الحجز الجماعي",
+      "toast": {
+        "created": "اتسجل الحجز الجماعي بنجاح"
+      }
+    },
     "toast": {
       "paymentVerified": "تم تأكيد الدفعة بنجاح",
       "paymentFailed": "تم تسجيل فشل الدفع",
@@ -601,6 +648,9 @@
     },
     "paymentMethod": {
       "vodafoneCash": "فودافون كاش",
+      "orangeMoney": "أورانج موني",
+      "etisalatCash": "اتصالات كاش",
+      "wePay": "وي باي",
       "instapay": "إنستاباي",
       "wallet": "محفظة إلكترونية",
       "cash": "نقدي",
@@ -2074,6 +2124,8 @@
     "BAD_REQUEST": "راجع الحقول المطلوبة",
     "FORBIDDEN": "مفيش صلاحية للعملية دي",
     "BOOKING_NOT_FOUND": "الحجز مش موجود",
+    "BOOKING_ORDER_NOT_FOUND": "طلب الحجز المجمّع مش موجود",
+    "DUPLICATE_ORDER_ITEM": "فيه راكب متكرر بنفس المحطات والموبايل — ادمج الصفين في صف واحد",
     "BOOKING_ALREADY_CANCELLED": "الحجز ملغي بالفعل",
     "BOOKING_NOT_CANCELLED": "الحجز غير ملغي، لا يمكن استرجاعه",
     "SEATS_UNAVAILABLE": "لا توجد مقاعد كافية في الرحلة لاسترجاع الحجز",
@@ -2271,6 +2323,7 @@
     "lineStops": "اختر نقطتي توقف على الأقل",
     "promoCode": "كود الخصم: 3-32 حرف أو رقم أو _ أو -",
     "ownerRequired": "لازم تختار صاحب العربيات",
+    "groupOrderItems": "عدد الركاب من 1 لـ 10",
     "invalid": "القيمة دي مش صحيحة",
     "maxLength": "الحد الأقصى {max} حرف",
     "mapLink": "اكتب رابط خرائط صحيح فيه إحداثيات صالحة، مثال: https://maps.google.com/?q=29.953140,31.104898",

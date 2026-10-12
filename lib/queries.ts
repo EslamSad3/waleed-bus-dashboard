@@ -98,6 +98,10 @@ export const qk = {
   adminBookings: ["admin-bookings"] as const,
   adminBookingsParams: (params: unknown) => ["admin-bookings", params] as const,
   adminBooking: (id: string) => ["admin-booking", id] as const,
+  /** Staff grouped order (`GET /admin/booking-orders/:id`). */
+  bookingOrder: (id: string) => ["admin-booking-order", id] as const,
+  /** Session identity for client-side permission gating (`GET /api/auth/me`). */
+  session: ["session"] as const,
   notifications: ["notifications"] as const,
   promotions: ["promotions"] as const,
   serviceConfig: ["service-config"] as const,

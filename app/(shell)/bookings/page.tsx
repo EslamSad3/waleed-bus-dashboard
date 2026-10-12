@@ -21,7 +21,9 @@ import {
   type AdminBookingListItem,
 } from "@/lib/actions/bookings";
 import { findTripAcrossLines } from "@/lib/actions/trips";
-import { CreateBookingDialog } from "@/components/bookings/create-booking-dialog";
+import { CreateGroupBookingDialog } from "@/components/bookings/create-group-booking-dialog";
+import { fetchSessionIdentity } from "@/lib/actions/session";
+import { can } from "@/lib/access";
 import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -95,6 +97,10 @@ export default function BookingsPage() {
 
   const filterParams = buildFilterParams();
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
+  // Session identity (live /api/auth/me) gates the staff checkout button —
+  // platform_staff only see it with bookings.create; super_admin always can.
+  const { data: identity } = useApiQuery(qk.session, fetchSessionIdentity);
+  const canCreate = can(identity ?? null, "bookings.create");
   const { data: pageData, isPending, error: fetchError } = useDataQuery(
     qk.adminBookingsParams(filterParams),
     async () => {
@@ -143,6 +149,7 @@ export default function BookingsPage() {
     { field: "originName", headerName: t("common.fields.origin") },
     { field: "destinationName", headerName: t("common.fields.destination") },
     { field: "seats", headerName: t("common.fields.seats"), filter: "agNumberColumnFilter" },
+    { field: "orderId", headerName: t("bookings.columns.groupedOrder"), valueFormatter: (params) => params.value ? t("bookings.list.groupedBadge") : "—" },
     { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
     { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value ?? t("common.value.unpaid") },
     { field: "paymentMethod", headerName: t("common.fields.paymentMethod"), valueFormatter: (params) => PAYMENT_METHOD_AR[params.value as keyof typeof PAYMENT_METHOD_AR] ?? params.value },
@@ -163,7 +170,9 @@ export default function BookingsPage() {
           <div className="flex items-center gap-2"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d6eeff] text-[#00134c]"><Ticket className="size-5" /></span><h1 className="page-title min-w-0">{t("bookings.list.badge")}</h1></div>
           <p className="page-description">{t("bookings.list.description")}</p>
         </div>
-        <Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("bookings.list.newBooking")}</Button>
+        {canCreate ? (
+          <Button className="gap-2" onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("bookings.list.newBooking")}</Button>
+        ) : null}
       </div>
 
       {tripId ? (
@@ -225,7 +234,7 @@ export default function BookingsPage() {
           )}
         />
       )}
-      <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateGroupBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

@@ -103,7 +103,10 @@ export const AR_ERROR_MAP: Record<string, string> = {
 
   // --- bookings and payments ---
   BOOKING_NOT_FOUND: t("errors.BOOKING_NOT_FOUND"),
-  BOOKING_ALREADY_CANCELLED: t("errors.BOOKING_ALREADY_CANCELLED"),
+  /** Staff grouped order missing (GET /admin/booking-orders/:id → 404). */
+  BOOKING_ORDER_NOT_FOUND: t("errors.BOOKING_ORDER_NOT_FOUND"),
+  /** Same pickup + drop-off + phone twice in one grouped order (400). */
+  DUPLICATE_ORDER_ITEM: t("errors.DUPLICATE_ORDER_ITEM"),  BOOKING_ALREADY_CANCELLED: t("errors.BOOKING_ALREADY_CANCELLED"),
   BOOKING_NOT_CANCELLABLE: t("errors.BOOKING_NOT_CANCELLABLE"),
   BOOKING_NOT_CANCELLED: t("errors.BOOKING_NOT_CANCELLED"),
   BOOKING_NOT_ON_TRIP: t("errors.BOOKING_NOT_ON_TRIP"),

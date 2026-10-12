@@ -52,6 +52,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { t } from "@/lib/i18n/t";
+import { BookingOrderSection } from "@/components/bookings/booking-order-section";
 
 type AuditLog = AdminBookingDetail["auditTrail"][number];
 
@@ -351,6 +352,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       ) : null}
 
       {/* Grid: 2 columns for structured relational inspection */}
+      {booking.orderId && <BookingOrderSection orderId={booking.orderId} currentBookingId={booking.id} />}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Card 1: Passenger Profile */}
         <div className="panel-card p-5 sm:p-6 space-y-4">

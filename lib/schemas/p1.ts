@@ -195,6 +195,46 @@ export const updateBookingSchema = z.object({
   status: bookingStatus.optional(),
 });
 
+// ---- Staff grouped bookings (platform checkout on behalf of passengers) ----
+const staffOrderSeats = z
+  .number(t("pricing.positiveSeats"))
+  .int(t("pricing.positiveSeats"))
+  .min(1, t("pricing.positiveSeats"));
+const staffOrderQuoteItem = z.object({
+  boardingStationId: uuid,
+  landingStationId: uuid,
+  seatCount: staffOrderSeats,
+});
+export const quoteStaffBookingOrderSchema = z.object({
+  tripId: uuid,
+  items: z.array(staffOrderQuoteItem).min(1, t("validation.groupOrderItems")).max(10, t("validation.groupOrderItems")),
+});
+export const staffPaymentMethod = z.enum(["CASH", "VODAFONE_CASH", "ORANGE_MONEY", "ETISALAT_CASH", "WE_PAY", "CARD"]);
+const staffOrderItem = z.object({
+  boardingStationId: uuid,
+  landingStationId: uuid,
+  seatCount: staffOrderSeats,
+  passengerName: name255,
+  passengerPhone: egyptPhone,
+});
+const staffOrderItems = z.array(staffOrderItem).min(1, t("validation.groupOrderItems")).max(10, t("validation.groupOrderItems"));
+/** Client form: everything the operator fills (the total + idempotency are added at submit). */
+export const staffBookingOrderFormSchema = z.object({
+  tripId: uuid,
+  paymentMethod: staffPaymentMethod,
+  note: z.string().max(1000, t("validation.maxLength", { max: 1000 })).optional(),
+  items: staffOrderItems,
+});
+/**
+ * Backend contract (`POST /admin/booking-orders`): exact-two-decimal total from
+ * the quote, optional note/idempotency — and no promo, no bookingFor. Strict so
+ * an unknown field fails at the proxy boundary instead of a backend 400.
+ */
+export const createStaffBookingOrderSchema = staffBookingOrderFormSchema.extend({
+  expectedTotalAmount: z.string(t("pricing.amountError")).trim().regex(/^\d{1,8}\.\d{2}$/, t("pricing.amountError")),
+  idempotencyKey: z.string().min(1, t("validation.invalid")).max(64, t("validation.maxLength", { max: 64 })).regex(/^[A-Za-z0-9_-]+$/, t("validation.invalid")).optional(),
+}).strict();
+
 // ---- Owner members (owner-scoped) ----
 export const addMemberSchema = z.object({
   userId: uuid,
@@ -421,6 +461,9 @@ export const P1_REGISTRY: RegistryEntry[] = [
   { method: "POST", pattern: new RegExp(`^/admin/bookings/${SEG}/reinstate$`), schema: adminReinstateSchema },
   { method: "PATCH", pattern: new RegExp(`^/admin/bookings/${SEG}/operational$`), schema: adminOperationalOverrideSchema },
   { method: "PATCH", pattern: new RegExp(`^/admin/bookings/${SEG}/reports/${SEG}$`), schema: adminResolveReportSchema },
+  // ---- Staff grouped booking orders (platform checkout) ----
+  { method: "POST", pattern: /^\/admin\/booking-orders\/quote$/, schema: quoteStaffBookingOrderSchema },
+  { method: "POST", pattern: /^\/admin\/booking-orders$/, schema: createStaffBookingOrderSchema },
 ];
 
 export function findRegistryEntry(method: string, pathname: string): RegistryEntry | undefined {
@@ -434,6 +477,10 @@ export type CreateTripLineInput = z.infer<typeof createTripLineSchema>;
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type UpdateTripInput = z.infer<typeof updateTripSchema>;
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+export type QuoteStaffBookingOrderInput = z.infer<typeof quoteStaffBookingOrderSchema>;
+export type StaffBookingOrderFormValues = z.input<typeof staffBookingOrderFormSchema>;
+export type StaffPaymentMethod = z.infer<typeof staffPaymentMethod>;
+export type CreateStaffBookingOrderInput = z.infer<typeof createStaffBookingOrderSchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
 export type AssignDriverInput = z.infer<typeof assignDriverSchema>;
 export type AddDriverInput = z.infer<typeof addDriverSchema>;
