@@ -125,8 +125,9 @@ export const updateVipTierSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export const assignDriverSchema = z.object({
-  tripId: uuid,
-  driverUserId: z.uuid(t("validation.driverRequired")),
+  // Match the API's @IsUUID('loose'), including seeded database IDs.
+  tripId: z.guid(t("validation.uuid")),
+  driverUserId: z.guid(t("validation.driverRequired")),
 });
 
 /** Optional free text: codes and English names accept any characters. */
