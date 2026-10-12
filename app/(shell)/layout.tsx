@@ -8,7 +8,7 @@ import { t } from "@/lib/i18n/t";
 
 /**
  * Authoritative shell guard (Principle I, second layer).
- * Requires appRole === 'super_admin' from GET /auth/me on EVERY shell render.
+ * Requires appRole === 'super_admin' from GET /me on EVERY shell render.
  */
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
   const session = await readSession();

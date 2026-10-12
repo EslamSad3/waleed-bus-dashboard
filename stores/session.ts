@@ -3,7 +3,7 @@ import { create } from "zustand";
 export type SessionState = {
   id: string;
   email: string | null;
-  /** From GET /auth/me (CurrentUserDto.appRole). `app_role` lives inside the JWT only. */
+  /** From GET /me (AccountDto.appRole). `app_role` lives inside the JWT only. */
   appRole: string;
 };
 

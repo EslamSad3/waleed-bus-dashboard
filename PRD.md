@@ -148,7 +148,7 @@ bus_dashboard/
 
 1. Login form: `phone` + `password` (zod: E.164-ish Egyptian mobile regex `^01[0-9]{9}$`, password min 8).
 2. Proxy `POST /auth/login` (platform admin has no `loginType` split — backend decides by role; surface generic error on failure).
-3. Store access (~15m) + refresh tokens in httpOnly cookies; `GET /auth/me` → zustand session (`id`, `name`, `app_role`).
+3. Store access (~15m) + refresh tokens in httpOnly cookies; `GET /me` → zustand session (`id`, `name`, `app_role`).
 4. `middleware.ts` + `(shell)/layout.tsx` require `app_role === 'super_admin'`.
 5. Logout: proxy `POST /auth/logout` + clear cookies.
 

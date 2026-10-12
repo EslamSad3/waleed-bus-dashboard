@@ -18,7 +18,7 @@ export const REFRESH_MAX_AGE = 60 * 60 * 24 * 7;
 export type SessionIdentity = {
   id: string;
   email: string | null;
-  /** CurrentUserDto.appRole — the ONLY role source the dashboard trusts. */
+  /** AccountDto.appRole (GET /me) — the ONLY role source the dashboard trusts. */
   appRole: string;
 };
 
@@ -118,7 +118,7 @@ export async function rotateRefreshToken(
 /** Direct backend call — no proxy recursion (used by route handlers only). */
 export async function fetchIdentity(accessToken: string): Promise<SessionIdentity | null> {
   try {
-    const res = await fetch(`${busApiUrl()}/auth/me`, {
+    const res = await fetch(`${busApiUrl()}/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
     });

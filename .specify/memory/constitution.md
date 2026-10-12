@@ -3,7 +3,7 @@ Sync Impact Report
 - Version change: 1.0.0 → 1.0.1 (PATCH: framework-mandated filename + field-name clarifications, no rule changes)
 - v1.0.1 amendments (2026-09-11, from P0 implementation grounding vs live backend + Next.js 16):
   - Principle I: `middleware.ts` → `proxy.ts` (Next.js 16 deprecated the middleware convention; behavior identical)
-  - Principle I: guard reads `appRole` from `GET /auth/me` (`CurrentUserDto`); `app_role` lives inside the JWT only
+  - Principle I: guard reads `appRole` from `GET /me` (`AccountDto`, spec 020 of the API); `app_role` lives inside the JWT only
   - Session shape corrected to `{id, email, appRole}` (backend has no `name` field)
   - Platform login is email + password (no `loginType`); PRD §5.2/§6.1 phone assumption superseded (contract fidelity wins)
   - rememberMe capped at backend 7-day refresh window (was 30 days)
@@ -38,7 +38,7 @@ Sync Impact Report
 Only `super_admin` may pass login and enter the `(shell)` routes. Every guarded surface
 MUST verify the super_admin role twice: an optimistic cookie-presence check in
 `proxy.ts` (Next.js 16 convention) plus the authoritative `appRole === 'super_admin'`
-check from `GET /auth/me` in `(shell)/layout.tsx` (`app_role` lives inside the JWT
+check from `GET /me` in `(shell)/layout.tsx` (`app_role` lives inside the JWT
 only). Any other role or anonymous user MUST be rejected with the generic
 `AUTHENTICATION_FAILED` message and redirected to `/login`. Platform login is email +
 password with no `loginType` (backend contract); backend lockout rules MUST be

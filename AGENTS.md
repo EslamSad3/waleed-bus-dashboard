@@ -64,7 +64,7 @@ This file defines the high-signal constraints, architecture patterns, and operat
 ### 3.2 Authentication Flow
 1. Login: `POST /auth/login` (phone + password, Egyptian mobile regex `^01[0-9]{9}$`)
 2. Store access (~15m): httpOnly cookies (`sa_access`, `sa_refresh`)
-3. Identity: `appRole === 'super_admin'` checked on `(shell)/layout.tsx` via `GET /auth/me`
+3. Identity: `appRole === 'super_admin'` checked on `(shell)/layout.tsx` via `GET /me` (unified account endpoint, API spec 020)
 4. Logout: `POST /auth/logout` + clear cookies
 
 ### 3.3 Error Code Map (PRD §9)

@@ -3,9 +3,9 @@ import { busFetch } from "@/lib/api";
 import type { SessionIdentity } from "@/lib/auth";
 import { toArabicError } from "@/lib/errors";
 
-/** GET /api/auth/me — session identity for the zustand store + layout guard. */
+/** GET /api/auth/me — session identity (backend GET /me) for the zustand store + layout guard. */
 export async function GET() {
-  const result = await busFetch<SessionIdentity>("/auth/me");
+  const result = await busFetch<SessionIdentity>("/me");
   if (!result.ok) {
     const code = result.status === 401 ? "AUTHENTICATION_FAILED" : result.code;
     return NextResponse.json(

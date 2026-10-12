@@ -69,7 +69,7 @@ export type MyOwner = {
 };
 
 export function fetchMyOwner(): Promise<ActionResult<MyOwner>> {
-  return apiGet<MyOwner>("/api/fleet-owners/me");
+  return apiGet<MyOwner>("/api/me");
 }
 
 /**
