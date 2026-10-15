@@ -13,9 +13,9 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { updateTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { updateTrip, fetchTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { useFilterStore } from "@/stores/filters";
-import { qk, upsertInCursorList, useQueryClient } from "@/lib/queries";
+import { qk, upsertInCursorList, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, tripImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 import { editedDeparture, toLocalDateTimeInput } from "@/lib/trip-edit-time";
@@ -27,7 +27,39 @@ type TripRow = Trip & { busName?: string; driverName?: string };
  * نافذة تعديل رحلة — الميعاد والسعر والحالة بس. الخط والعربية والوجهة مش
  * بيتغيروا من هنا (الرحلة ورا خط واحد)، والعربية بتتغير من صفحة العربية.
  */
-export function EditTripDialog({
+type EditTripProps = {
+  open: boolean;
+  trip: TripRow | null;
+  lineId: string;
+  onClose: () => void;
+};
+
+export function EditTripDialog(props: EditTripProps) {
+  const scopedOwnerId = useFilterStore((state) => state.ownerId);
+  const ownerId = props.trip?.ownerId || scopedOwnerId;
+  const lineId = props.trip?.lineId || props.lineId;
+  if (!props.open || !props.trip) return null;
+  return <LoadEditor key={`${ownerId}:${lineId}:${props.trip.id}`} {...props} ownerId={ownerId ?? ""} lineId={lineId} />;
+}
+
+function LoadEditor({ ownerId, ...props }: EditTripProps & { ownerId: string }) {
+  const trip = props.trip!;
+  const { data, error } = useApiQuery(
+    qk.trip(ownerId, props.lineId, trip.id),
+    () => fetchTrip(ownerId, props.lineId, trip.id),
+    { enabled: Boolean(ownerId && props.lineId) },
+  );
+  if (data) return <Editor {...props} trip={{ ...data, busName: trip.busName, driverName: trip.driverName }} />;
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) props.onClose(); }} title={t("trips.editDialog.title")}>
+      {error || !ownerId || !props.lineId
+        ? <p role="alert">{error?.message ?? t("trips.editDialog.loadError")}</p>
+        : <p role="status">{t("trips.editDialog.loadingDetail")}</p>}
+    </Dialog>
+  );
+}
+
+function Editor({
   open,
   trip,
   lineId,

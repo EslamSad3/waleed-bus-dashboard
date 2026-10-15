@@ -76,6 +76,8 @@ export default function SettingsPage() {
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
     queryClient.setQueryData(qk.platformSettings, result.data);
+    void queryClient.invalidateQueries({ queryKey: qk.session });
+    void queryClient.invalidateQueries({ queryKey: qk.adminUsers });
     setError(null);
     setSaved(true);
   }

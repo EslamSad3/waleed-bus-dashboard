@@ -15,8 +15,8 @@ export function fetchPlatformSettings(): Promise<ActionResult<PlatformSettings>>
 }
 
 export function updatePlatformSettings(input: {
-  maxSearchDays: number;
-  maxSeats: number;
+  maxSearchDays?: number;
+  maxSeats?: number;
 }): Promise<ActionResult<PlatformSettings>> {
   return notifyResult(t("settings.toast.saved"), apiSend("/api/platform/settings", "PATCH", input));
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Dialog } from "@/components/ui/dialog";
@@ -25,9 +25,8 @@ export default function AuditLogsPage() {
     () => fetchAuditLogsPage(null, 50),
   );
 
-  const filteredItems = useMemo(() => {
-    const items = page?.items ?? [];
-    return items.filter((row) => {
+  const filterPredicate = useCallback(
+    (row: AuditLogRow) => {
       if (statusFilter === "success" && !row.success) return false;
       if (statusFilter === "failed" && row.success) return false;
       if (!search.trim()) return true;
@@ -36,12 +35,13 @@ export default function AuditLogsPage() {
       return (
         row.action.toLowerCase().includes(q) ||
         row.resource.toLowerCase().includes(q) ||
-        (row.resourceId && row.resourceId.toLowerCase().includes(q)) ||
-        (row.actorUserId && row.actorUserId.toLowerCase().includes(q)) ||
-        (row.ip && row.ip.toLowerCase().includes(q))
+        Boolean(row.resourceId && row.resourceId.toLowerCase().includes(q)) ||
+        Boolean(row.actorUserId && row.actorUserId.toLowerCase().includes(q)) ||
+        Boolean(row.ip && row.ip.toLowerCase().includes(q))
       );
-    });
-  }, [page?.items, search, statusFilter]);
+    },
+    [search, statusFilter],
+  );
 
   const columns: CommunityColumnDef<AuditLogRow>[] = useMemo(
     () => [
@@ -195,8 +195,10 @@ export default function AuditLogsPage() {
       ) : (
         <CursorList<AuditLogRow>
           gridId="audit-logs"
-          initialItems={filteredItems}
+          withActions={false}
+          initialItems={page?.items ?? []}
           initialCursor={page?.nextCursor ?? null}
+          filter={filterPredicate}
           loadMore={(cursor) =>
             fetchAuditLogsPage(cursor, 50).then((res) => {
               if (!res.ok) throw new Error(res.message);
@@ -206,24 +208,6 @@ export default function AuditLogsPage() {
           keyOf={(row) => row.id}
           columnDefs={columns}
           emptyMessage={t("audit.empty")}
-          renderItem={(row) => (
-            <div className="flex items-center justify-between border-b border-slate-100 p-3">
-              <div>
-                <p className="font-mono text-sm font-semibold">{row.action}</p>
-                <p className="text-xs text-slate-500">
-                  {row.resource} · {row.createdAt}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedLog(row)}
-              >
-                <Eye className="size-4" />
-              </Button>
-            </div>
-          )}
         />
       )}
 

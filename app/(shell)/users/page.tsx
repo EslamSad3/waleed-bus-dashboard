@@ -22,8 +22,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchRolesPage } from "@/lib/actions/roles";
+import { fetchPlatformSettings, type PlatformSettings } from "@/lib/actions/platform-settings";
 import {
-  PLATFORM_DEFAULT_MAX_BOOKING_SEATS,
   createAdminUser,
   deleteAdminUser,
   fetchAdminUser,
@@ -79,6 +79,10 @@ export default function UsersPage() {
   const { data: rolesPage, isPending: rolesPending } = useApiQuery(
     qk.roles,
     () => fetchRolesPage(null),
+  );
+  const { data: platformSettings, error: settingsError } = useApiQuery<PlatformSettings>(
+    qk.platformSettings,
+    fetchPlatformSettings,
   );
   const roles = (rolesPage?.items ?? []).filter((role) => role.isActive);
   const [selected, setSelected] = useState<AdminUser | null>(null);
@@ -459,8 +463,13 @@ export default function UsersPage() {
               <span className="mb-1.5 block font-bold text-[#334454]">
                 {t("common.fields.maxBookingSeats")}{" "}
                 <span className="font-normal text-slate-400">
-                  {t("users.dialog.emptyUsesDefault")}{" "}
-                  {PLATFORM_DEFAULT_MAX_BOOKING_SEATS})
+                  {settingsError ? (
+                    <span className="text-red-500">({settingsError.message})</span>
+                  ) : platformSettings ? (
+                    `${t("users.dialog.emptyUsesDefault")} ${platformSettings.maxSeats})`
+                  ) : (
+                    `(${t("common.loading.page")})`
+                  )}
                 </span>
               </span>
               <Input
@@ -471,10 +480,14 @@ export default function UsersPage() {
                 min={1}
                 value={maxBookingSeats}
                 onChange={(event) => setMaxBookingSeats(event.target.value)}
-                placeholder={t("users.dialog.defaultSeatLimit", {
-                  PLATFORM_DEFAULT_MAX_BOOKING_SEATS:
-                    PLATFORM_DEFAULT_MAX_BOOKING_SEATS,
-                })}
+                placeholder={
+                  platformSettings
+                    ? t("users.dialog.defaultSeatLimit", {
+                        PLATFORM_DEFAULT_MAX_BOOKING_SEATS:
+                          platformSettings.maxSeats,
+                      })
+                    : undefined
+                }
               />
             </label>
           ) : null}

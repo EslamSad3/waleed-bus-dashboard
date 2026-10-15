@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   fetchScheduleTrips,
   type TripSchedule,
 } from "@/lib/actions/schedules";
-import { type Trip } from "@/lib/actions/trips";
+import { TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { CreateScheduleDialog } from "@/components/schedules/create-schedule-dialog";
 import { EditScheduleDialog } from "@/components/schedules/edit-schedule-dialog";
 import { Dialog } from "@/components/ui/dialog";
@@ -38,8 +38,7 @@ export default function SchedulesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<TripSchedule | null>(null);
   const [occurrencesSchedule, setOccurrencesSchedule] = useState<TripSchedule | null>(null);
-  const [occurrencesTrips, setOccurrencesTrips] = useState<Trip[]>([]);
-  const [occurrencesLoading, setOccurrencesLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data: page, isLoading, error } = useApiQuery(
     qk.schedules(ownerId || "none"),
@@ -47,17 +46,18 @@ export default function SchedulesPage() {
     { enabled: Boolean(ownerId) },
   );
 
-  const items = useMemo(() => {
-    const list = page?.items ?? [];
-    if (!search.trim()) return list;
-    const q = search.trim().toLowerCase();
-    return list.filter(
-      (s) =>
-        s.line.name.toLowerCase().includes(q) ||
-        (s.bus.plateNumber && s.bus.plateNumber.toLowerCase().includes(q)) ||
-        (s.driver?.name && s.driver.name.toLowerCase().includes(q)),
-    );
-  }, [page?.items, search]);
+  const searchPredicate = useCallback(
+    (s: TripSchedule) => {
+      if (!search.trim()) return true;
+      const q = search.trim().toLowerCase();
+      return (
+        (s.line?.name && s.line.name.toLowerCase().includes(q)) ||
+        Boolean(s.bus?.plateNumber && s.bus.plateNumber.toLowerCase().includes(q)) ||
+        Boolean(s.driver?.name && s.driver.name.toLowerCase().includes(q))
+      );
+    },
+    [search],
+  );
 
   const handleDelete = useCallback(
     async (schedule: TripSchedule) => {
@@ -71,22 +71,17 @@ export default function SchedulesPage() {
 
       const res = await deleteSchedule(schedule.ownerId, schedule.lineId, schedule.id);
       if (res.ok) {
+        setDeleteError(null);
         void queryClient.invalidateQueries({ queryKey: ["schedules"] });
+      } else {
+        setDeleteError(res.message);
       }
     },
     [confirm, queryClient],
   );
 
-  const openOccurrences = useCallback(async (schedule: TripSchedule) => {
+  const openOccurrences = useCallback((schedule: TripSchedule) => {
     setOccurrencesSchedule(schedule);
-    setOccurrencesLoading(true);
-    const res = await fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id);
-    setOccurrencesLoading(false);
-    if (res.ok) {
-      setOccurrencesTrips(res.data.items);
-    } else {
-      setOccurrencesTrips([]);
-    }
   }, []);
 
   const columns: CommunityColumnDef<TripSchedule>[] = useMemo(
@@ -239,6 +234,10 @@ export default function SchedulesPage() {
             onOwnerChange={(next) => {
               setSelectedOwnerId(next);
               setStoreOwnerId(next);
+              setCreateOpen(false);
+              setEditingSchedule(null);
+              setOccurrencesSchedule(null);
+              setDeleteError(null);
             }}
           />
           <Input
@@ -251,6 +250,12 @@ export default function SchedulesPage() {
           />
         </div>
       </div>
+
+      {deleteError ? (
+        <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+          {deleteError}
+        </p>
+      ) : null}
 
       {error ? (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
@@ -267,8 +272,10 @@ export default function SchedulesPage() {
       ) : (
         <CursorList<TripSchedule>
           gridId="schedules-list"
-          initialItems={items}
+          scopeKey={ownerId}
+          initialItems={page?.items ?? []}
           initialCursor={page?.nextCursor ?? null}
+          filter={searchPredicate}
           loadMore={(cursor) =>
             fetchOwnerSchedulesPage(ownerId, cursor).then((res) => {
               if (!res.ok) throw new Error(res.message);
@@ -326,69 +333,157 @@ export default function SchedulesPage() {
       )}
 
       {occurrencesSchedule && (
-        <Dialog
-          open={Boolean(occurrencesSchedule)}
-          onOpenChange={(open) => {
-            if (!open) setOccurrencesSchedule(null);
-          }}
-          title={t("schedules.tabs.occurrences")}
-          description={t("schedules.occurrencesNotice")}
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
-              <span className="font-bold">{occurrencesSchedule.line.name}</span> ·{" "}
-              {occurrencesSchedule.departTime} · {occurrencesSchedule.bus.plateNumber}
-            </div>
-
-            {occurrencesLoading ? (
-              <p className="text-center text-sm text-slate-500">{t("common.loading.page")}</p>
-            ) : occurrencesTrips.length === 0 ? (
-              <p className="text-center text-sm text-slate-500">{t("schedules.occurrencesEmpty")}</p>
-            ) : (
-              <div className="max-h-80 overflow-y-auto space-y-2">
-                {occurrencesTrips.map((trip) => (
-                  <div
-                    key={trip.id}
-                    className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm"
-                  >
-                    <div>
-                      <p className="font-bold text-slate-900">
-                        {new Date(trip.departAt).toLocaleDateString("ar-EG", {
-                          timeZone: "Africa/Cairo",
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {t("schedules.timePrefix")} {new Date(trip.departAt).toLocaleTimeString("ar-EG", {
-                          timeZone: "Africa/Cairo",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })} · {t("schedules.statusPrefix")} {trip.status}
-                      </p>
-                    </div>
-                    <Link
-                      href={`/trips/${trip.id}?ownerId=${occurrencesSchedule.ownerId}&lineId=${occurrencesSchedule.lineId}`}
-                      className="text-xs font-bold text-sky-600 hover:underline"
-                    >
-                      {t("common.actions.openDetails")}
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <Button type="button" variant="outline" onClick={() => setOccurrencesSchedule(null)}>
-                {t("common.actions.close")}
-              </Button>
-            </div>
-          </div>
-        </Dialog>
+        <OccurrencesDialog
+          key={`${occurrencesSchedule.ownerId}:${occurrencesSchedule.lineId}:${occurrencesSchedule.id}`}
+          schedule={occurrencesSchedule}
+          onClose={() => setOccurrencesSchedule(null)}
+        />
       )}
     </div>
+  );
+}
+
+function OccurrencesDialog({
+  schedule,
+  onClose,
+}: {
+  schedule: TripSchedule;
+  onClose: () => void;
+}) {
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id, null)
+      .then((res) => {
+        if (cancelled) return;
+        setLoading(false);
+        if (res.ok) {
+          setTrips(res.data.items);
+          setCursor(res.data.nextCursor);
+        } else {
+          setError(res.message);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoading(false);
+        setError(err instanceof Error ? err.message : String(err));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [schedule.ownerId, schedule.lineId, schedule.id]);
+
+  async function handleLoadMore() {
+    if (!cursor || loadingMore) return;
+    setError(null);
+    setLoadingMore(true);
+    try {
+      const res = await fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id, cursor);
+      if (res.ok) {
+        setTrips((prev) => [...prev, ...res.data.items]);
+        setCursor(res.data.nextCursor);
+      } else {
+        setError(res.message);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      title={t("schedules.tabs.occurrences")}
+      description={t("schedules.occurrencesNotice")}
+      size="lg"
+    >
+      <div className="space-y-4">
+        <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
+          <span className="font-bold">{schedule.line.name}</span> ·{" "}
+          {schedule.departTime} · {schedule.bus.plateNumber}
+        </div>
+
+        {error ? (
+          <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        {loading ? (
+          <p className="text-center text-sm text-slate-500">{t("common.loading.page")}</p>
+        ) : trips.length === 0 ? (
+          <p className="text-center text-sm text-slate-500">{t("schedules.occurrencesEmpty")}</p>
+        ) : (
+          <div className="max-h-80 overflow-y-auto space-y-2">
+            {trips.map((trip) => (
+              <div
+                key={trip.id}
+                className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm"
+              >
+                <div>
+                  <p className="font-bold text-slate-900">
+                    {new Date(trip.departAt).toLocaleDateString("ar-EG", {
+                      timeZone: "Africa/Cairo",
+                      weekday: "short",
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {t("schedules.timePrefix")}{" "}
+                    {new Date(trip.departAt).toLocaleTimeString("ar-EG", {
+                      timeZone: "Africa/Cairo",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {t("schedules.statusPrefix")} {TRIP_STATUS_AR[trip.status]}
+                  </p>
+                </div>
+                <Link
+                  href={`/trips/${trip.id}?ownerId=${schedule.ownerId}&lineId=${schedule.lineId}`}
+                  className="text-xs font-bold text-sky-600 hover:underline"
+                >
+                  {t("common.actions.openDetails")}
+                </Link>
+              </div>
+            ))}
+
+            {cursor ? (
+              <div className="pt-2 text-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleLoadMore()}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? t("common.loading.more") : t("agGridTable.loadMore")}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        <div className="flex justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            {t("common.actions.close")}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }

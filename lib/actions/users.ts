@@ -23,7 +23,6 @@ export type AccountType = "super_admin" | "platform_staff" | "fleet_owner" | "dr
 export type UserListType = "" | "staff" | "passenger" | "fleet_owner" | "driver";
 export type UserListFilters = { type?: UserListType; q?: string };
 
-export const PLATFORM_DEFAULT_MAX_BOOKING_SEATS = 5;
 
 export function fetchAdminUsers(cursor: string | null, filters: UserListFilters = {}): Promise<ActionResult<CursorPage<AdminUser>>> {
   const params = new URLSearchParams({ limit: "30" });

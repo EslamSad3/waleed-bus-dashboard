@@ -225,6 +225,7 @@ export default function TripFeedbackPage({
             return result.data;
           }}
           keyOf={(row) => row.id}
+          withActions={false}
           columnDefs={columns}
           emptyMessage={t("feedback.empty")}
         />

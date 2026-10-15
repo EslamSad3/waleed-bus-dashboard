@@ -31,8 +31,8 @@ export const serviceEntrySchema = z.object({ id: uuid.optional(), text: required
   } else if (!/^\+?[0-9]{7,15}$/.test(value.value.replace(/[\s-]/g, ""))) context.addIssue({ code: "custom", path: ["value"], message: t("validation.servicePhone") });
 });
 export const platformSettingsSchema = z.object({
-  maxSearchDays: z.number(t("settings.validation.maxSearchDays")).int(t("settings.validation.maxSearchDays")).min(1, t("settings.validation.maxSearchDays")).max(90, t("settings.validation.maxSearchDays")),
-  maxSeats: z.number(t("settings.validation.maxSeats")).int(t("settings.validation.maxSeats")).min(1, t("settings.validation.maxSeats")).max(50, t("settings.validation.maxSeats")),
+  maxSearchDays: z.number(t("settings.validation.maxSearchDays")).int(t("settings.validation.maxSearchDays")).min(1, t("settings.validation.maxSearchDays")).max(90, t("settings.validation.maxSearchDays")).optional(),
+  maxSeats: z.number(t("settings.validation.maxSeats")).int(t("settings.validation.maxSeats")).min(1, t("settings.validation.maxSeats")).max(50, t("settings.validation.maxSeats")).optional(),
 });
 export const serviceConfigSchema = z.object({ entries: z.array(serviceEntrySchema).max(100, t("validation.serviceRows")) });
 
