@@ -43,6 +43,7 @@ export default function PromotionsPage() {
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [usagesFor, setUsagesFor] = useState<Promotion | null>(null);
   const [usages, setUsages] = useState<PromotionUsage[] | null>(null);
+  const [promoType, setPromoType] = useState<"FIXED" | "PERCENTAGE">("FIXED");
   const [code, setCode] = useState("");
   const [value, setValue] = useState("");
   const [audience, setAudience] = useState<"all" | "specific">("all");
@@ -59,6 +60,7 @@ export default function PromotionsPage() {
   function openCreate() {
     validation.reset();
     setEditing(null);
+    setPromoType("FIXED");
     setCode("");
     setValue("");
     setAudience("all");
@@ -76,6 +78,7 @@ export default function PromotionsPage() {
     validation.reset();
     setCreating(false);
     setEditing(promo);
+    setPromoType(promo.type);
     setValue(promo.value);
     setAudience(promo.isGlobal ? "all" : "specific");
     setTargetIds(promo.targetUserIds ?? []);
@@ -89,7 +92,7 @@ export default function PromotionsPage() {
   }
 
   const validation = useFieldValidation(() => {
-    const fields = schemaErrors(editing ? schemas.updatePromotionSchema : schemas.createPromotionSchema, { code: code.trim(), type: "FIXED", value: Number(value), maxUsesPerUser: Number(maxPerUser), maxTotalUses: maxTotal.trim() ? Number(maxTotal) : null, startsAt: startsAt || null, expiresAt: expiresAt || null, targetUserIds: targetIds });
+    const fields = schemaErrors(editing ? schemas.updatePromotionSchema : schemas.createPromotionSchema, { code: code.trim(), type: promoType, value: Number(value), maxUsesPerUser: Number(maxPerUser), maxTotalUses: maxTotal.trim() ? Number(maxTotal) : null, startsAt: startsAt || null, expiresAt: expiresAt || null, targetUserIds: targetIds });
     if ((editing ? !editing.isGlobal : audience === "specific") && targetIds.length === 0) fields.targetUserIds = t("promotions.errors.usersRequired");
     if (startsAt && expiresAt && Date.parse(expiresAt) <= Date.parse(startsAt)) fields.expiresAt = t("promotions.errors.expiryBeforeStart");
     return fields;
@@ -119,7 +122,7 @@ export default function PromotionsPage() {
         })
       : await createPromotion({
           code: code.trim(),
-          type: "FIXED",
+          type: promoType,
           value: numValue,
           isGlobal: audience === "all",
           ...(audience === "specific" ? { targetUserIds: targetIds } : {}),
@@ -181,7 +184,15 @@ export default function PromotionsPage() {
     {
       field: "type",
       headerName: t("common.fields.type"),
-      cellRenderer: (params: { data?: Promotion }) => params.data ? <span>{params.data.value} {t("promotions.columns.fixedValue")}</span> : null,
+      cellRenderer: (params: { data?: Promotion }) =>
+        params.data ? (
+          <span>
+            {params.data.value}{" "}
+            {params.data.type === "PERCENTAGE"
+              ? "%"
+              : t("promotions.columns.fixedValue")}
+          </span>
+        ) : null,
     },
     { field: "maxUsesPerUser", headerName: t("promotions.columns.maxUsesPerUser"), filter: "agNumberColumnFilter" },
     {
@@ -233,7 +244,32 @@ export default function PromotionsPage() {
       <Dialog validation={validation} open={dialogOpen} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); setError(null); } }} title={editing ? t("promotions.dialog.editTitle", { editingCode: editing.code }) : t("promotions.dialog.createTitle")} description={editing ? t("promotions.dialog.immutableHint") : t("promotions.dialog.codeHint")} size="sm">
         <div className="space-y-4">
           {!editing ? <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.code")}</span><Input fieldName="code" dir="ltr" value={code} onChange={(event) => setCode(event.target.value)} placeholder="SAVE10" /></label> : null}
-          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{t("promotions.dialog.valueLabel")}</span><Input fieldName="value" dir="ltr" inputMode="decimal" type="number" min={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder={t("promotions.placeholders.value")} /></label>
+          {!editing ? (
+            <div className="space-y-1.5 text-sm">
+              <span className="block font-bold text-[#334454]">{t("common.fields.type")}</span>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={promoType === "FIXED"}
+                    onChange={() => setPromoType("FIXED")}
+                    className="size-4 accent-[#059ff8]"
+                  />
+                  {t("promotions.types.fixed")}
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    checked={promoType === "PERCENTAGE"}
+                    onChange={() => setPromoType("PERCENTAGE")}
+                    className="size-4 accent-[#059ff8]"
+                  />
+                  {t("promotions.types.percentage")}
+                </label>
+              </div>
+            </div>
+          ) : null}
+          <label className="block text-sm"><span className="mb-1.5 block font-bold text-[#334454]">{promoType === "PERCENTAGE" ? t("promotions.dialog.percentageValueLabel") : t("promotions.dialog.valueLabel")}</span><Input fieldName="value" dir="ltr" inputMode="decimal" type="number" min={1} max={promoType === "PERCENTAGE" ? 100 : undefined} value={value} onChange={(event) => setValue(event.target.value)} placeholder={promoType === "PERCENTAGE" ? "10" : t("promotions.placeholders.value")} /></label>
           {!editing || !editing.isGlobal ? (
             <div className="space-y-2 text-sm">
               <span className="block font-bold text-[#334454]">{t("promotions.dialog.audienceLabel")} {editing ? t("promotions.dialog.scopeImmutable") : ""}</span>

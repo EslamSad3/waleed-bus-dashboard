@@ -126,3 +126,39 @@ export function fetchDriverTripsPage(
     `${ownerBase(ownerId)}/drivers/${driverUserId}/trips${q(cursor)}`,
   );
 }
+
+export type RatingAggregate = {
+  average: number | null;
+  count: number;
+};
+
+export type FeedbackSummaryRow = {
+  id: string;
+  label: string | null;
+  busRating: RatingAggregate;
+  driverRating: RatingAggregate;
+};
+
+export type FleetFeedbackSummary = {
+  busRating: RatingAggregate;
+  driverRating: RatingAggregate;
+  buses: FeedbackSummaryRow[];
+  drivers: FeedbackSummaryRow[];
+  lines: FeedbackSummaryRow[];
+};
+
+/** Summary of ratings across buses, drivers, and lines for an owner. */
+export function fetchFleetFeedbackSummary(
+  ownerId: string,
+): Promise<ActionResult<FleetFeedbackSummary>> {
+  return apiGet<FleetFeedbackSummary>(`${ownerBase(ownerId)}/feedback/summary`);
+}
+
+/** Paginated feedback feed for an owner company across all trips. */
+export function fetchFleetFeedbackPage(
+  ownerId: string,
+  cursor: string | null = null,
+): Promise<ActionResult<CursorPage<TripFeedbackRow>>> {
+  return apiGet<CursorPage<TripFeedbackRow>>(`${ownerBase(ownerId)}/feedback${q(cursor)}`);
+}
+

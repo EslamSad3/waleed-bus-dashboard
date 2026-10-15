@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { can, isDashboardRole, readSession } from "@/lib/auth";
 import { Sidebar } from "@/components/shell/sidebar";
@@ -27,7 +28,27 @@ export default async function ShellLayout({ children }: { children: React.ReactN
         <Sidebar access={access} />
         <main className="min-w-0 flex-1">
           <BackButton />
-          {children}
+          {/* Every detail page unwraps `use(params)` / `use(searchParams)` and
+              several lists read `useSearchParams()` — all of those suspend
+              during prerender. Without an explicit boundary the server cannot
+              finish the Suspense boundary and the browser falls back to
+              client rendering ("switched to client rendering" in the console).
+              This single boundary lets the server stream the fallback instead. */}
+          <Suspense
+            fallback={
+              <div className="dashboard-page" aria-busy="true">
+                <div className="page-heading">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-9 w-2/3 max-w-xs animate-pulse rounded-xl bg-[#e3ecf3]" />
+                    <div className="h-4 w-full max-w-md animate-pulse rounded-lg bg-[#e3ecf3]" />
+                  </div>
+                </div>
+                <div className="h-40 animate-pulse rounded-2xl bg-[#e3ecf3]" />
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
         </main>
       </div>
       <footer className="border-t border-slate-200/70 px-3 py-5 text-center text-xs text-[#5e6b78] sm:px-6 lg:px-8">

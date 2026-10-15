@@ -58,6 +58,12 @@ export default function TripsPage() {
   );
 
   const lines = useMemo(() => linesPage?.items ?? [], [linesPage]);
+  const lineById = useMemo(() => {
+    const map = new Map<string, (typeof lines)[number]>();
+    for (const line of lines) map.set(line.id, line);
+    return map;
+  }, [lines]);
+
   const ownerNameById = useMemo(() => {
     const map = new Map<string, string>();
     for (const owner of owners?.items ?? []) map.set(owner.id, owner.name || owner.nickname || owner.phoneNumber || owner.id);
@@ -100,13 +106,15 @@ export default function TripsPage() {
 
   async function removeTrip(trip: TripRow) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("trips.list.deleteConfirm.description", { tripOrigin: trip.origin ?? "—", tripDestination: trip.destination ?? "—" }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
-    const result = await deleteTrip(trip.ownerId, trip.lineId, trip.id);
+    const resolvedOwnerId = trip.ownerId || lineById.get(trip.lineId)?.ownerId || scopedOwnerId;
+    if (!resolvedOwnerId) return;
+    const result = await deleteTrip(resolvedOwnerId, trip.lineId, trip.id);
     if (!result.ok) return;
     // The trip's OWN owner/line — not the page's filter, which the operator may
     // have changed while the confirm dialog was open.
     applyMutationCache(
       queryClient,
-      tripImpact({ trip: { id: trip.id, ownerId: trip.ownerId, lineId: trip.lineId }, mode: "remove" }),
+      tripImpact({ trip: { id: trip.id, ownerId: resolvedOwnerId, lineId: trip.lineId }, mode: "remove" }),
       result,
     );
   }
@@ -115,21 +123,30 @@ export default function TripsPage() {
   const status = listFilters.status ?? "all";
   const from = listFilters.from ?? "";
   const to = listFilters.to ?? "";
-  const predicate = (trip: TripRow) =>
-    (!scopedOwnerId || trip.ownerId === scopedOwnerId) &&
-    (!lineId || trip.lineId === lineId) &&
-    (!query ||
-      (trip.origin ?? "").includes(query) ||
-      (trip.destination ?? "").includes(query) ||
-      trip.busName.includes(query) ||
-      trip.driverName.includes(query) ||
-      (trip.line?.name ?? "").includes(query)) &&
-    (status === "all" || trip.status === status) &&
-    (!from || trip.departAt.slice(0, 10) >= from) &&
-    (!to || trip.departAt.slice(0, 10) <= to);
+  const predicate = (trip: TripRow) => {
+    const tripOwnerId = trip.ownerId || lineById.get(trip.lineId)?.ownerId;
+    const tripLineName = trip.line?.name || lineById.get(trip.lineId)?.name || "";
+    return (
+      (!scopedOwnerId || tripOwnerId === scopedOwnerId) &&
+      (!lineId || trip.lineId === lineId) &&
+      (!query ||
+        (trip.origin ?? "").includes(query) ||
+        (trip.destination ?? "").includes(query) ||
+        trip.busName.includes(query) ||
+        trip.driverName.includes(query) ||
+        tripLineName.includes(query)) &&
+      (status === "all" || trip.status === status) &&
+      (!from || trip.departAt.slice(0, 10) >= from) &&
+      (!to || trip.departAt.slice(0, 10) <= to)
+    );
+  };
 
   const columns: CommunityColumnDef<TripRow>[] = [
-    { field: "line.name", headerName: t("common.fields.tripLine"), valueGetter: (params) => params.data?.line?.name || "—" },
+    {
+      field: "line.name",
+      headerName: t("common.fields.tripLine"),
+      valueGetter: (params) => params.data?.line?.name || (params.data?.lineId ? lineById.get(params.data.lineId)?.name : null) || "—",
+    },
     { field: "origin", headerName: t("common.fields.origin"), valueGetter: (params) => params.data?.origin || "—" },
     { field: "destination", headerName: t("common.fields.destination"), valueGetter: (params) => params.data?.destination || "—" },
     { field: "busName", headerName: t("common.fields.bus"), filter: "agTextColumnFilter" },
@@ -228,23 +245,49 @@ export default function TripsPage() {
             </div>
           }
           emptyMessage={t("trips.empty")}
-          renderItem={(trip) => (
-            <RowActions
-              label={t("trips.list.rowActions", { tripOrigin: trip.origin ?? "—", tripDestination: trip.destination ?? "—" })}
-              actions={[
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/trips/${trip.id}?ownerId=${trip.ownerId}&lineId=${trip.lineId}` },
-                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setTripForEdit(trip) },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTrip(trip) },
-              ]}
-            />
-          )}
+          renderItem={(trip) => {
+            const tripOwnerId = trip.ownerId || lineById.get(trip.lineId)?.ownerId || scopedOwnerId;
+            const detailsHref = tripOwnerId
+              ? `/trips/${trip.id}?ownerId=${encodeURIComponent(tripOwnerId)}&lineId=${encodeURIComponent(trip.lineId)}`
+              : `/trips/${trip.id}?lineId=${encodeURIComponent(trip.lineId)}`;
+            return (
+              <RowActions
+                label={t("trips.list.rowActions", { tripOrigin: trip.origin ?? "—", tripDestination: trip.destination ?? "—" })}
+                actions={[
+                  { label: t("common.actions.openDetails"), icon: Eye, href: detailsHref },
+                  {
+                    label: t("common.actions.edit"),
+                    icon: Pencil,
+                    onSelect: () =>
+                      setTripForEdit({
+                        ...trip,
+                        ownerId: tripOwnerId || trip.ownerId,
+                      }),
+                  },
+                  { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeTrip(trip) },
+                ]}
+              />
+            );
+          }}
         />
       )}
 
       {/* The owner is picked INSIDE the modal (OwnerPicker); nothing is locked
           here so creating never requires a pre-selected filter first. */}
       <CreateTripDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditTripDialog open={Boolean(tripForEdit)} trip={tripForEdit} lineId={tripForEdit?.lineId ?? lineId} onClose={() => setTripForEdit(null)} />
+      <EditTripDialog
+        open={Boolean(tripForEdit)}
+        trip={
+          tripForEdit
+            ? {
+                ...tripForEdit,
+                ownerId: tripForEdit.ownerId || lineById.get(tripForEdit.lineId)?.ownerId || scopedOwnerId || "",
+              }
+            : null
+        }
+        lineId={tripForEdit?.lineId ?? lineId}
+        onClose={() => setTripForEdit(null)}
+      />
     </div>
   );
 }

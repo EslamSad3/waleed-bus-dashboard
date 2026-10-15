@@ -5,7 +5,7 @@ import { t } from "@/lib/i18n/t";
 export type Promotion = {
   id: string;
   code: string;
-  type: "FIXED";
+  type: "FIXED" | "PERCENTAGE";
   value: string;
   isGlobal: boolean;
   targetUserIds: string[];
@@ -26,7 +26,7 @@ export type PromotionUsage = {
 
 export type CreatePromotionInput = {
   code: string;
-  type: "FIXED";
+  type: "FIXED" | "PERCENTAGE";
   value: number;
   isGlobal?: boolean;
   targetUserIds?: string[];

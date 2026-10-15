@@ -32,7 +32,7 @@ export default function BusesPage() {
   const confirm = useConfirm();
   const { data: first, isLoading, error } = useApiQuery<BusPage>(
     qk.systemBuses,
-    () => fetchSystemBusesPage(null),
+    () => fetchSystemBusesPage(null, { stats: true }),
   );
   // qk.ownerNames, not qk.fleetOwners: that key holds the owners CursorPage for
   // the owners grid, and one key cannot carry two shapes.
@@ -122,7 +122,7 @@ export default function BusesPage() {
           initialItems={first?.items ?? []}
           initialCursor={first?.nextCursor ?? null}
           loadMore={async (cursor) => {
-            const result = await fetchSystemBusesPage(cursor);
+            const result = await fetchSystemBusesPage(cursor, { stats: true });
             if (!result.ok) throw new Error(result.message);
             return result.data;
           }}

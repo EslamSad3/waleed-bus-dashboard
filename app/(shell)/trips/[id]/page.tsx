@@ -18,10 +18,12 @@ import {
   deleteTrip,
   fetchTrip,
   findTripAcrossLines,
+  findTripAcrossOwners,
   updateTrip,
   TRIP_STATUS_AR,
   type Trip,
 } from "@/lib/actions/trips";
+import { findOwnerByLineId } from "@/lib/actions/trip-lines";
 import { fetchBus, unassignDriver as unassignBusDriver, type Bus } from "@/lib/actions/buses";
 import { apiGet, type ActionResult } from "@/lib/actions/http";
 import type { DriverRow } from "@/lib/actions/members";
@@ -52,12 +54,14 @@ export default function TripDetailPage({
   searchParams: Promise<{ ownerId?: string; lineId?: string }>;
 }) {
   const { id } = use(params);
-  const { ownerId: scopeOwnerId, lineId: scopeLineId } = use(searchParams);
+  const { ownerId: rawOwnerId, lineId: rawLineId } = use(searchParams);
+  const scopeOwnerId = (rawOwnerId && rawOwnerId !== "undefined" && rawOwnerId !== "null") ? rawOwnerId : "";
+  const scopeLineId = (rawLineId && rawLineId !== "undefined" && rawLineId !== "null") ? rawLineId : "";
   const router = useRouter();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const [ownerId, setOwnerId] = useState(scopeOwnerId ?? "");
-  const [lineId, setLineId] = useState(scopeLineId ?? "");
+  const [ownerId, setOwnerId] = useState(scopeOwnerId);
+  const [lineId, setLineId] = useState(scopeLineId);
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bus, setBus] = useState<Bus | null>(null);
@@ -73,15 +77,16 @@ export default function TripDetailPage({
 
   // A deep link may carry the line; otherwise resolve it from the owner.
   const { error: foundError } = useApiQuery(
-    qk.trip(scopeOwnerId ?? "none", scopeLineId ?? "find", id),
-    () => findTripAcrossLines(scopeOwnerId!, id),
+    qk.trip(scopeOwnerId || "none", scopeLineId || "find", id),
+    () => findTripAcrossLines(scopeOwnerId, id),
     { enabled: Boolean(scopeOwnerId && !scopeLineId) },
   );
 
+  const isValidScope = Boolean(ownerId && ownerId !== "undefined" && lineId && lineId !== "undefined");
   const { data: tripData } = useApiQuery(
-    qk.trip(ownerId, lineId, id),
+    qk.trip(ownerId || "none", lineId || "none", id),
     () => apiGet<Trip>(`/api/fleet-owners/${ownerId}/trip-lines/${lineId}/trips/${id}`),
-    { enabled: Boolean(ownerId && lineId) },
+    { enabled: isValidScope },
   );
 
   // Render-phase sync from the query cache (no setState-in-effect)
@@ -96,13 +101,48 @@ export default function TripDetailPage({
     setStatus(tripData.status);
   }
 
+  // If ownerId is known but lineId is missing, resolve the line.
   useEffect(() => {
-    if (!ownerId || lineId) return;
+    if (!ownerId || ownerId === "undefined" || (lineId && lineId !== "undefined")) return;
     void findTripAcrossLines(ownerId, id).then((result) => {
       if (!result.ok) return;
       setLineId(result.data.lineId);
     });
   }, [ownerId, id, lineId]);
+
+  // If lineId is known but ownerId is missing (e.g. ?ownerId=undefined&lineId=...), resolve the owner.
+  useEffect(() => {
+    if (!lineId || lineId === "undefined" || (ownerId && ownerId !== "undefined")) return;
+    let cancelled = false;
+    void findOwnerByLineId(lineId).then((foundOwner) => {
+      if (cancelled) return;
+      if (foundOwner) {
+        setOwnerId(foundOwner);
+        return;
+      }
+      void findTripAcrossOwners(id).then((result) => {
+        if (cancelled || !result.ok) return;
+        if (result.data.ownerId) setOwnerId(result.data.ownerId);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerId, lineId, id]);
+
+  // A bare id (no ownerId and no lineId) resolves its own scope from the cross-owner trip index.
+  useEffect(() => {
+    if ((ownerId && ownerId !== "undefined") || (lineId && lineId !== "undefined")) return;
+    let cancelled = false;
+    void findTripAcrossOwners(id).then((result) => {
+      if (cancelled || !result.ok) return;
+      if (result.data.ownerId) setOwnerId(result.data.ownerId);
+      if (result.data.lineId) setLineId(result.data.lineId);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerId, lineId, id]);
 
   // Roster reload for the bus-assignment actions below: the "current bus
   // driver" block derives from `drivers`, so it refreshes itself once the
@@ -263,7 +303,8 @@ export default function TripDetailPage({
     return () => { cancelled = true; };
   }, [ownerId, lineId, id, feedbackReloadKey]);
 
-  if (!ownerId) {
+  if (!ownerId || ownerId === "undefined") {
+    if (!foundError && !error) return <DetailPageSkeleton />;
     return (
       <div className="dashboard-page max-w-xl">
         <h1 className="page-title">{t("trips.detail.fallbackTitle")}</h1>
@@ -415,7 +456,7 @@ export default function TripDetailPage({
             </AsyncButton>
           </div>
           <Button asChild variant="secondary" className="mt-4">
-            <Link href={`/trips/${trip.id}/feedback?ownerId=${ownerId}`}>{t("trips.detail.viewFeedback")}</Link>
+            <Link href={`/trips/${trip.id}/feedback?ownerId=${encodeURIComponent(ownerId)}&lineId=${encodeURIComponent(lineId)}`}>{t("trips.detail.viewFeedback")}</Link>
           </Button>
           <Button asChild variant="secondary" className="mt-2">
             <Link href={`/bookings?tripId=${encodeURIComponent(trip.id)}`}>{t("trips.detail.viewBookings")}</Link>

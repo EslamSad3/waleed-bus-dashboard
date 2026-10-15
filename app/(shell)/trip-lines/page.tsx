@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
 import { EditTripLineDialog } from "@/components/trip-lines/edit-trip-line-dialog";
-import { deleteOwnerTripLine, fetchSystemTripLinesPage, lineEndpoints, updateOwnerTripLine, type TripLine } from "@/lib/actions/trip-lines";
+import { deleteOwnerTripLine, fetchSystemTripLinesPage, lineEndpoints, lineStopCount, updateOwnerTripLine, type TripLineListItem } from "@/lib/actions/trip-lines";
 import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { fetchFleetOwnersPage, fetchOwnerNameMap } from "@/lib/actions/fleet-owners";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -36,18 +36,18 @@ export default function TripLinesPage() {
   const { data: owners } = useApiQuery(qk.fleetOwners, () => fetchFleetOwnersPage(null));
   const [filters, setFilters] = useState<{ q?: string; ownerId?: string }>({});
   const [createOpen, setCreateOpen] = useState(false);
-  const [lineForEdit, setLineForEdit] = useState<TripLine | null>(null);
+  const [lineForEdit, setLineForEdit] = useState<TripLineListItem | null>(null);
 
   const { data: ownerNameEntries } = useApiQuery(qk.ownerNames, fetchOwnerNameMap);
   const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
 
-  async function toggleLine(line: TripLine) {
+  async function toggleLine(line: TripLineListItem) {
     const result = await updateOwnerTripLine(line.ownerId, line.id, { isActive: !line.isActive });
     if (!result.ok) return;
     applyMutationCache(queryClient, tripLineImpact(line.ownerId, line, "update"), result);
   }
 
-  async function removeLine(line: TripLine) {
+  async function removeLine(line: TripLineListItem) {
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("tripLines.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteOwnerTripLine(line.ownerId, line.id);
     if (!result.ok) return;
@@ -56,14 +56,14 @@ export default function TripLinesPage() {
 
   const query = (filters.q ?? "").trim();
   const ownerFilter = filters.ownerId ?? "";
-  const predicate = (line: TripLine) =>
+  const predicate = (line: TripLineListItem) =>
     (!ownerFilter || line.ownerId === ownerFilter) &&
     (!query ||
       line.name.includes(query) ||
       (line.code ?? "").includes(query) ||
       (ownerNames?.get(line.ownerId) ?? "").includes(query));
 
-  const columns: CommunityColumnDef<TripLine>[] = [
+  const columns: CommunityColumnDef<TripLineListItem>[] = [
     { field: "name", headerName: t("tripLines.columns.name"), filter: "agTextColumnFilter" },
     { field: "code", headerName: t("common.fields.code"), filter: "agTextColumnFilter" },
     {
@@ -73,7 +73,7 @@ export default function TripLinesPage() {
       cellDataType: "text",
       minWidth: 120,
       valueFormatter: (params) => (params.value ? t("common.status.active") : t("common.status.inactive")),
-      cellRenderer: (params: ICellRendererParams<TripLine>) =>
+      cellRenderer: (params: ICellRendererParams<TripLineListItem>) =>
         params.data ? <StatusPill active={params.data.isActive} /> : null,
     },
     {
@@ -91,7 +91,7 @@ export default function TripLinesPage() {
       headerName: t("common.fields.destination"),
       valueGetter: (params) => (params.data ? lineEndpoints(params.data).destination ?? "—" : "—"),
     },
-    { colId: "stops", headerName: t("tripLines.columns.stops"), valueGetter: (params) => params.data?.stops.length ?? 0, filter: "agNumberColumnFilter" },
+    { colId: "stops", headerName: t("tripLines.columns.stops"), valueGetter: (params) => params.data ? lineStopCount(params.data) : 0, filter: "agNumberColumnFilter" },
   ];
 
   return (
@@ -107,7 +107,7 @@ export default function TripLinesPage() {
       {isLoading ? (
         <TableSkeleton columns={7} />
       ) : (
-        <CursorList<TripLine>
+        <CursorList<TripLineListItem>
           gridId="system-trip-lines"
           initialItems={page?.items ?? []}
           initialCursor={page?.nextCursor ?? null}

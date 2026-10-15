@@ -12,6 +12,7 @@ export const NAV_PERMISSIONS = {
   "/localities": "stations.read",
   "/stops": "stations.read",
   "/trip-lines": "fleet-owners.lines.read",
+  "/schedules": "fleet-owners.schedules.read",
   "/trips": "fleet-owners.trips.read",
   "/bookings": "bookings.read",
   "/promotions": "promotions.read",
@@ -20,6 +21,7 @@ export const NAV_PERMISSIONS = {
   "/settings": "settings.read",
   "/users": "users.read",
   "/reports": "fleet-owners.reports.read",
+  "/audit": "audit.read",
   "/roles": "roles.read",
   "/permissions": "permissions.read",
 } as const;

@@ -15,6 +15,8 @@ import {
   ChartNoAxesCombined,
   Sparkles,
   Settings,
+  CalendarDays,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DashboardAccess } from "@/lib/access";
@@ -38,6 +40,7 @@ const NAV = [
   { href: "/localities", label: t("common.nav.localities"), icon: MapPin },
   { href: "/stops", label: t("common.nav.stops"), icon: MapPin },
   { href: "/trip-lines", label: t("common.nav.tripLines"), icon: Route },
+  { href: "/schedules", label: t("common.nav.schedules"), icon: CalendarDays },
   { href: "/trips", label: t("common.nav.trips"), icon: Route },
   { href: "/bookings", label: t("common.nav.bookings"), icon: Ticket },
   { href: "/promotions", label: t("common.nav.promotions"), icon: Ticket },
@@ -58,6 +61,7 @@ const NAV = [
     label: t("common.nav.reports"),
     icon: ChartNoAxesCombined,
   },
+  { href: "/audit", label: t("common.nav.audit"), icon: ShieldCheck },
   { href: "/roles", label: t("common.nav.roles"), icon: UserRoundCog },
   { href: "/permissions", label: t("common.nav.permissions"), icon: KeyRound },
 ] as const;

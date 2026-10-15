@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { Suspense, useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Eye, Filter, Plus, RotateCcw, Ticket, Trash2 } from "lucide-react";
@@ -32,7 +32,7 @@ import { qk, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, bookingImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
-export default function BookingsPage() {
+function BookingsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -236,5 +236,20 @@ export default function BookingsPage() {
       )}
       <CreateGroupBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
+  );
+}
+
+/**
+ * `useSearchParams()` suspends during prerender and must sit under a Suspense
+ * boundary — otherwise the server cannot finish the boundary and the browser
+ * falls back to client rendering ("switched to client rendering"). The shell
+ * layout already provides an outer boundary; this inner one keeps the fallback
+ * scoped to the bookings grid instead of the whole page.
+ */
+export default function BookingsPage() {
+  return (
+    <Suspense fallback={<TableSkeleton rows={9} columns={7} />}>
+      <BookingsPageInner />
+    </Suspense>
   );
 }

@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { RatingCell } from "@/components/owners/rating-cell";
 import { DriverAvatar } from "@/components/owners/driver-avatar";
 import { useFilterStore } from "@/stores/filters";
-import { findTripAcrossLines } from "@/lib/actions/trips";
+import { findTripAcrossLines, findTripAcrossOwners } from "@/lib/actions/trips";
+import { findOwnerByLineId } from "@/lib/actions/trip-lines";
 import {
   fetchTripFeedbackPage,
   type TripFeedbackRow,
@@ -19,33 +20,111 @@ import { t } from "@/lib/i18n/t";
  * Per-trip feedback: every rated booking, with the passenger, the line, the
  * bus, the driver SNAPSHOTTED at departure, and both rating sides side by side.
  * A missing side is an explicit "not rated yet" state, never a zero.
+ *
+ * Scope comes from the LINK (`?ownerId=&lineId=`, written by every surface
+ * that knows the trip's own company), then the saved company filter, then —
+ * for a bare id with neither — the cross-owner trip index. The page never
+ * asks for a company the operator did not come here to choose.
  */
-export default function TripFeedbackPage({ params }: { params: Promise<{ id: string }> }) {
+export default function TripFeedbackPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ownerId?: string; lineId?: string }>;
+}) {
   const { id: tripId } = use(params);
-  const scopedOwnerId = useFilterStore((s) => s.ownerId);
-  const [lineId, setLineId] = useState("");
+  const { ownerId: rawOwnerId, lineId: rawLineId } = use(searchParams);
+  const linkOwnerId = (rawOwnerId && rawOwnerId !== "undefined" && rawOwnerId !== "null") ? rawOwnerId : null;
+  const linkLineId = (rawLineId && rawLineId !== "undefined" && rawLineId !== "null") ? rawLineId : null;
+  const storeOwnerId = useFilterStore((s) => s.ownerId);
+  // Scope the link did not carry is resolved once per trip below; the link
+  // itself stays authoritative so opening another trip re-scopes.
+  const [resolution, setResolution] = useState<{ tripId: string; ownerId: string | null; lineId: string | null }>({
+    tripId,
+    ownerId: null,
+    lineId: null,
+  });
   const [rows, setRows] = useState<TripFeedbackRow[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The trip is addressed by (owner, line, trip): resolve the line the first
-  // time the page is opened, then page the feedback.
-  const [resolving, setResolving] = useState(false);
-  if (scopedOwnerId && !lineId && !resolving) {
-    setResolving(true);
-    void (async () => {
-      const found = await findTripAcrossLines(scopedOwnerId, tripId);
-      if (!found.ok) {
-        setError(found.message);
-        return;
-      }
-      setLineId(found.data.lineId);
-    })();
+  // Render-phase reset from the resolved cache (no setState-in-effect): a new
+  // trip, a new link, or a changed company filter is a new result set.
+  const [seenScope, setSeenScope] = useState<string | null>(null);
+  const scopeSig = `${tripId}|${linkOwnerId ?? ""}|${linkLineId ?? ""}|${storeOwnerId ?? ""}`;
+  if (seenScope !== scopeSig) {
+    setSeenScope(scopeSig);
+    setResolution({ tripId, ownerId: null, lineId: null });
+    setRows([]);
+    setCursor(null);
+    setLoaded(false);
+    setError(null);
   }
 
-  if (scopedOwnerId && lineId && !loaded) {
-    void fetchTripFeedbackPage(scopedOwnerId, lineId, tripId, null).then((result) => {
+  const ownerId = linkOwnerId ?? storeOwnerId ?? resolution.ownerId;
+  const lineId = linkLineId ?? resolution.lineId ?? "";
+
+  // Resolve whatever scope the link did not carry (callbacks only — no
+  // synchronous setState in the effect body).
+  useEffect(() => {
+    if (lineId && ownerId) return;
+    let cancelled = false;
+    if (!ownerId) {
+      if (lineId) {
+        void findOwnerByLineId(lineId).then((foundOwner) => {
+          if (cancelled) return;
+          if (foundOwner) {
+            setResolution({ tripId, ownerId: foundOwner, lineId });
+            return;
+          }
+          void findTripAcrossOwners(tripId).then((found) => {
+            if (cancelled) return;
+            if (!found.ok) {
+              setError(found.message);
+              setLoaded(true);
+              return;
+            }
+            setResolution({ tripId, ownerId: found.data.ownerId, lineId: found.data.lineId });
+          });
+        });
+        return () => {
+          cancelled = true;
+        };
+      }
+      void findTripAcrossOwners(tripId).then((found) => {
+        if (cancelled) return;
+        if (!found.ok) {
+          setError(found.message);
+          setLoaded(true);
+          return;
+        }
+        setResolution({ tripId, ownerId: found.data.ownerId, lineId: found.data.lineId });
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+    void findTripAcrossLines(ownerId, tripId).then((found) => {
+      if (cancelled) return;
+      if (!found.ok) {
+        setError(found.message);
+        setLoaded(true);
+        return;
+      }
+      setResolution({ tripId, ownerId, lineId: found.data.lineId });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId, ownerId, lineId]);
+
+  useEffect(() => {
+    if (!ownerId || !lineId || loaded) return;
+    let cancelled = false;
+    void fetchTripFeedbackPage(ownerId, lineId, tripId, null).then((result) => {
+      if (cancelled) return;
       if (result.ok) {
         setRows(result.data.items);
         setCursor(result.data.nextCursor);
@@ -54,7 +133,10 @@ export default function TripFeedbackPage({ params }: { params: Promise<{ id: str
       }
       setLoaded(true);
     });
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerId, lineId, tripId, loaded]);
 
   const columns: CommunityColumnDef<TripFeedbackRow>[] = [
     { field: "passenger.name", headerName: t("feedback.passenger"), valueGetter: (params) => params.data?.passenger.name },
@@ -105,6 +187,13 @@ export default function TripFeedbackPage({ params }: { params: Promise<{ id: str
     },
   ];
 
+  const detailHref =
+    ownerId && lineId
+      ? `/trips/${tripId}?ownerId=${encodeURIComponent(ownerId)}&lineId=${encodeURIComponent(lineId)}`
+      : ownerId
+        ? `/trips/${tripId}?ownerId=${encodeURIComponent(ownerId)}`
+        : `/trips/${tripId}`;
+
   return (
     <div className="dashboard-page">
       <div className="page-heading">
@@ -112,14 +201,14 @@ export default function TripFeedbackPage({ params }: { params: Promise<{ id: str
           <h1 className="page-title">{t("feedback.title")}</h1>
           <p className="page-description">{t("feedback.description")}</p>
         </div>
-        <Link href="/trips" className="text-sm font-medium text-[#059ff8] underline">
-          {t("common.actions.backTo", { value: t("trips.title") })}
+        <Link href={detailHref} className="text-sm font-medium text-[#059ff8] underline">
+          {t("common.actions.backTo", { value: t("trips.detail.fallbackTitle") })}
         </Link>
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-      {!scopedOwnerId ? (
-        <p className="panel-card p-4 text-sm text-[#606060]">{t("drivers.detail.pickOwnerDescription")}</p>
+      {!ownerId ? (
+        <p className="panel-card p-4 text-sm text-[#606060]">{t("trips.detail.pickOwnerDescription")}</p>
       ) : !loaded ? (
         <TableSkeleton rows={6} columns={columns.length} />
       ) : (
@@ -127,11 +216,11 @@ export default function TripFeedbackPage({ params }: { params: Promise<{ id: str
           gridId={`trip-feedback-${tripId}`}
           // The feedback belongs to one (owner, line, trip); a different scope
           // means the loaded pages are a different result set.
-          scopeKey={scopedOwnerId && lineId ? `${scopedOwnerId}:${lineId}` : null}
+          scopeKey={ownerId && lineId ? `${ownerId}:${lineId}` : null}
           initialItems={rows}
           initialCursor={cursor}
           loadMore={async (next) => {
-            const result = await fetchTripFeedbackPage(scopedOwnerId, lineId, tripId, next);
+            const result = await fetchTripFeedbackPage(ownerId, lineId, tripId, next);
             if (!result.ok) throw new Error(result.message);
             return result.data;
           }}

@@ -538,7 +538,7 @@ export default function BusDetailPage({
               emptyMessage={tr("buses.detail.tripsEmpty")}
               renderItem={(row) => (
                 <Link
-                  href={`/trips/${row.id}/feedback`}
+                  href={`/trips/${row.id}/feedback?ownerId=${encodeURIComponent(ownerId ?? "")}&lineId=${encodeURIComponent(row.line.id)}`}
                   className="text-sm font-medium text-[#059ff8] underline"
                 >
                   {tr("common.actions.viewFeedback")}

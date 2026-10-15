@@ -70,20 +70,14 @@ export type TripLine = {
   stops: TripLineStop[];
 };
 
-/**
- * A line has no stored origin/destination: they are the first and last ORDERED
- * stop, which is the same rule the API uses to derive a trip's endpoints.
- */
-export function lineEndpoints(line: Pick<TripLine, "stops">): {
+/** Compact list rows do not contain the detail stop collection. */
+export type TripLineListItem = Pick<TripLine, 'id' | 'ownerId' | 'name' | 'nameEn' | 'code' | 'qrIdentifier' | 'isActive'> & {
   origin: string | null;
   destination: string | null;
-} {
-  const ordered = [...line.stops].sort((a, b) => a.stopOrder - b.stopOrder);
-  return {
-    origin: ordered[0]?.station.name ?? null,
-    destination: ordered[ordered.length - 1]?.station.name ?? null,
-  };
-}
+  stopCount: number;
+};
+
+export { lineEndpoints, lineStopCount } from '@/lib/trip-line-view';
 
 export const fetchStops = () => apiGet<Stop[]>("/api/stops");
 export const fetchGovernorates = () => apiGet<Governorate[]>("/api/governorates");
@@ -149,9 +143,9 @@ export type LineStopInput = {
 export function fetchOwnerTripLinesPage(
   ownerId: string,
   cursor: string | null,
-): Promise<ActionResult<CursorPage<TripLine>>> {
+): Promise<ActionResult<CursorPage<TripLineListItem>>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<CursorPage<TripLine>>(`${lineBase(ownerId)}${q}`);
+  return apiGet<CursorPage<TripLineListItem>>(`${lineBase(ownerId)}${q}`);
 }
 
 export const fetchOwnerTripLine = (ownerId: string, id: string) =>
@@ -200,8 +194,24 @@ export const deleteOwnerTripLine = (ownerId: string, id: string) =>
 /** Super-admin cross-owner line index (`GET /fleet-owners/trip-lines`). */
 export const fetchSystemTripLinesPage = (cursor: string | null) => {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<CursorPage<TripLine>>(`/api/fleet-owners/trip-lines${q}`);
+  return apiGet<CursorPage<TripLineListItem>>(`/api/fleet-owners/trip-lines${q}`);
 };
+
+/**
+ * Resolves the ownerId that owns a given trip line by scanning the cross-owner line index.
+ */
+export async function findOwnerByLineId(lineId: string): Promise<string | null> {
+  let cursor: string | null = null;
+  for (let page = 0; page < 10; page++) {
+    const res = await fetchSystemTripLinesPage(cursor);
+    if (!res.ok) break;
+    const line = res.data.items.find((l) => l.id === lineId);
+    if (line?.ownerId) return line.ownerId;
+    cursor = res.data.nextCursor;
+    if (!cursor) break;
+  }
+  return null;
+}
 
 export type { ActionResult };
 

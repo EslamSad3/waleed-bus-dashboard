@@ -179,6 +179,33 @@ export const updateTripSchema = z.object({
   stopTimes: tripStopTimes.optional(),
 });
 
+// ---- Recurring Trip Schedules (Spec 018) ----
+const timeHHmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const dateYYYYMMDD = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const stopOffsets = z.array(z.number().int().min(0)).min(1);
+const scheduleDays = z.array(z.number().int().min(0).max(6)).min(1).max(7);
+
+export const createTripScheduleSchema = z.object({
+  busId: uuid,
+  driverUserId: z.uuid(t("validation.driverRequired")),
+  departTime: timeHHmm,
+  stopOffsetsMin: stopOffsets,
+  daysOfWeek: scheduleDays.optional(),
+  startsOn: dateYYYYMMDD.optional(),
+  endsOn: z.union([dateYYYYMMDD, z.null()]).optional(),
+});
+
+export const updateTripScheduleSchema = z.object({
+  busId: uuid.optional(),
+  driverUserId: uuid.optional(),
+  departTime: timeHHmm.optional(),
+  stopOffsetsMin: stopOffsets.optional(),
+  daysOfWeek: scheduleDays.optional(),
+  startsOn: dateYYYYMMDD.optional(),
+  endsOn: z.union([dateYYYYMMDD, z.null()]).optional(),
+  isActive: z.boolean().optional(),
+});
+
 // ---- Bookings ----
 export const createBookingSchema = z.object({
   boardingStationId: uuid.optional(),
@@ -375,7 +402,7 @@ const optionalDate = z.union([datetime, z.null()]);
 const targetUserIds = z.array(uuid).max(1000).optional();
 export const createPromotionSchema = z.object({
   code: promotionCode,
-  type: z.literal("FIXED"),
+  type: z.enum(["FIXED", "PERCENTAGE"]).default("FIXED"),
   value: positiveAmount,
   isGlobal: z.boolean().optional(),
   targetUserIds,
@@ -437,6 +464,9 @@ export const P1_REGISTRY: RegistryEntry[] = [
   // ---- Owner trips (nested under their line) ----
   { method: "POST", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/trips$`), schema: createTripSchema },
   { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/trips/${SEG}$`), schema: updateTripSchema },
+  // ---- Owner recurring trip schedules (nested under their line) ----
+  { method: "POST", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/schedules$`), schema: createTripScheduleSchema },
+  { method: "PATCH", pattern: new RegExp(`${OWNER}/trip-lines/${SEG}/schedules/${SEG}$`), schema: updateTripScheduleSchema },
   // ---- Owner bookings ----
   { method: "POST", pattern: new RegExp(`${OWNER}/bookings$`), schema: createBookingSchema },
   { method: "PATCH", pattern: new RegExp(`${OWNER}/bookings/${SEG}$`), schema: updateBookingSchema },

@@ -30,7 +30,10 @@ export const serviceEntrySchema = z.object({ id: uuid.optional(), text: required
     if (!parsed.success || !/^https?:\/\//i.test(value.value)) context.addIssue({ code: "custom", path: ["value"], message: t("validation.serviceUrl") });
   } else if (!/^\+?[0-9]{7,15}$/.test(value.value.replace(/[\s-]/g, ""))) context.addIssue({ code: "custom", path: ["value"], message: t("validation.servicePhone") });
 });
-export const platformSettingsSchema = z.object({ maxSearchDays: z.number(t("settings.validation.maxSearchDays")).int(t("settings.validation.maxSearchDays")).min(1, t("settings.validation.maxSearchDays")).max(90, t("settings.validation.maxSearchDays")) });
+export const platformSettingsSchema = z.object({
+  maxSearchDays: z.number(t("settings.validation.maxSearchDays")).int(t("settings.validation.maxSearchDays")).min(1, t("settings.validation.maxSearchDays")).max(90, t("settings.validation.maxSearchDays")),
+  maxSeats: z.number(t("settings.validation.maxSeats")).int(t("settings.validation.maxSeats")).min(1, t("settings.validation.maxSeats")).max(50, t("settings.validation.maxSeats")),
+});
 export const serviceConfigSchema = z.object({ entries: z.array(serviceEntrySchema).max(100, t("validation.serviceRows")) });
 
 const filterDate = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, t("validation.date")).refine((value) => Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, t("validation.date"))]);

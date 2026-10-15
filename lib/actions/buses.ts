@@ -41,9 +41,9 @@ export type Bus = {
 export type BusPage = CursorPage<Bus>;
 
 /** Super-admin cross-owner bus index (`GET /fleet-owners/buses`). */
-export function fetchSystemBusesPage(cursor: string | null): Promise<ActionResult<BusPage>> {
+export function fetchSystemBusesPage(cursor: string | null, options: { stats?: boolean } = {}): Promise<ActionResult<BusPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<BusPage>(`/api/fleet-owners/buses${q}`);
+  return apiGet<BusPage>(`/api/fleet-owners/buses${q}${options.stats ? "&stats=1" : ""}`);
 }
 
 /** One row of `GET /fleet-owners/{ownerId}/buses/{busId}/trips`. */
@@ -59,9 +59,9 @@ export type BusTripRow = {
   busRatingAvg: number | null;
 };
 
-export function fetchBusesPage(ownerId: string, cursor: string | null): Promise<ActionResult<BusPage>> {
+export function fetchBusesPage(ownerId: string, cursor: string | null, options: { stats?: boolean } = {}): Promise<ActionResult<BusPage>> {
   const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=20` : "?limit=20";
-  return apiGet<BusPage>(`${base(ownerId)}${q}`);
+  return apiGet<BusPage>(`${base(ownerId)}${q}${options.stats ? "&stats=1" : ""}`);
 }
 
 export function fetchBus(ownerId: string, id: string): Promise<ActionResult<Bus>> {

@@ -21,6 +21,7 @@ import {
   type FareTable,
   type Stop,
   type TripLine,
+  type TripLineListItem,
 } from "@/lib/actions/trip-lines";
 import { applyMutationCache, tripLineImpact } from "@/lib/cache/mutations";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
@@ -52,9 +53,20 @@ function editableStops(line: TripLine): EditableStop[] {
  * shared by the trip-lines grid and the line detail page. Open it by passing a
  * line; `null` closes it.
  */
-export function EditTripLineDialog({ line, onClose }: { line: TripLine | null; onClose: () => void }) {
+export function EditTripLineDialog({ line, onClose }: { line: TripLine | TripLineListItem | null; onClose: () => void }) {
   // Mounted per open (and keyed per line), so every open starts from the line as it is now.
-  return line ? <Editor key={line.id} line={line} onClose={onClose} /> : null;
+  return line ? <LoadEditor key={line.ownerId + line.id} line={line} onClose={onClose} /> : null;
+}
+
+/** Fetch the stop/pricing detail only when the operator opens the editor. */
+function LoadEditor({ line, onClose }: { line: TripLine | TripLineListItem; onClose: () => void }) {
+  const { data, error } = useApiQuery(qk.tripLine(line.ownerId, line.id), () => fetchOwnerTripLine(line.ownerId, line.id));
+  if (data) return <Editor line={data} onClose={onClose} />;
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }} title={t("tripLines.metaDialog.title")}>
+      {error ? <p role="alert">{error.message}</p> : <p role="status">{t("common.loading.page")}</p>}
+    </Dialog>
+  );
 }
 
 function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {

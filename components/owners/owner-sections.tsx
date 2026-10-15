@@ -42,41 +42,47 @@ import {
   deleteOwnerTripLine,
   fetchOwnerTripLinesPage,
   lineEndpoints,
-  type TripLine,
+  lineStopCount,
+  type TripLineListItem,
 } from "@/lib/actions/trip-lines";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
 import { deleteTrip, fetchSystemTripsPage, type OwnerTripRow } from "@/lib/actions/trips";
 import { deleteBooking, fetchAdminBookingsPage, type AdminBookingListItem } from "@/lib/actions/bookings";
-import { fetchOwnerReports, type FleetReports } from "@/lib/actions/reports";
+import { fetchOwnerReports } from "@/lib/actions/reports";
 import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
+import {
+  fetchOwnerSchedulesPage,
+  deleteSchedule,
+  type TripSchedule,
+} from "@/lib/actions/schedules";
+import { CreateScheduleDialog } from "@/components/schedules/create-schedule-dialog";
+import { EditScheduleDialog } from "@/components/schedules/edit-schedule-dialog";
+import {
+  fetchFleetFeedbackSummary,
+  fetchFleetFeedbackPage,
+  type TripFeedbackRow,
+} from "@/lib/actions/feedback";
 import { t } from "@/lib/i18n/t";
-import { useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, memberImpact } from "@/lib/cache/mutations";
 
 export type OwnerSectionKey =
   | "buses"
-  // "members" is commented out: the owner user IS the company, so there is no
-  // separate member list to manage from this screen. Restore the entry below to
-  // bring the roster back.
-  // | "members"
   | "drivers"
   | "trip-lines"
+  | "schedules"
   | "trips"
-  | "bookings";
-// "reports" is commented out for the same reason the owner detail screen has
-// no ratings: a passenger rates and reports a TRIP (its bus and its driver),
-// never the company. That surface lives at /trips/{id}/feedback, so an
-// owner-level aggregate duplicated it under the wrong subject.
-  // | "reports";
+  | "bookings"
+  | "feedback";
 
 const SECTIONS: { key: OwnerSectionKey; label: string }[] = [
   { key: "buses", label: t("common.fields.buses") },
-  // { key: "members", label: t("common.fields.members") },
   { key: "drivers", label: t("common.fields.drivers") },
   { key: "trip-lines", label: t("common.fields.tripLines") },
+  { key: "schedules", label: t("common.nav.schedules") },
   { key: "trips", label: t("common.fields.trips") },
   { key: "bookings", label: t("common.fields.bookings") },
-  // { key: "reports", label: t("common.fields.report") },
+  { key: "feedback", label: t("common.fields.feedback") },
 ];
 
 /**
@@ -112,12 +118,12 @@ export function OwnerSections({ ownerId }: { ownerId: string }) {
         ))}
       </nav>
       {section === "buses" ? <OwnerBuses ownerId={ownerId} /> : null}
-      {/* {section === "members" ? <OwnerMembers ownerId={ownerId} /> : null} */}
       {section === "drivers" ? <OwnerDrivers ownerId={ownerId} /> : null}
       {section === "trip-lines" ? <OwnerTripLines ownerId={ownerId} /> : null}
+      {section === "schedules" ? <OwnerSchedules ownerId={ownerId} /> : null}
       {section === "trips" ? <OwnerTrips ownerId={ownerId} /> : null}
       {section === "bookings" ? <OwnerBookings ownerId={ownerId} /> : null}
-      {/* {section === "reports" ? <OwnerReports ownerId={ownerId} /> : null} */}
+      {section === "feedback" ? <OwnerFeedback ownerId={ownerId} /> : null}
     </section>
   );
 }
@@ -305,7 +311,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchBusesPage(ownerId, null).then((result) => {
+    void fetchBusesPage(ownerId, null, { stats: true }).then((result) => {
       if (cancelled) return;
       if (result.ok) setPage(result.data);
       else setError(result.message);
@@ -349,7 +355,7 @@ function OwnerBuses({ ownerId }: { ownerId: string }) {
           initialItems={page.items}
           initialCursor={page.nextCursor}
           loadMore={async (cursor) => {
-            const result = await fetchBusesPage(ownerId, cursor);
+            const result = await fetchBusesPage(ownerId, cursor, { stats: true });
             if (!result.ok) throw new Error(result.message);
             return result.data;
           }}
@@ -498,7 +504,7 @@ function OwnerDrivers({ ownerId }: { ownerId: string }) {
 
 function OwnerTripLines({ ownerId }: { ownerId: string }) {
   const confirm = useConfirm();
-  const [page, setPage] = useState<{ items: TripLine[]; nextCursor: string | null } | null>(null);
+  const [page, setPage] = useState<{ items: TripLineListItem[]; nextCursor: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
@@ -515,7 +521,7 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
     return () => { cancelled = true; };
   }, [ownerId, reloadToken]);
 
-  async function removeLine(line: TripLine) {
+  async function removeLine(line: TripLineListItem) {
     if (!(await confirm({
       title: t("common.actions.deleteConfirmTitle"),
       description: t("tripLines.deleteConfirm.description", { value: line.name }),
@@ -526,7 +532,7 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
     if (result.ok) reload();
   }
 
-  const columns: CommunityColumnDef<TripLine>[] = [
+  const columns: CommunityColumnDef<TripLineListItem>[] = [
     { field: "name", headerName: t("common.fields.tripLine") },
     { field: "code", headerName: t("common.fields.code") },
     {
@@ -541,9 +547,9 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
     },
     { field: "qrIdentifier", headerName: t("tripLines.columns.qr") },
     {
-      field: "stops",
-      headerName: t("common.fields.orderedStops"),
-      valueGetter: (params) => (params.data?.stops ?? []).map((stop) => stop.station?.name).filter(Boolean).join(" ← "),
+      colId: "stopCount",
+      headerName: t("tripLines.columns.stops"),
+      valueGetter: (params) => params.data ? lineStopCount(params.data) : 0,
     },
   ];
 
@@ -552,7 +558,7 @@ function OwnerTripLines({ ownerId }: { ownerId: string }) {
     <div className="space-y-3">
       <SectionAddButton label={t("tripLines.newLine")} onClick={() => setCreateOpen(true)} />
       {page ? (
-        <CursorList<TripLine>
+        <CursorList<TripLineListItem>
           initialItems={page.items}
           initialCursor={page.nextCursor}
           loadMore={async (cursor) => {
@@ -751,18 +757,8 @@ function OwnerBookings({ ownerId }: { ownerId: string }) {
 // ---------------------------------------------------------------------------
 
 export function OwnerReports({ ownerId }: { ownerId: string }) {
-  const [reports, setReports] = useState<FleetReports | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState(0);
-  if (token === 0) {
-    setToken(1);
-    void fetchOwnerReports(ownerId).then((result) => {
-      if (result.ok) setReports(result.data);
-      else setError(result.message);
-    });
-  }
-
-  if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
+  const { data: reports, error } = useApiQuery(qk.ownerReports(ownerId), () => fetchOwnerReports(ownerId));
+  if (error) return <p role="alert" className="text-sm text-red-600">{error.message}</p>;
   if (!reports) return <TableSkeleton rows={3} columns={2} />;
 
   return (
@@ -777,20 +773,218 @@ export function OwnerReports({ ownerId }: { ownerId: string }) {
           <RatingCell value={reports.ratingSummary.driverAvg} />
         </div>
       </div>
-      {reports.reports.length === 0 ? (
-        <p className="panel-card p-4 text-sm text-[#606060]">{t("reports.empty")}</p>
+      <CursorList
+        gridId="owner-reports"
+        scopeKey={ownerId}
+        initialItems={reports.reports.items}
+        initialCursor={reports.reports.nextCursor}
+        loadMore={async (cursor) => {
+          const result = await fetchOwnerReports(ownerId, cursor);
+          if (!result.ok) throw new Error(result.message);
+          return result.data.reports;
+        }}
+        keyOf={(report) => report.id}
+        withActions={false}
+        columnDefs={[
+          { field: 'note', headerName: t("reports.note") },
+          { field: 'createdAt', headerName: t("reports.createdAt"), valueFormatter: ({ value }) => new Date(value).toLocaleString('ar-EG') },
+        ]}
+        emptyMessage={t("reports.empty")}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Schedules
+// ---------------------------------------------------------------------------
+
+function OwnerSchedules({ ownerId }: { ownerId: string }) {
+  const confirm = useConfirm();
+  const [page, setPage] = useState<{ items: TripSchedule[]; nextCursor: string | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<TripSchedule | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchOwnerSchedulesPage(ownerId, null).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setPage(result.data);
+      else setError(result.message);
+    });
+    return () => { cancelled = true; };
+  }, [ownerId, reloadToken]);
+
+  async function removeSchedule(s: TripSchedule) {
+    if (!(await confirm({
+      title: t("schedules.deleteDialog.title"),
+      description: t("schedules.deleteDialog.description"),
+      confirmLabel: t("schedules.deleteDialog.confirm"),
+      destructive: true,
+    }))) return;
+    const result = await deleteSchedule(ownerId, s.lineId, s.id);
+    if (result.ok) reload();
+  }
+
+  const columns: CommunityColumnDef<TripSchedule>[] = [
+    { field: "line.name", headerName: t("schedules.columns.line"), valueGetter: (p) => p.data?.line.name ?? "—" },
+    { field: "departTime", headerName: t("schedules.columns.departureTime") },
+    {
+      colId: "daysOfWeek",
+      headerName: t("schedules.columns.daysOfWeek"),
+      cellRenderer: (params: { data: TripSchedule }) => {
+        const days = params.data?.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6];
+        return (
+          <div className="flex flex-wrap gap-1">
+            {days.map((d) => (
+              <span key={d} className="rounded bg-sky-50 px-1 text-[11px] font-semibold text-sky-800">
+                {t(`schedules.daysShort.${d}` as any)}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    { field: "bus.plateNumber", headerName: t("schedules.columns.bus"), valueGetter: (p) => p.data?.bus.plateNumber ?? t("common.value.withoutName") },
+    { field: "driver.name", headerName: t("schedules.columns.driver"), valueGetter: (p) => p.data?.driver?.name ?? t("common.value.unassigned") },
+    {
+      field: "isActive",
+      headerName: t("schedules.columns.status"),
+      valueGetter: (p) => (p.data?.isActive ? t("common.status.active") : t("common.status.inactive")),
+    },
+  ];
+
+  if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
+  return (
+    <div className="space-y-3">
+      <SectionAddButton label={t("schedules.createButton")} onClick={() => setCreateOpen(true)} />
+      {page ? (
+        <CursorList<TripSchedule>
+          initialItems={page.items}
+          initialCursor={page.nextCursor}
+          loadMore={async (cursor) => {
+            const result = await fetchOwnerSchedulesPage(ownerId, cursor);
+            if (!result.ok) throw new Error(result.message);
+            return result.data;
+          }}
+          keyOf={(s) => s.id}
+          columnDefs={columns}
+          emptyMessage={t("schedules.empty")}
+          renderItem={(s) => (
+            <RowActions
+              label={s.line.name}
+              actions={[
+                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setEditingSchedule(s) },
+                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeSchedule(s) },
+              ]}
+            />
+          )}
+        />
       ) : (
-        <ul className="space-y-2">
-          {reports.reports.map((report) => (
-            <li key={report.id} className="panel-card p-4">
-              <p className="text-sm">{report.note}</p>
-              <p className="mt-1 text-xs text-[#606060]">
-                {new Date(report.createdAt).toLocaleString("ar-EG")}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <TableSkeleton rows={3} columns={6} />
+      )}
+      <CreateScheduleDialog open={createOpen} lockedOwnerId={ownerId} onClose={() => setCreateOpen(false)} onCreated={reload} />
+      {editingSchedule && (
+        <EditScheduleDialog
+          schedule={editingSchedule}
+          open={Boolean(editingSchedule)}
+          onClose={() => setEditingSchedule(null)}
+          onUpdated={reload}
+        />
       )}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Feedback (Summary + Feed)
+// ---------------------------------------------------------------------------
+
+function OwnerFeedback({ ownerId }: { ownerId: string }) {
+  const { data: summary } = useApiQuery(
+    qk.ownerFeedbackSummary(ownerId),
+    () => fetchFleetFeedbackSummary(ownerId),
+  );
+  const [page, setPage] = useState<{ items: TripFeedbackRow[]; nextCursor: string | null } | null>(null);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchFleetFeedbackPage(ownerId, null).then((res) => {
+      if (cancelled) return;
+      setLoadingFeed(false);
+      if (res.ok) setPage(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [ownerId]);
+
+  return (
+    <div className="space-y-6">
+      {summary && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-bold text-slate-500">{t("common.fields.avgBusRating")}</p>
+            <div className="mt-2 flex items-center gap-3">
+              <RatingCell value={summary.busRating.average} />
+              <span className="text-xs text-slate-400">({t("common.rating.votes", { count: summary.busRating.count })})</span>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-bold text-slate-500">{t("common.fields.driverRating")}</p>
+            <div className="mt-2 flex items-center gap-3">
+              <RatingCell value={summary.driverRating.average} />
+              <span className="text-xs text-slate-400">({t("common.rating.votes", { count: summary.driverRating.count })})</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h3 className="mb-3 text-sm font-bold text-slate-700">{t("owners.feedback.feedTitle")}</h3>
+        {loadingFeed ? (
+          <TableSkeleton rows={4} columns={4} />
+        ) : !page || page.items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
+            {t("common.rating.unrated")}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {page.items.map((row) => (
+              <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2 text-xs">
+                  <div className="font-semibold text-slate-800">
+                    {row.passenger.name} · {row.trip.line.name}
+                  </div>
+                  <div className="text-slate-400">
+                    {new Date(row.trip.departAt).toLocaleDateString("ar-EG")}
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 text-xs">
+                  <div>
+                    <span className="text-slate-500">{t("common.fields.busRating")}: </span>
+                    <RatingCell value={row.busFeedback.rating} />
+                    {row.busFeedback.comment && (
+                      <p className="mt-1 text-slate-600 bg-slate-50 p-2 rounded-lg">{row.busFeedback.comment}</p>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-slate-500">{t("common.fields.driverRating")}: </span>
+                    <RatingCell value={row.driverFeedback.rating} />
+                    {row.driverFeedback.comment && (
+                      <p className="mt-1 text-slate-600 bg-slate-50 p-2 rounded-lg">{row.driverFeedback.comment}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

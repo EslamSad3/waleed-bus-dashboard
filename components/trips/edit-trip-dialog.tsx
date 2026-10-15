@@ -41,6 +41,7 @@ export function EditTripDialog({
 }) {
   const queryClient = useQueryClient();
   const ownerId = useFilterStore((s) => s.ownerId);
+  const tripOwnerId = trip?.ownerId || ownerId;
   const [departAt, setDepartAt] = useState("");
   const [fare, setFare] = useState("");
   const [driverUserId, setDriverUserId] = useState("");
@@ -144,7 +145,7 @@ export function EditTripDialog({
             <Input fieldName="fare" dir="ltr" inputMode="decimal" value={fare} onChange={(event) => setFare(event.target.value)} />
           </label>}
         </div>
-        {trip?.status === "SCHEDULED" ? <fieldset disabled={saving}><DriverPicker ownerId={trip.ownerId} value={driverUserId} onChange={setDriverUserId} /><p className="text-xs text-[#687886]">{t("tripAssignment.notice")}</p></fieldset> : null}
+        {trip?.status === "SCHEDULED" && (tripOwnerId || trip.ownerId) ? <fieldset disabled={saving}><DriverPicker ownerId={tripOwnerId || trip.ownerId} value={driverUserId} onChange={setDriverUserId} /><p className="text-xs text-[#687886]">{t("tripAssignment.notice")}</p></fieldset> : null}
         <label className="block text-sm">
           <span className="mb-1.5 block font-bold text-[#334454]">{t("common.fields.status")}</span>
           <Select fieldName="status" value={status} onChange={(event) => setStatus(event.target.value as Trip["status"])} className="select-field w-full">

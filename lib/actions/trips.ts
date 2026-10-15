@@ -1,7 +1,7 @@
 import { apiGet, apiSend, type ActionResult, type CursorPage } from "@/lib/actions/http";
 import { notifyResult } from "@/lib/actions/toast";
 import type { CreateTripInput, UpdateTripInput } from "@/lib/schemas/p1";
-import { fetchOwnerTripLinesPage } from "@/lib/actions/trip-lines";
+import { fetchOwnerTripLinesPage, findOwnerByLineId } from "@/lib/actions/trip-lines";
 import { t } from "@/lib/i18n/t";
 
 /**
@@ -141,6 +141,38 @@ export async function findTripAcrossLines(
     }
     cursor = lines.data.nextCursor;
   } while (cursor);
+  return { ok: false, message: t("common.notFound.inOwner"), code: "NOT_FOUND" };
+}
+
+/**
+ * Bare trip id → its (owner, line) scope, from the cross-owner trip index.
+ *
+ * Deep links from bus/driver surfaces carry no scope (`/trips/<id>/feedback`
+ * with no query), and an old bookmark may carry none either. The index row
+ * already carries the trip's own `ownerId` + `lineId`, so walking a bounded
+ * number of pages resolves the scope without asking the operator to pick a
+ * company they did not come here to choose (same pattern as the driver
+ * roster's bare-bookmark fallback).
+ */
+export async function findTripAcrossOwners(
+  tripId: string,
+): Promise<ActionResult<{ ownerId: string; lineId: string; trip: Trip }>> {
+  let cursor: string | null = null;
+  for (let page = 0; page < 10; page++) {
+    const result = await fetchSystemTripsPage(cursor);
+    if (!result.ok) return result;
+    const match = result.data.items.find((row) => row.id === tripId);
+    if (match) {
+      let resolvedOwnerId = match.ownerId;
+      if ((!resolvedOwnerId || resolvedOwnerId === "undefined") && match.lineId) {
+        const lineOwner = await findOwnerByLineId(match.lineId);
+        if (lineOwner) resolvedOwnerId = lineOwner;
+      }
+      return { ok: true, data: { ownerId: resolvedOwnerId, lineId: match.lineId, trip: match } };
+    }
+    cursor = result.data.nextCursor;
+    if (!cursor) break;
+  }
   return { ok: false, message: t("common.notFound.inOwner"), code: "NOT_FOUND" };
 }
 

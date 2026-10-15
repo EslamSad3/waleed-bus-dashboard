@@ -110,6 +110,13 @@ export const qk = {
   ownerBuses: (ownerId: string) => ["owner-buses", ownerId] as const,
   ownerBookings: (ownerId: string) => ["owner-bookings", ownerId] as const,
   ownerReports: (ownerId: string) => ["owner-reports", ownerId] as const,
+  ownerFeedbackSummary: (ownerId: string) => ["owner-feedback-summary", ownerId] as const,
+  ownerFeedback: (ownerId: string) => ["owner-feedback", ownerId] as const,
+  auditLogs: (cursor?: string | null) => ["audit-logs", cursor ?? "root"] as const,
+  schedules: (ownerId: string, lineId?: string) => ["schedules", ownerId, lineId ?? "all"] as const,
+  schedule: (ownerId: string, lineId: string, id: string) => ["schedule", ownerId, lineId, id] as const,
+  scheduleTrips: (ownerId: string, lineId: string, id: string) => ["schedule-trips", ownerId, lineId, id] as const,
+  promotionUsages: (id: string) => ["promotion-usages", id] as const,
 };
 
 /** Insert-or-replace one item inside a cached plain-array list. */

@@ -205,7 +205,7 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
             emptyMessage={t("trips.empty")}
             renderItem={(trip) => (
               <Link
-                href={`/trips/${trip.id}/feedback`}
+                href={`/trips/${trip.id}/feedback?ownerId=${encodeURIComponent(scopedOwnerId ?? "")}&lineId=${encodeURIComponent(trip.line.id)}`}
                 className="text-sm font-medium text-[#059ff8] underline"
               >
                 {t("common.actions.viewFeedback")}

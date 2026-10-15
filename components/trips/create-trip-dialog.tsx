@@ -17,8 +17,9 @@ import { OwnerPicker } from "@/components/owners/owner-picker";
 import { createTrip, type Trip } from "@/lib/actions/trips";
 import {
   fetchOwnerTripLinesPage,
+  fetchOwnerTripLine,
   lineEndpoints,
-  type TripLine,
+  type TripLineListItem,
 } from "@/lib/actions/trip-lines";
 import { fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import { setOwnerScopeCookie } from "@/lib/owner-scope-cookie";
@@ -79,12 +80,16 @@ export function CreateTripDialog({
     { enabled: open && Boolean(ownerId) },
   );
 
-  const lines: TripLine[] = useMemo(() => linesPage?.items ?? [], [linesPage]);
+  const lines: TripLineListItem[] = useMemo(() => linesPage?.items ?? [], [linesPage]);
   const buses: Bus[] = useMemo(
     () => (busesPage?.items ?? []).filter((bus) => bus.isActive),
     [busesPage],
   );
-  const selectedLine = lines.find((line) => line.id === lineId);
+  const { data: selectedLine, error: lineError, isLoading: lineLoading } = useApiQuery(
+    qk.tripLine(ownerId || 'none', lineId || 'none'),
+    () => fetchOwnerTripLine(ownerId, lineId),
+    { enabled: open && Boolean(ownerId && lineId) },
+  );
   const endpoints = selectedLine ? lineEndpoints(selectedLine) : null;
   // The line gives the stops; the operator sets each stop's date and time.
   const scheduleStops: ScheduleStop[] = useMemo(
@@ -107,7 +112,7 @@ export function CreateTripDialog({
   const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripSchema, { busId, driverUserId, departAt, fare: selectedLine?.pricingEnabled ? undefined : fare.trim() || undefined, stopTimes: allStopTimes(scheduleStops, stopTimes, departAt).filter((stop) => stop.scheduledAt) }), ownerId: requiredField(ownerId), lineId: requiredField(lineId), stopTimes: stopTimesError(scheduleStops, stopTimes, departAt) }));
 
   async function submit() {
-    if (!validation.validate()) return;
+    if (!selectedLine || !validation.validate()) return;
 
     setError(null);
     setSaving(true);
@@ -223,6 +228,8 @@ export function CreateTripDialog({
 
         </div>
         <div className="min-w-0">
+          {lineError ? <p role="alert" className="text-sm text-red-600">{lineError.message}</p> : null}
+          {lineLoading && lineId ? <p role="status">{t("common.loading.page")}</p> : null}
           {selectedLine ? <TripStopTimes stops={scheduleStops} departAt={departAt} edited={stopTimes} onChange={setStopTimes} disabled={saving} /> : <p className="rounded-2xl border border-dashed border-[#dce8ef] p-6 text-center text-sm text-[#687886]">{t("trips.stopTimes.pickLineFirst")}</p>}
         </div>
         </div>
@@ -230,7 +237,7 @@ export function CreateTripDialog({
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row sm:justify-end">
           <Button type="button" variant="danger" onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
-          <Button type="submit" variant="success" loading={saving}>
+          <Button type="submit" variant="success" loading={saving} disabled={!selectedLine || Boolean(lineError)}>
             {saving ? t("common.loading.saving") : t("trips.createDialog.submit")}
           </Button>
         </div>
