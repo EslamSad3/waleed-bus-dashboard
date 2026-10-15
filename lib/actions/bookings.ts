@@ -160,6 +160,7 @@ export type AdminBookingDetail = {
   seats: number;
   passengerName?: string | null;
   passengerPhone?: string | null;
+  additionalPhone?: string | null;
   passengerUserId?: string | null;
   bookingFor?: string | null;
   note?: string | null;

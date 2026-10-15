@@ -298,3 +298,10 @@ level under a fleet owner any more, and a trip line is **one direction**.
   remain deployment steps; see `../bus_api/docs/BOOKING_NOTIFICATIONS.md`.
   Automatic approval review blocked the local browser preview launch and gave
   no reason, so the authenticated browser walkthrough remains unverified.
+
+### Passenger grouped orders and immutable checkout (2026-10-15)
+
+- Reviewed passenger-created orders against the separate admin contract: dashboard continues reading `/admin/booking-orders/:id` with `totalSeats`/`bookings`, including nullable OTHER phones; it does not submit passenger `passengers` payloads to staff checkout.
+- Group detail shows the aggregate order status (including historical/admin partial cancellation), optional additional contacts, and Arabic guidance: passengers must cancel the entire order and rebook. Staff per-child cancellation/reinstatement and payment/refund overrides retain their explicit administrative scope.
+- Detail mutations invalidate the parent-order cache as well as the booking/list, keeping group totals/statuses fresh. The API admin detail now includes additionalPhone.
+- Verified booking status/idempotency and cached-detail regressions, typecheck, lint (existing unrelated permissions hook warning), i18n check and production build.

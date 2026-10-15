@@ -119,6 +119,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     setReloadKey((k) => k + 1);
     void refetch();
     void queryClient.invalidateQueries({ queryKey: qk.adminBookings });
+    if (booking?.orderId) {
+      void queryClient.invalidateQueries({ queryKey: qk.bookingOrder(booking.orderId) });
+    }
   }
 
   if (loading) {
@@ -391,6 +394,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-[#5e6b78]">{t("bookings.detail.fields.savedPhone")}</span>
                 <span dir="ltr" className="min-w-0 font-semibold text-[#1a1a1a]">{booking.passengerPhone ?? "—"}</span>
               </div>
+              {booking.additionalPhone ? (
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-[#5e6b78]">{t("bookings.detail.orderSection.additionalPhone")}</span>
+                  <span dir="ltr" className="min-w-0 font-semibold text-[#1a1a1a]">{booking.additionalPhone}</span>
+                </div>
+              ) : null}
               {booking.promoCode ? <p className="mt-2 border-t border-[#e4ecf2] pt-2 text-[#1a1a1a]">{t("bookings.detail.fields.promoCode")} <span dir="ltr" className="font-mono font-bold">{booking.promoCode}</span>{booking.discountAmount ? <span> {t("bookings.detail.promoDiscountPrefix")} {booking.discountAmount} {t("bookings.detail.promoDiscountSuffix")}</span> : null}</p> : null}
             </div>
           </div>

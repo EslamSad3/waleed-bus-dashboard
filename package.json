@@ -15,7 +15,7 @@
     "test:trip-edit": "node --experimental-strip-types --test test/trip-edit-time.test.mjs",
     "test:driver-assignment": "node --experimental-strip-types --test test/driver-assignment-validation.test.mjs",
     "test:booking-detail": "node --experimental-strip-types --test test/booking-detail-cache.test.mjs",
-    "test:group-booking": "node --experimental-strip-types --test test/group-booking-idempotency.test.mjs"
+    "test:group-booking": "node --experimental-strip-types --test test/group-booking-idempotency.test.mjs test/booking-order-status.test.mjs"
   },
   "dependencies": {
     "@ag-grid-community/locale": "^36.2.0",

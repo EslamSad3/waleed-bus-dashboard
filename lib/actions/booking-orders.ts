@@ -41,6 +41,7 @@ export type BookingOrderChild = {
   id: string;
   passengerName: string;
   passengerPhone?: string | null;
+  additionalPhone?: string | null;
   passengerUserId?: string | null;
   seats: number;
   status: string;

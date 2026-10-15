@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { bookingOrderStatus } from "@/lib/booking-order-status";
 import { Users } from "lucide-react";
 import { BOOKING_STATUS_AR } from "@/lib/actions/bookings";
 import { fetchAdminBookingOrder } from "@/lib/actions/booking-orders";
@@ -10,7 +11,7 @@ import { t as tr } from "@/lib/i18n/t";
 
 /**
  * Grouped-order card for the booking detail page: every child booking of the
- * same staff order, with the booking being viewed highlighted. Renders straight
+ * same passenger or staff order, with the booking being viewed highlighted. Renders straight
  * from the query cache — no local-state sync, so there is no seen-marker to seed.
  */
 export function BookingOrderSection({
@@ -29,6 +30,13 @@ export function BookingOrderSection({
     () => fetchTripPricing(order?.tripId ?? ""),
     { enabled: Boolean(order?.tripId) },
   );
+
+  const statusLabels = {
+    CONFIRMED: tr("bookings.detail.orderSection.status.CONFIRMED"),
+    CANCELLED: tr("bookings.detail.orderSection.status.CANCELLED"),
+    PARTIALLY_CANCELLED: tr("bookings.detail.orderSection.status.PARTIALLY_CANCELLED"),
+    COMPLETED: tr("bookings.detail.orderSection.status.COMPLETED"),
+  };
 
   const stationName = (id: string | null | undefined): string => {
     if (!id) return "—";
@@ -58,6 +66,9 @@ export function BookingOrderSection({
         ) : null}
       </div>
 
+      <p className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.passengerPolicy")}</p>
+      <p className="text-sm text-amber-800">{tr("bookings.detail.orderSection.adminPolicy")}</p>
+      {order ? <p className="font-bold text-[#00134c]">{tr("bookings.detail.orderSection.statusLabel")}: {statusLabels[bookingOrderStatus(order)]}</p> : null}
       {isPending ? <p role="status" className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.loading")}</p> : null}
       {error ? <p role="alert" className="text-sm text-red-600">{tr("bookings.detail.orderSection.loadFailed")}</p> : null}
       {order && order.bookings.length === 0 ? (
@@ -86,7 +97,8 @@ export function BookingOrderSection({
                       ) : null}
                     </span>
                     <span className="mt-0.5 block text-xs text-[#5e6b78]">
-                      <span dir="ltr">{child.passengerPhone ?? "—"}</span>
+                      <span dir="ltr">{child.passengerPhone || "—"}</span>
+                      {child.additionalPhone ? <span className="ms-2">{tr("bookings.detail.orderSection.additionalPhone")}: <span dir="ltr">{child.additionalPhone}</span></span> : null}
                       {" · "}
                       <span dir="auto">{stationName(child.boardingStationId)} {tr("bookings.detail.orderSection.routeSeparator")} {stationName(child.landingStationId)}</span>
                       {" · "}
