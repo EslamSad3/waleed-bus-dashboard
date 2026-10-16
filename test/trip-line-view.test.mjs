@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lineEndpoints, lineStopCount } from '../lib/trip-line-view.ts';
+import { lineEndpoints, lineStopCount, stopPickerLabel } from '../lib/trip-line-view.ts';
 
 test('compact list rows display endpoints and count without a stops collection', () => {
   const row = { origin: 'Cairo', destination: 'Tanta', stopCount: 3 };
@@ -19,4 +19,11 @@ test('empty lines render without fabricated stops', () => {
   assert.deepEqual(lineEndpoints({ stops: [] }), { origin: null, destination: null });
   assert.equal(lineStopCount({ stops: [] }), 0);
   assert.deepEqual(lineEndpoints({ origin: null, destination: null }), { origin: null, destination: null });
+});
+
+test('stop picker shows station, place and governorate from the place chain', () => {
+  const stop = { name: 'المنيا (اختبار)', governorate: { nameAr: 'الجيزة' },
+    locality: { nameAr: 'المنيب', markaz: { governorate: { nameAr: 'الجيزة' } } } };
+  assert.equal(stopPickerLabel(stop), 'المنيا (اختبار) · المنيب · الجيزة');
+  assert.equal(stopPickerLabel({ name: 'Stop', governorate: { nameAr: 'Giza' }, locality: null }), 'Stop · Giza');
 });

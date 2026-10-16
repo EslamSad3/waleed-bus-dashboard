@@ -28,6 +28,7 @@ import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
 import { FareMatrix } from "./fare-matrix";
 import { fareKey, farePairs, faresPayload } from "@/lib/line-fares";
+import { stopPickerLabel } from "@/lib/trip-line-view";
 
 type StopUse = "BOARDING" | "LANDING";
 // Row identity is the line-stop row id (client key for newly added rows) — NOT
@@ -197,7 +198,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
         <div className="flex gap-2 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-[#dbe7ee]">
           <Select fieldName="stops" aria-label={t("tripLines.stopsDialog.pickStop")} value={pick} onChange={(event) => setPick(event.target.value)} className="select-field min-w-0 flex-1 border-0 bg-transparent">
             <option value="">{t("tripLines.stopsDialog.pickStopTo")}…</option>
-            {remaining.map((stop) => <option key={stop.id} value={stop.id}>{stop.name} · {stop.address || stop.governorate?.nameAr}</option>)}
+            {remaining.map((stop) => <option key={stop.id} value={stop.id}>{stopPickerLabel(stop)}</option>)}
           </Select>
           <Button type="button" variant="secondary" onClick={addStop} disabled={!pick}><Plus className="size-4" /> {t("common.actions.add")}</Button>
         </div>
