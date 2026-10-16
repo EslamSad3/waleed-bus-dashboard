@@ -328,4 +328,4 @@ level under a fleet owner any more, and a trip line is **one direction**.
 - Passenger API is `/bookings` for one or several seats, with one public booking ID and a passenger array. Passenger `/booking-orders` routes are removed.
 - Dashboard continues to use the permissioned `/admin/booking-orders` operational contract. The detail card displays the public booking reference, all companions and total seats/fare; labels describe one booking rather than separate passenger orders.
 - Passenger whole-booking cancellation/rebooking policy and staff per-passenger overrides remain explicit. The latter can produce historical/administrative partial status and mixed settlement states.
-- Verification is recorded with the implementation handoff after the local gates finish.
+- Verification: lint (zero errors, existing permissions hook warning), typecheck, i18n and build passed; group-booking 16/16 and booking-detail 6/6 tests passed. API coverage gate: 1,459 passed, one skipped; line coverage 91.46%. No push or deployment performed.

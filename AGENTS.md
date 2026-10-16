@@ -10,162 +10,50 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # AGENTS.md — Bus Platform Super-Admin Dashboard
 
-## Overview
+Next.js 16 App Router (RSC-first) super-admin dashboard, Arabic-only RTL. Backend is `../bus_api` — never modify it; file API gaps/change requests in `PROGRESS.md` instead.
 
-This file defines the high-signal constraints, architecture patterns, and operational rules that must be followed during OpenCode sessions for this repository.
+## Commands
 
----
-
-## 1. Investigation Priorities
-
-### Read in this order:
-1. **PRD.md** — Single source of truth for requirements, behavior, and acceptance criteria
-2. **PROGRESS.md** — Current state, P0/P1 gate evidence, verified behaviors
-3. **packages/* config files**:
-   - `package.json` (scripts, dependencies)
-   - `pnpm-workspace.yaml` (monorepo scope)
-   - `tsconfig.json` (compiler options, paths)
-4. **`.cursorrules/**** and `.cursor/` rules** — UI/UX conventions and component patterns
-5. **`opencode.json`** (if exists) — Any OpenCode-specific settings
-
-### If architecture is unclear after config review:
-- Inspect `app/(shell)/page.tsx`, `app/layout.tsx`, `lib/api.ts`, `lib/auth.ts` for the entry points
-- Read `PROGRESS.md` gate evidence to understand what's been verified and what blocks next phases
-
----
-
-## 2. What to Extract
-
-### Must capture:
-- **Exact commands**: `pnpm install`, `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm i18n:check`, `pnpm build`
-- **Verification flow**: `lint → typecheck → test` order and dependencies
-- **Monorepo boundaries**: Which packages belong to which workspace
-- **Framework quirks**: Next.js 16 App Router, RSC-first rendering, pnpm-only
-- **Testing quirks**: cursor pagination contract, load-more behavior, error format `{statusCode, code, message}`
-- **Critical constraints**: Arabic RTL + Egyptian dialect only, backend contract fidelity
-
-### Should reference (don't duplicate):
-- `PRD.md` functional requirements (§§6–12)
-- `PROGRESS.md` gate evidence and blockers
-- `.specify/constitution.md` core principles I–VII
-- Existing spec files: `specs/000-p0-scaffold/*`, `specs/001-platform-crud/*`, `specs/002-ag-grid-tables/*`
-
----
-
-## 3. High-Signal Rules
-
-### 3.1 Architecture Pattern
-**Platform-first routing**: All fleet CRUD under `/fleet-owners/fleets/{fleetId}/buses|trips|bookings|members` (spec 014 moved the whole fleet surface under the fleet-owner namespace; the `fleetId` param must keep that name — the API's `TenantContextGuard` resolves the tenant from it). Tenant lifecycle actions (`disable/reactivate`, `assign driver`) require tenant path + `x-fleet-id` header only.
-
-**One screen for owners and companies**: there is no `/fleets` route any more. `/fleet-owners` lists owners with their companies inline; `/fleet-owners/[id]` has *Account* and *Companies* tabs, and a company expands inline (summary + Buses/Members/Trips/Bookings/Reports). Opening a company is what sets the fleet scope the `/fleet/*` calls need — the old route did this in a mount effect. `next.config.ts` 308-redirects `/fleets` and `/fleets/:id` (the latter to `/fleet-owners?fleet=:id`).
-
-**Proxy contract**: Browser calls same-origin `/api/*` with session cookie → proxy attaches JWT, forwards to `BUS_API_URL`, unwraps `{statusCode, data}`, maps backend codes to Arabic messages (PRD §9). The zod registry in `lib/schemas/p1.ts` is keyed on the **backend** path, so it must be updated whenever an API route moves.
-
-### 3.2 Authentication Flow
-1. Login: `POST /auth/login` (phone + password, Egyptian mobile regex `^01[0-9]{9}$`)
-2. Store access (~15m): httpOnly cookies (`sa_access`, `sa_refresh`)
-3. Identity: `appRole === 'super_admin'` checked on `(shell)/layout.tsx` via `GET /me` (unified account endpoint, API spec 020)
-4. Logout: `POST /auth/logout` + clear cookies
-
-### 3.3 Error Code Map (PRD §9)
-`lib/errors.ts` binds a backend code to a dictionary key; the copy itself is in `lib/i18n/ar.json` under `errors.*`.
-
-| Code | Key | Message |
-|---|---|---|
-| `AUTHENTICATION_FAILED` | `errors.AUTHENTICATION_FAILED` | بيانات الدخول غير صحيحة |
-| `BUS_ACTION_NOT_ALLOWED` | `errors.BUS_ACTION_NOT_ALLOWED` | العملية مرفوضة: الأتوبيس عليه رحلة شغالة (DEPARTED) |
-| `DRIVER_ASSIGNMENT_NOT_ALLOWED` | `errors.DRIVER_ASSIGNMENT_NOT_ALLOWED` | تعيين السواق مرفوض: مش نشط أو من شركة تانية |
-| `RESOURCE_NOT_OWNED` / 404 | `errors.RESOURCE_NOT_OWNED` | العنصر مش موجود في الشركة دي |
-| `CONFLICTING_ASSIGNMENT` | `errors.CONFLICTING_ASSIGNMENT` | البيانات متعارضة مع سجل موجود |
-| `VALIDATION_FAILED` | `errors.VALIDATION_FAILED` | راجع الحقول المطلوبة |
-| 429 | `errors.RATE_LIMITED_429` | محاولات كتير، حاول بعد شوية |
-
-### 3.3b i18n (single source of truth)
-- **All user-facing Arabic copy lives in `lib/i18n/ar.json`.** Nothing is hardcoded in pages, components, libs or server actions.
-- Read it with `t("dotted.key")` from `@/lib/i18n/t` — isomorphic, so it works in server components, client components, plain libs and action modules: `t("bookings.detail.title")`, `t("buses.list.rowActions", { name })`.
-- Keys are type-checked: a typo or a missing key fails `pnpm typecheck`. Values may contain `{placeholder}` slots.
-- Dictionary sections: `common` (shared actions/fields/values), `enums` (backend enum labels), `errors`, `validation` (zod messages), `agGrid`, `colors`, `ordinals`, then one section per screen/feature.
-- `pnpm i18n:check` fails when Arabic is hardcoded outside `ar.json`, when a `t()` key is missing, and lists unused keys. Run it with `lint` + `typecheck` as the dashboard gate.
-- Adding a locale: drop `<locale>.json` beside `ar.json` and resolve the dictionary per request in `lib/i18n/t.ts` — nothing else needs to change.
-
-### 3.4 PDF Reports (PRD §7)
-- Route: `GET /api/reports/fleet`, `GET /api/reports/trip`, `GET /api/reports/digest`
-- Engine: `pdfkit` + embedded Cairo (`PDF_FONT_PATH`) + `bidi-shaper/pdfkit` `textBidi`, `direction: rtl`
-- Filename: `تقرير-scope-{YYYY-MM-DD}.pdf`
-
-### 3.5 Data Contract
-- Lists use **cursor pagination**: `?cursor=&limit=`, response `{items, nextCursor}` (default `limit=20`)
-- No offset pagination; no page counts in API contract
-- Client-side grid pagination layered over loaded rows per spec `specs/002-ag-grid-tables/data-model.md`
-
----
-
-## 4. Technical Constraints
-
-### Framework & Tools
-| Category | Decision |
-|---|---|
-| Framework | Next.js@16, App Router, RSC-first, single `ar` locale |
-| Language | TypeScript `strict` |
-| UI | shadcn (`new-york`, `lucide-react`) + Tailwind |
-| Forms | react-hook-form + shadcn `ui/form` + zod@latest |
-| State | zustand@latest (`stores/session.ts`, `stores/filters.ts`) |
-| Charts | apexcharts + react-apexcharts (client-only, `ssr:false`) |
-| PDFs | pdfkit with embedded Cairo font |
-| Pnpm | workspace lock enforced; `allowBuilds: unrs-resolver: true` |
-
-### Session & Security
-- **Cookies only**: `sa_session`, `sa_access`, `sa_refresh` (httpOnly, Secure, SameSite=Lax)
-- **Never localStorage**: tokens must not appear in client bundle or storage
-- **Proxy boundary**: every mutation validated with zod inside route handler
-
----
-
-## 5. Development Workflow
-
-### Phase Order (MUST follow):
-1. **P0 scaffold**: Next.js + shadcn + Cairo/Poppins + RTL + login + proxy + session store + pdfkit Arabic spike
-2. **P1 platform CRUD**: fleet owners + their companies, buses (+trips tab), trips, bookings, members
-3. **P2 governance**: users, roles/permissions matrix, audit viewer
-4. **P3 reports + PDFs**: 3 PDF templates with real data and correct shaping
-5. **P4 hardening**: error map, empty states, dark mode, README
-
-### Verification per Phase:
 ```bash
-pnpm dev
-pnpm typecheck
-pnpm lint
+pnpm install
+pnpm dev     # needs .env.local: BUS_API_URL → running ../bus_api (see .env.example)
+pnpm build
 ```
 
-Gate walkthrough against locally running `bus_api` (login/logout as super_admin; CRUD with 409/404 Arabic messages).
+Gates, in order: `pnpm typecheck` → `pnpm lint` → `pnpm i18n:check` → `pnpm check:validation`; add `pnpm build` for anything non-trivial. Expected results: lint 0 errors (one pre-existing warning in `app/(shell)/permissions/page.tsx`), 73 validation checks.
 
----
+Tests are hermetic — real modules transpiled into `vm` with mocked fetch/SDKs, no backend, cookies or browser needed:
 
-## 6. Known Issues & Blockers
+```bash
+node --experimental-strip-types --test "test/*.test.mjs"   # all 61 tests
+```
 
-### P0 Spike Failures:
-- **pdfkit Arabic shaping**: mitigated with HTML fallback in `lib/pdf/spike.ts`; visual confirmation pending
+Use the quoted glob: `--test test/` fails with `MODULE_NOT_FOUND` on Windows/Node 24. Named suites: `pnpm test:auth`, `test:notifications`, `test:trip-edit`, `test:driver-assignment`, `test:booking-detail`, `test:group-booking`. There is no CI — verification is these local gates plus a manual walkthrough against a live `bus_api`.
 
-### Backend Dependencies (out of scope):
-- Cursor pagination totals → separate `bus_api` change request
-- Roster invite 409 (`DRIVER_ASSIGNMENT_NOT_ALLOWED`) → backend clarification needed
+## Where truth lives
 
----
+- `PROGRESS.md` — running log + gate evidence. Its "Implementation amendments" sections override `PRD.md` where they conflict (login is email-or-phone now, PDF report templates still pending, etc.); read the newest entries before touching a surface.
+- `PRD.md` — requirements (referenced as PRD §N). `specs/000…004` — speckit specs; `.specify/memory/constitution.md` — principles.
 
-## 7. References
+## Architecture (non-obvious)
 
-| Topic | File(s) |
-|---|---|
-| PRD requirements | `PRD.md` (§§1–288) |
-| Constitution principles | `.specify/memory/constitution.md` (principles I–VII) |
-| P0 spec | `specs/000-p0-scaffold/spec.md`, `tasks.md`, `plan.md` |
-| P1 spec | `specs/001-platform-crud/spec.md`, `data-model.md` |
-| AG Grid spec | `specs/002-ag-grid-tables/spec.md`, `data-model.md`, `grid-ui.md` |
-| Quickstart docs | `specs/002-ag-grid-tables/quickstart.md` |
-| Architecture | `app/layout.tsx`, `lib/api.ts`, `PROGRESS.md` |
+- **The owner user IS the company/tenant.** Owner-scoped routes are `/fleet-owners/{ownerId}/…` and owner-scoped calls carry `x-owner-id` (zustand `stores/filters.ts` → cookie `lib/owner-scope-cookie.ts` → header). There is no fleet level any more; `/fleets*` bookmarks 308-redirect in `next.config.ts`. Trips are nested under their line (`/trip-lines/{lineId}/trips`) and derive origin/destination from it — trip bodies never carry From/To, direction or fare.
+- **BFF**: browser calls same-origin `/api/*`; catch-all `app/api/[...proxy]/route.ts` attaches the JWT, forwards to `BUS_API_URL`, unwraps `{statusCode, data}` once, maps backend codes to Arabic. Mutations are re-validated against the zod registry in `lib/schemas/p1.ts`, keyed by the **backend** pathname — a new mutation route that is not registered there passes through unvalidated. Mutations whose `Origin` ≠ `DASHBOARD_ORIGIN` are rejected (`originAllowed`).
+- **Middleware is `proxy.ts` at the repo root** (Next 16 renamed `middleware.ts`); it only restores/rotates the edge session. The authoritative guard is `app/(shell)/layout.tsx` (`readSession` → live `/me` check).
+- **Auth**: `POST /api/auth/login` takes `{identifier (email or phone), password, rememberMe}`. Cookies `sa_access` (~15m), `sa_refresh` (single-use, rotating), `sa_remember`; never `localStorage`. Identity (`id`, `email`, `appRole`) is decoded from the access JWT (`identityFromValidatedToken`) and validated live against `GET /me`, which also returns `platformPermissions`. Admission: `isDashboardRole` = `super_admin` or `platform_staff` (`lib/access.ts`). Page access goes through `can()`; every sidebar route must be registered in `NAV_PERMISSIONS` (`lib/nav-permissions.ts`) or it is never navigable.
+- **Client data**: TanStack Query (`lib/queries.ts` — `qk`, `useApiQuery`); mutations go through `lib/actions/*` (returning `ActionResult`) with cache-impact helpers in `lib/cache/mutations.ts`; every successful mutation fires `RECORD_MUTATED_EVENT`, which invalidates all queries (`app/providers.tsx`).
+- **Errors**: never render the API's English text. `lib/errors.ts` maps backend `code` → `t("errors.<CODE>")` (copy in `ar.json`); unmapped codes fall back to the API's Arabic message (`Accept-Language: ar`) or a status-based line. A bare 409 `CONFLICT` requires the calling screen to pass a `conflictKey`.
+- **Lists**: cursor pagination only — `{items, nextCursor}`, `?cursor=&limit=` (default 20), no totals; `components/tables/cursor-list.tsx` layers client-side pagination over loaded pages.
+- **Uploads**: `apiStageImage` signs → bytes go directly to Supabase → caller links the record and MUST call `apiDiscardStaged` on cancel/failure (`lib/actions/http.ts`).
+- **Fan-out reads** use `mapWithConcurrency`: unbounded `Promise.all` exhausts the API's DB transaction pool.
+- **PDFs**: only `/api/reports/spike` exists (P3 templates pending). `pdfkit` + `bidi-shaper/pdfkit` `textBidi` + Cairo embedded from `assets/fonts` (font path is basename-scoped under that dir).
 
----
+## i18n (enforced)
 
-## 8. Open Questions (Do NOT ask unless repo is unclear)
+- All user-facing Arabic lives in `lib/i18n/ar.json`; read it with `t("dotted.key")` from `@/lib/i18n/t` (isomorphic, type-checked keys, `{placeholder}` slots). Never hardcode copy in components, libs or actions.
+- `pnpm i18n:check` fails on hardcoded Arabic and missing keys; its "not referenced by `t()`" notices are expected for dynamic lookups (error codes, enum labels via `tv()`).
 
-- **None** — All critical decisions are documented in PRD, PROGRESS, and spec files
+## Repo notes
+
+- `agents-.md` at the root is a stale duplicate of this file — ignore it. `graphify-out/`, `.zcode/`, `.next/`, `tsconfig.tsbuildinfo`, `.pricing-*.log` are generated/tool artifacts.
+- `.env.example` is the env contract; its values are server-only (never add `NEXT_PUBLIC_*` secrets).
