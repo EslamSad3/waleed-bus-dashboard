@@ -1,5 +1,14 @@
 # PROGRESS — Bus Platform Super-Admin Dashboard
 
+## One dashboard booking per checkout (2026-10-16)
+
+- The admin API lists operational passenger/seat records. `/bookings` now hydrates each distinct parent checkout through the existing permissioned detail endpoint and renders one row with the public booking ID, original seat count, aggregate total, all passenger names/phones, and aggregate booking/payment states. Independent legacy bookings remain independent even when their passenger/trip match another checkout.
+- Shared cached summaries power the owner booking table and the overview booking counts as well. Infinite cursor pages merge by parent ID, including groups split across pages. Searching one passenger still shows the full group's saved totals; status/payment and created-date filters apply to the aggregate. Report evidence merges across loaded pages and stays unknown when unseen passengers prevent a truthful negative.
+- Group details open all passengers together under `/bookings?bookingId=...`, with aggregate status, payment and totals. Individual staff actions remain explicitly per passenger. Group rows no longer offer the old delete action, which deletes just one operational child; standalone booking deletion is preserved.
+- Parent reads use the shared query cache and at most three concurrent requests. Staff actions invalidate both the aggregate parent and list caches. Infinite-list defaults now preserve the provider's configured cache freshness when no override is supplied.
+- API gap: there is no aggregate staff listing or atomic group-delete endpoint; the dashboard adapts existing reads without changing the backend or stored bookings. The overview retains its existing first-batch sampling scope, now counting checkouts instead of seats.
+- Verified: 92/92 dashboard tests, typecheck, lint (zero errors; existing permissions-page warning), i18n (1920 keys), 73 validation checks and production build. Authenticated read-only local walkthrough confirmed the existing four-seat checkout appears once, with all four passengers and the saved total in details. No live booking mutations; temporary preview fixture removed before build.
+
 ## Generated-trip calendar follows trip edits (2026-10-16)
 
 - The generated-trips calendar now shows each dated trip's current bus plate, assigned driver, route/endpoints, ordered stops with Cairo dates/times, departure and status. It no longer displays the recurring template's plate as though it applied to every occurrence; detail links use each trip's own owner/line scope.

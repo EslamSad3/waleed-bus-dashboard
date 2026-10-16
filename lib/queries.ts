@@ -46,14 +46,14 @@ export function useDataQuery<T>(
 export function useApiInfiniteQuery<T>(
   key: readonly unknown[],
   fetcher: (cursor: string | null) => Promise<ActionResult<CursorPage<T>>>,
-  options: { staleTime?: number } = {},
+  options: { staleTime?: number; enabled?: boolean } = {},
 ) {
   return useInfiniteQuery({
     queryKey: key,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) => unwrap(fetcher(pageParam)),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: options.staleTime,
+    ...options,
   });
 }
 

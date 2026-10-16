@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { bookingOrderStatus } from "@/lib/booking-order-status";
+import { bookingOrderPaymentStatus, bookingOrderStatus } from "@/lib/booking-order-status";
 import { Users } from "lucide-react";
-import { BOOKING_STATUS_AR } from "@/lib/actions/bookings";
+import { BOOKING_STATUS_AR, PAYMENT_METHOD_AR, PAYMENT_STATUS_AR } from "@/lib/actions/bookings";
 import { fetchAdminBookingOrder } from "@/lib/actions/booking-orders";
 import { fetchTripPricing } from "@/lib/actions/trips";
 import { qk, useApiQuery } from "@/lib/queries";
@@ -37,6 +37,7 @@ export function BookingOrderSection({
     PARTIALLY_CANCELLED: tr("bookings.detail.orderSection.status.PARTIALLY_CANCELLED"),
     COMPLETED: tr("bookings.detail.orderSection.status.COMPLETED"),
   };
+  const paymentStatus = order ? bookingOrderPaymentStatus(order) : null;
 
   const stationName = (id: string | null | undefined): string => {
     if (!id) return "—";
@@ -70,6 +71,10 @@ export function BookingOrderSection({
       <p className="text-sm text-amber-800">{tr("bookings.detail.orderSection.adminPolicy")}</p>
       {order ? <p className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.bookingReference")}: <span dir="ltr" className="break-all font-mono">{order.id}</span></p> : null}
       {order ? <p className="font-bold text-[#00134c]">{tr("bookings.detail.orderSection.statusLabel")}: {statusLabels[bookingOrderStatus(order)]}</p> : null}
+      {order ? <p className="text-sm text-[#5e6b78]">
+        {tr("common.fields.paymentMethod")}: {PAYMENT_METHOD_AR[order.paymentMethod] ?? order.paymentMethod}
+        {" · "}{tr("common.fields.paymentStatus")}: {paymentStatus === "MIXED" ? tr("bookings.groupedDetails.mixedPayment") : PAYMENT_STATUS_AR[paymentStatus ?? ""] ?? "—"}
+      </p> : null}
       {isPending ? <p role="status" className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.loading")}</p> : null}
       {error ? <p role="alert" className="text-sm text-red-600">{tr("bookings.detail.orderSection.loadFailed")}</p> : null}
       {order && order.bookings.length === 0 ? (

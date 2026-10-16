@@ -16,7 +16,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { apiGet, type CursorPage } from "@/lib/actions/http";
-import { fetchAdminBookingsPage, type Booking } from "@/lib/actions/bookings";
+import { useBookingSummaries } from "@/lib/use-booking-summaries";
 import { fetchStops, fetchSystemTripLinesPage, type Stop } from "@/lib/actions/trip-lines";
 import { fetchSystemBusesPage } from "@/lib/actions/buses";
 import { fetchSystemTripsPage } from "@/lib/actions/trips";
@@ -78,17 +78,13 @@ export function OverviewInsights({ access }: { access: DashboardAccess }) {
   const tripLinesQuery = useApiQuery(["trip-lines", "kpi"], () => fetchSystemTripLinesPage(null), { enabled: allowed("/trip-lines") });
   const busesQuery = useApiQuery(["buses", "kpi"], () => fetchSystemBusesPage(null), { enabled: allowed("/buses") });
   const tripsQuery = useApiQuery(["trips", "kpi"], () => fetchSystemTripsPage(null), { enabled: allowed("/trips") });
-  const bookingsQuery = useDataQuery<Booking[]>(["bookings", "kpi"], async () => {
-    const result = await fetchAdminBookingsPage({ limit: 100 }, null);
-    if (!result.ok) throw new Error(result.message);
-    return result.data.items;
-  }, { enabled: allowed("/bookings") });
+  const bookingsQuery = useBookingSummaries({ limit: 100 }, { enabled: allowed("/bookings") });
 
   const owners = useMemo(() => ownersPageQuery.data?.items ?? [], [ownersPageQuery.data?.items]);
   const activeOwners = owners.filter((owner) => owner.isActive).length;
   const totalBuses = busesQuery.data?.items.length ?? 0;
   const totalTrips = tripsQuery.data?.items.length ?? 0;
-  const bookings = useMemo(() => bookingsQuery.data ?? [], [bookingsQuery.data]);
+  const bookings = bookingsQuery.items;
   const statusCount = useCallback(
     (status: string) => bookings.filter((booking) => booking.status === status).length,
     [bookings],
@@ -197,6 +193,7 @@ export function OverviewInsights({ access }: { access: DashboardAccess }) {
       { status: "CONFIRMED", label: t("enums.bookingStatus.confirmedChart"), color: "#059ff8" },
       { status: "COMPLETED", label: t("enums.bookingStatus.completedChart"), color: "#16a34a" },
       { status: "CANCELLED", label: t("enums.bookingStatus.cancelledChart"), color: "#dc2626" },
+      { status: "PARTIALLY_CANCELLED", label: t("bookings.detail.orderSection.status.PARTIALLY_CANCELLED"), color: "#d97706" },
     ];
     const present = catalogue
       .map((entry) => ({ ...entry, count: statusCount(entry.status) }))

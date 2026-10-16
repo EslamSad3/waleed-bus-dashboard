@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState, useTransition } from "react
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Eye, Filter, Plus, RotateCcw, Ticket, Trash2 } from "lucide-react";
-import { CursorList } from "@/components/tables/cursor-list";
+import { AgGridTable } from "@/components/tables/ag-grid-table";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,13 @@ import { dateRangeSchema } from "@/lib/schemas/admin-forms";
 import {
   BOOKING_STATUS_AR,
   deleteBooking,
-  fetchAdminBookingsPage,
   PAYMENT_METHOD_AR,
   PAYMENT_STATUS_AR,
   type AdminBookingFilterParams,
-  type AdminBookingListItem,
 } from "@/lib/actions/bookings";
+import type { AdminBookingSummary } from "@/lib/actions/booking-summaries";
+import { useBookingSummaries } from "@/lib/use-booking-summaries";
+import { GroupedBookingDetailsDialog } from "@/components/bookings/grouped-booking-details-dialog";
 import { findTripAcrossLines } from "@/lib/actions/trips";
 import { CreateGroupBookingDialog } from "@/components/bookings/create-group-booking-dialog";
 import { fetchSessionIdentity } from "@/lib/actions/session";
@@ -28,7 +29,7 @@ import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
 import { RowActions } from "@/components/ui/row-actions";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { InlineBlockSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { qk, useApiQuery, useDataQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, bookingImpact } from "@/lib/cache/mutations";
 import { t } from "@/lib/i18n/t";
 
@@ -43,6 +44,7 @@ function BookingsPageInner() {
   // Trip scope is fully URL-driven: /bookings?tripId=X always filters to that
   // trip, including when the page is already mounted and only the param changes.
   const tripId = searchParams.get("tripId") ?? "";
+  const selectedBookingId = searchParams.get("bookingId");
   // The trip banner is opened from a trip page, which knows its owner company.
   const ownerIdFromLink = searchParams.get("ownerId") ?? "";
   const [ownerId, setOwnerId] = useState("");
@@ -101,30 +103,33 @@ function BookingsPageInner() {
   // platform_staff only see it with bookings.create; super_admin always can.
   const { data: identity } = useApiQuery(qk.session, fetchSessionIdentity);
   const canCreate = can(identity ?? null, "bookings.create");
-  const { data: pageData, isPending, error: fetchError } = useDataQuery(
-    qk.adminBookingsParams(filterParams),
-    async () => {
-      const result = await fetchAdminBookingsPage(filterParams, null);
-      if (!result.ok) throw new Error(result.message);
-      return result.data;
-    },
-    { enabled: !invalidDates },
-  );
-  const items = pageData?.items ?? [];
-  const nextCursor = pageData?.nextCursor ?? null;
-  const error = fetchError ? fetchError.message : null;
+  const bookingQuery = useBookingSummaries(filterParams, { enabled: !invalidDates });
+  const items = bookingQuery.items;
+  const nextCursor = bookingQuery.nextCursor;
+  const isPending = bookingQuery.isPending;
+  const fetchError = bookingQuery.error;
+  const error = fetchError?.message ?? null;
 
-  async function removeBooking(booking: AdminBookingListItem) {
-    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || booking.passengerPhone }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
+  async function removeBooking(booking: AdminBookingSummary) {
+    // The available delete endpoint deletes one operational seat, not a group.
+    if (booking.orderId) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || booking.passengerPhone || "" }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBooking(booking.ownerId, booking.id);
     if (!result.ok) return;
-    // The visible list is one FILTERED variant; the helper also drops every
-    // other variant and the owner-scoped views, which a single-key removal missed.
-    applyMutationCache(
-      queryClient,
-      bookingImpact(booking.ownerId ?? null, booking, "remove"),
-      result,
-    );
+    applyMutationCache(queryClient, bookingImpact(booking.ownerId, booking, "remove"), result);
+  }
+
+  function closeGroupedBooking() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("bookingId");
+    router.replace(params.size ? `/bookings?${params.toString()}` : "/bookings", { scroll: false });
+  }
+
+  function detailsHref(booking: AdminBookingSummary) {
+    if (!booking.orderId) return `/bookings/${booking.id}`;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("bookingId", booking.orderId);
+    return `/bookings?${params.toString()}`;
   }
 
   function resetFilters() {
@@ -142,26 +147,36 @@ function BookingsPageInner() {
   }
 
   const hasActiveFilters = Boolean(searchTerm || tripId || ownerId || hasReports || fromDate || toDate) || status !== "all" || paymentStatus !== "all" || paymentMethod !== "all";
-  const columns: CommunityColumnDef<AdminBookingListItem>[] = [
-    { field: "passengerName", headerName: t("bookings.columns.passengerName"), filter: "agTextColumnFilter" },
-    { field: "passengerPhone", headerName: t("common.fields.phone"), filter: "agTextColumnFilter" },
+  const columns: CommunityColumnDef<AdminBookingSummary>[] = [
+    { field: "passengerName", headerName: t("bookings.columns.passengers"), minWidth: 220, wrapText: true, autoHeight: true, filter: "agTextColumnFilter" },
+    { field: "seats", headerName: t("common.fields.seats"), width: 110, minWidth: 100, filter: "agNumberColumnFilter" },
+    { field: "passengerPhone", headerName: t("common.fields.phone"), minWidth: 180, wrapText: true, autoHeight: true, filter: "agTextColumnFilter" },
     { field: "fleetName", headerName: t("common.fields.owner"), filter: "agTextColumnFilter" },
     { field: "originName", headerName: t("common.fields.origin") },
     { field: "destinationName", headerName: t("common.fields.destination") },
-    { field: "seats", headerName: t("common.fields.seats"), filter: "agNumberColumnFilter" },
-    { field: "orderId", headerName: t("bookings.columns.groupedOrder"), valueFormatter: (params) => params.value ? t("bookings.list.groupedBadge") : "—" },
-    { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: (params) => BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
-    { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value ?? t("common.value.unpaid") },
+    { field: "id", headerName: t("bookings.detail.orderSection.bookingReference"), minWidth: 280, wrapText: true, autoHeight: true },
+    { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: (params) => params.value === "PARTIALLY_CANCELLED" ? t("bookings.detail.orderSection.status.PARTIALLY_CANCELLED") : BOOKING_STATUS_AR[params.value as keyof typeof BOOKING_STATUS_AR] ?? params.value },
+    { field: "paymentStatus", headerName: t("common.fields.paymentStatus"), valueFormatter: (params) => params.value === "MIXED" ? t("bookings.groupedDetails.mixedPayment") : PAYMENT_STATUS_AR[params.value as keyof typeof PAYMENT_STATUS_AR] ?? params.value ?? t("common.value.unpaid") },
     { field: "paymentMethod", headerName: t("common.fields.paymentMethod"), valueFormatter: (params) => PAYMENT_METHOD_AR[params.value as keyof typeof PAYMENT_METHOD_AR] ?? params.value },
     { field: "totalAmount", headerName: t("common.fields.total"), filter: "agNumberColumnFilter", valueFormatter: (params) => {
-      const raw = params.value ?? (params.data as AdminBookingListItem | undefined)?.totalAmount;
+      const raw = params.value ?? (params.data as AdminBookingSummary | undefined)?.totalAmount;
       if (raw === null || raw === undefined || raw === "") return "—";
       const num = Number(raw);
       return Number.isNaN(num) ? String(raw) : `${num} EGP`;
     } },
-    { field: "hasReports", headerName: t("bookings.columns.hasReports"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value ? t("common.value.yes") : t("common.value.no") },
+    { field: "hasReports", headerName: t("bookings.columns.hasReports"), filter: "agTextColumnFilter", cellDataType: "text", valueFormatter: (params) => params.value == null ? "—" : params.value ? t("common.value.yes") : t("common.value.no") },
     { field: "createdAt", headerName: t("bookings.columns.createdAt"), filter: "agDateColumnFilter", valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString("ar-EG") : "—" },
-];
+    { colId: "actions", headerName: t("cursorList.actionsColumn"), pinned: "left", width: 300,
+      sortable: false, filter: false, exportable: false,
+      cellRenderer: ({ data: booking }: { data: AdminBookingSummary }) => (
+        <RowActions label={t("bookings.list.rowActions", { value: booking.passengerName || booking.passengerPhone || "" })}
+          actions={[
+            { label: t("common.actions.openDetails"), icon: Eye, href: detailsHref(booking) },
+            ...(!booking.orderId ? [{ label: t("common.actions.delete"), icon: Trash2, tone: "danger" as const, onSelect: () => void removeBooking(booking) }] : []),
+          ]} />
+      ),
+    },
+  ];
 
   return (
     <div className="dashboard-page space-y-6">
@@ -192,8 +207,8 @@ function BookingsPageInner() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input aria-label={t("bookings.filters.searchAria")} placeholder={t("bookings.filters.searchPlaceholder")} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="bg-white" />
           <select aria-label={t("common.fields.owner")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className="select-field w-full"><option value="">{t("bookings.filters.allOwners")}</option>{(owners?.items ?? []).map((owner) => <option key={owner.id} value={owner.id}>{owner.name || owner.nickname || owner.phoneNumber || owner.id}</option>)}</select>
-          <select aria-label={t("common.fields.bookingStatus")} value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allStatuses")}</option><option value="CONFIRMED">{t("enums.bookingStatus.confirmed")}</option><option value="CANCELLED">{t("enums.bookingStatus.cancelled")}</option><option value="COMPLETED">{t("enums.bookingStatus.completed")}</option></select>
-          <select aria-label={t("common.fields.paymentStatus")} value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allPaymentStatuses")}</option><option value="PENDING">{t("enums.paymentStatus.pending")}</option><option value="PAID">{t("enums.paymentStatus.paid")}</option><option value="REFUNDED">{t("enums.paymentStatus.refunded")}</option><option value="FAILED">{t("enums.paymentStatus.failed")}</option></select>
+          <select aria-label={t("common.fields.bookingStatus")} value={status} onChange={(event) => setStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allStatuses")}</option><option value="CONFIRMED">{t("enums.bookingStatus.confirmed")}</option><option value="CANCELLED">{t("enums.bookingStatus.cancelled")}</option><option value="COMPLETED">{t("enums.bookingStatus.completed")}</option><option value="PARTIALLY_CANCELLED">{t("bookings.detail.orderSection.status.PARTIALLY_CANCELLED")}</option></select>
+          <select aria-label={t("common.fields.paymentStatus")} value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="select-field w-full"><option value="all">{t("bookings.filters.allPaymentStatuses")}</option><option value="PENDING">{t("enums.paymentStatus.pending")}</option><option value="PAID">{t("enums.paymentStatus.paid")}</option><option value="REFUNDED">{t("enums.paymentStatus.refunded")}</option><option value="FAILED">{t("enums.paymentStatus.failed")}</option><option value="MIXED">{t("bookings.groupedDetails.mixedPayment")}</option></select>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e4ecf2] pt-2">
           <div className="flex flex-wrap items-center gap-3">
@@ -211,29 +226,22 @@ function BookingsPageInner() {
         // أول تحميل (أو مفتاح فلترة جديد بدون كاش) — هيكل الجدول بدل الوميض الفارغ
         <TableSkeleton rows={10} columns={6} />
       ) : (
-        <CursorList<AdminBookingListItem>
+        <AgGridTable<AdminBookingSummary>
+          key={JSON.stringify(filterParams)}
           gridId="bookings"
-          initialItems={items}
-          initialCursor={nextCursor}
-          loadMore={async (cursor) => {
-            const result = await fetchAdminBookingsPage(filterParams, cursor);
-            if (!result.ok) throw new Error(result.message);
-            return result.data;
-          }}
-          keyOf={(booking) => booking.id}
+          rows={items}
+          nextCursor={nextCursor}
+          loadMore={async () => { await bookingQuery.fetchNextPage(); }}
+          loading={bookingQuery.isFetchingNextPage}
+          errorMessage={error}
+          getRowId={(booking) => booking.id}
           columnDefs={columns}
           emptyMessage={t("bookings.list.empty")}
-          renderItem={(booking) => (
-            <RowActions
-              label={t("bookings.list.rowActions", { value: booking.passengerName || booking.passengerPhone || "" })}
-              actions={[
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/bookings/${booking.id}` },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBooking(booking) },
-              ]}
-            />
-          )}
         />
       )}
+      {error && !items.length ? <Button variant="outline" onClick={() => void bookingQuery.refetch()}>{t("common.actions.retry")}</Button> : null}
+      {selectedBookingId ? <GroupedBookingDetailsDialog bookingId={selectedBookingId} onClose={closeGroupedBooking} /> : null}
+
       <CreateGroupBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );

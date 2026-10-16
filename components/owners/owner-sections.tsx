@@ -47,7 +47,10 @@ import {
 } from "@/lib/actions/trip-lines";
 import { CreateTripLineDialog } from "@/components/trip-lines/create-trip-line-dialog";
 import { deleteTrip, fetchSystemTripsPage, type OwnerTripRow } from "@/lib/actions/trips";
-import { deleteBooking, fetchAdminBookingsPage, type AdminBookingListItem } from "@/lib/actions/bookings";
+import { BOOKING_STATUS_AR, deleteBooking } from "@/lib/actions/bookings";
+import type { AdminBookingSummary } from "@/lib/actions/booking-summaries";
+import { useBookingSummaries } from "@/lib/use-booking-summaries";
+import { AgGridTable } from "@/components/tables/ag-grid-table";
 import { fetchOwnerReports } from "@/lib/actions/reports";
 import { deleteBus, fetchBusesPage, type Bus } from "@/lib/actions/buses";
 import {
@@ -682,72 +685,44 @@ function OwnerTrips({ ownerId }: { ownerId: string }) {
 
 function OwnerBookings({ ownerId }: { ownerId: string }) {
   const confirm = useConfirm();
-  const [page, setPage] = useState<{ items: AdminBookingListItem[]; nextCursor: string | null } | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
-
-  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchAdminBookingsPage({ ownerId }, null).then((result) => {
-      if (cancelled) return;
-      if (result.ok) setPage(result.data);
-      else setError(result.message);
-    });
-    return () => { cancelled = true; };
-  }, [ownerId, reloadToken]);
-
-  async function removeBooking(booking: AdminBookingListItem) {
-    if (!(await confirm({
-      title: t("common.actions.deleteConfirmTitle"),
-      description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName || t("common.value.unspecified") }),
-      confirmLabel: t("common.actions.delete"),
-      destructive: true,
-    }))) return;
+  const query = useBookingSummaries({ ownerId, limit: 20 });
+  async function removeBooking(booking: AdminBookingSummary) {
+    if (booking.orderId) return;
+    if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"),
+      description: t("bookings.list.deleteConfirm.description", { value: booking.passengerName }),
+      confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteBooking(ownerId, booking.id);
-    if (result.ok) reload();
+    if (result.ok) void query.refetch();
   }
-
-  const columns: CommunityColumnDef<AdminBookingListItem>[] = [
-    { field: "passengerName", headerName: t("common.fields.passenger") },
-    { field: "originName", headerName: t("common.fields.pickup"), valueGetter: (params) => params.data?.originName || "—" },
-    { field: "destinationName", headerName: t("common.fields.destination"), valueGetter: (params) => params.data?.destinationName || "—" },
+  const columns: CommunityColumnDef<AdminBookingSummary>[] = [
+    { field: "passengerName", headerName: t("bookings.columns.passengers"), minWidth: 220, wrapText: true, autoHeight: true },
+    { field: "originName", headerName: t("common.fields.pickup") },
+    { field: "destinationName", headerName: t("common.fields.destination") },
     { field: "seats", headerName: t("common.fields.seats") },
-    { field: "status", headerName: t("common.fields.bookingStatus") },
+    { field: "totalAmount", headerName: t("common.fields.total") },
+    { field: "status", headerName: t("common.fields.bookingStatus"), valueFormatter: ({ value }) => value === "PARTIALLY_CANCELLED"
+      ? t("bookings.detail.orderSection.status.PARTIALLY_CANCELLED") : BOOKING_STATUS_AR[value] ?? value },
+    { colId: "actions", headerName: t("cursorList.actionsColumn"), pinned: "left", width: 300,
+      sortable: false, filter: false, exportable: false,
+      cellRenderer: ({ data }: { data: AdminBookingSummary }) => <RowActions
+        label={t("bookings.list.rowActions", { value: data.passengerName })}
+        actions={[{ label: t("common.actions.openDetails"), icon: Eye,
+          href: data.orderId ? `/bookings?bookingId=${data.orderId}` : `/bookings/${data.id}` },
+          ...(!data.orderId ? [{ label: t("common.actions.delete"), icon: Trash2, tone: "danger" as const,
+            onSelect: () => void removeBooking(data) }] : [])]} />,
+    },
   ];
-
-  if (error) return <p role="alert" className="text-sm text-red-600">{error}</p>;
   return (
     <div className="space-y-3">
       <SectionAddButton label={t("bookings.createDialog.title")} onClick={() => setCreateOpen(true)} />
-      {page ? (
-        <CursorList<AdminBookingListItem>
-          initialItems={page.items}
-          initialCursor={page.nextCursor}
-          loadMore={async (cursor) => {
-            const result = await fetchAdminBookingsPage({ ownerId }, cursor);
-            if (!result.ok) throw new Error(result.message);
-            return result.data;
-          }}
-          keyOf={(booking) => booking.id}
-          columnDefs={columns}
-          emptyMessage={t("bookings.list.empty")}
-          renderItem={(booking) => (
-            <RowActions
-              label={t("bookings.list.rowActions", { value: booking.passengerName || t("common.value.unspecified") })}
-              actions={[
-                { label: t("common.actions.openDetails"), icon: Eye, href: `/bookings/${booking.id}` },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeBooking(booking) },
-              ]}
-            />
-          )}
-        />
-      ) : (
-        <TableSkeleton rows={3} columns={5} />
-      )}
-      <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={reload} />
+      {query.isPending ? <TableSkeleton rows={3} columns={5} /> : <AgGridTable<AdminBookingSummary>
+        gridId="owner-bookings" rows={query.items} columnDefs={columns}
+        getRowId={(row) => row.id} nextCursor={query.nextCursor}
+        loadMore={async () => { await query.fetchNextPage(); }} loading={query.isFetchingNextPage}
+        errorMessage={query.error?.message} emptyMessage={t("bookings.list.empty")} />}
+      {query.error && !query.items.length ? <Button variant="outline" onClick={() => void query.refetch()}>{t("common.actions.retry")}</Button> : null}
+      <CreateBookingDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => { void query.refetch(); }} />
     </div>
   );
 }

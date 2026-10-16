@@ -1,7 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingOrderStatus } from '../lib/booking-order-status.ts';
+import { bookingOrderPaymentStatus, bookingOrderStatus } from '../lib/booking-order-status.ts';
 const status = (bookings, totalSeats = 2) => bookingOrderStatus({ bookings, totalSeats });
+
+test('aggregate payment preserves mixed or missing settlements without claiming full payment', () => {
+  assert.equal(bookingOrderPaymentStatus({ bookings: [{ paymentStatus: 'PAID' }, { paymentStatus: 'PAID' }] }), 'PAID');
+  assert.equal(bookingOrderPaymentStatus({ bookings: [{ paymentStatus: 'PAID' }, { paymentStatus: 'PENDING' }] }), 'MIXED');
+  assert.equal(bookingOrderPaymentStatus({ bookings: [{ paymentStatus: 'PAID' }, {}] }), 'MIXED');
+  assert.equal(bookingOrderPaymentStatus({ bookings: [{}, {}] }), null);
+});
 test('new multi-seat SELF/OTHER orders are confirmed together', () => {
   assert.equal(status([{status:'CONFIRMED',seats:1},{status:'CONFIRMED',seats:1}]), 'CONFIRMED');
 });

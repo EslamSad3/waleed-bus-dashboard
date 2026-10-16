@@ -19,6 +19,12 @@ runInNewContext(code, {
 });
 const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
 
+test('infinite list helpers preserve the app default cache freshness unless overridden', () => {
+  const options = mod.exports.useApiInfiniteQuery(['bookings'], async () => ({ ok: true, data: { items: [], nextCursor: null } }), { enabled: true });
+  assert.equal(Object.hasOwn(options, 'staleTime'), false);
+  assert.equal(options.enabled, true);
+});
+
 test('reopening generated trips reuses every cached page; mutations invalidate it', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   const requests = [];

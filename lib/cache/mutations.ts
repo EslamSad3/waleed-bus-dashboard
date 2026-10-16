@@ -153,7 +153,7 @@ export const tripLineImpact = (ownerId: string, line: Pick<TripLine, "id">, mode
   plainImpact([qk.tripLines(ownerId), qk.tripLine(ownerId, line.id), qk.tripLineChoices(ownerId)], [["trip-lines"], ["trip-line"], ["trip"], ["schedule-trips"], ["schedules"]], mode, line.id);
 
 export const bookingImpact = (ownerId: string | null, booking: Pick<Booking, "id">, mode: "insert" | "update" | "remove") =>
-  plainImpact([qk.bookings(ownerId), qk.booking(ownerId, booking.id), qk.adminBookings, qk.adminBooking(booking.id)], [["bookings"], ["booking"], ["admin-bookings"], ["admin-booking"]], mode, booking.id);
+  plainImpact([qk.bookings(ownerId), qk.booking(ownerId, booking.id), qk.adminBookings, qk.adminBooking(booking.id)], [["bookings"], ["booking"], ["admin-bookings"], ["admin-booking"], ["admin-booking-order"]], mode, booking.id);
 
 export const userImpact = (user: Pick<AdminUser, "id">, mode: "insert" | "update" | "remove") =>
   plainImpact([qk.adminUsers], [["admin-users"], ["users"]], mode, user.id);
