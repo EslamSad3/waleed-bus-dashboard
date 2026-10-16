@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AllCommunityModule,
   type GridApi,
   type GridReadyEvent,
+  type PaginationChangedEvent,
   themeQuartz,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { Loader2 } from "lucide-react";
 import { arabicGridDefaultColDef, arabicGridLocale } from "./ag-grid-locale";
 import type { AgGridTableProps } from "./ag-grid-types";
 import { t } from "@/lib/i18n/t";
@@ -48,6 +48,15 @@ export function AgGridTable<T>({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [quickFilterText, setQuickFilterText] = useState("");
   const [gridApi, setGridApi] = useState<GridApi<T> | null>(null);
+  const [pagination, setPagination] = useState({ page: 0, totalPages: 1 });
+  const inFlight = useRef(false);
+
+  function onPaginationChanged(event: PaginationChangedEvent<T>) {
+    const page = event.api.paginationGetCurrentPage();
+    const totalPages = event.api.paginationGetTotalPages();
+    setPagination((previous) => previous.page === page && previous.totalPages === totalPages
+      ? previous : { page, totalPages });
+  }
 
   function onGridReady(event: GridReadyEvent<T>) {
     setGridApi(event.api);
@@ -80,8 +89,9 @@ export function AgGridTable<T>({
     });
   }
 
-  async function loadNextPage() {
-    if (!nextCursor || !loadMore || loadingMore) return;
+  const loadNextPage = useCallback(async () => {
+    if (!nextCursor || !loadMore || inFlight.current) return;
+    inFlight.current = true;
     setLoadingMore(true);
     setLoadError(null);
     try {
@@ -89,9 +99,21 @@ export function AgGridTable<T>({
     } catch {
       setLoadError(t("common.error.unknown"));
     } finally {
+      inFlight.current = false;
       setLoadingMore(false);
     }
-  }
+  }, [nextCursor, loadMore]);
+
+  // Prefetch one grid page ahead. Sparse owner pages and filtered results may
+  // need several cursor reads before the grid's Next arrow can become active.
+  // Let the current grid/cursor update commit before asking its owner for rows.
+  useEffect(() => {
+    if (!nextCursor || !loadMore || loading || loadingMore || errorMessage || loadError ||
+      pagination.page < pagination.totalPages - 1) return;
+    let active = true;
+    void Promise.resolve().then(() => { if (active) void loadNextPage(); });
+    return () => { active = false; };
+  }, [nextCursor, loadMore, loading, loadingMore, errorMessage, loadError, pagination, loadNextPage]);
 
   const displayError = errorMessage ?? loadError;
   const gridHeight = Math.min(560, Math.max(240, 144 + rows.length * 48));
@@ -145,7 +167,12 @@ export function AgGridTable<T>({
       </div>
 
       {displayError ? <p role="alert" className="ag-grid-error">{displayError}</p> : null}
-      {loading ? <p className="ag-grid-state">{t("common.loading.more")}</p> : null}
+      {displayError && nextCursor && loadMore ? (
+        <button type="button" onClick={() => void loadNextPage()} disabled={loading || loadingMore} className="ag-grid-export">
+          {t("common.actions.retry")}
+        </button>
+      ) : null}
+      {loading || loadingMore ? <p role="status" className="ag-grid-state">{t("common.loading.more")}</p> : null}
       {!loading && rows.length === 0 ? <p className="ag-grid-state">{emptyMessage}</p> : null}
 
       {rows.length > 0 ? (
@@ -165,17 +192,9 @@ export function AgGridTable<T>({
             rowHeight={48}
             getRowId={getRowId ? (params) => getRowId(params.data) : undefined}
             onGridReady={onGridReady}
+            onPaginationChanged={onPaginationChanged}
           />
         </div>
-      ) : null}
-
-      {nextCursor && loadMore ? (
-        <button type="button" onClick={() => void loadNextPage()} disabled={loadingMore} className="ag-grid-load-more">
-          <span className="inline-flex items-center gap-2">
-            {loadingMore ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {loadingMore ? t("common.loading.more") : t("agGridTable.loadMore")}
-          </span>
-        </button>
       ) : null}
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiGet, type ActionResult, type CursorPage } from "@/lib/actions/http";
 
 /**
@@ -39,6 +39,21 @@ export function useDataQuery<T>(
     queryKey: key,
     queryFn: fetcher,
     enabled: options.enabled,
+  });
+}
+
+/** Cache every loaded cursor page so closing a dialog does not discard them. */
+export function useApiInfiniteQuery<T>(
+  key: readonly unknown[],
+  fetcher: (cursor: string | null) => Promise<ActionResult<CursorPage<T>>>,
+  options: { staleTime?: number } = {},
+) {
+  return useInfiniteQuery({
+    queryKey: key,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => unwrap(fetcher(pageParam)),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: options.staleTime,
   });
 }
 

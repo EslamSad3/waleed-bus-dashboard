@@ -18,7 +18,7 @@ function load(file, { states = [], data, error, actions = {} } = {}) {
     require(name) {
       if (name === 'react/jsx-runtime') return require(name);
       if (name === 'react') return { useState(initial) { const value = index < states.length ? states[index] : typeof initial === 'function' ? initial() : initial; index++; return [value, () => {}]; }, useMemo: fn => fn(), useCallback: fn => fn, useEffect: () => {} };
-      if (name.endsWith('/queries')) return { qk: new Proxy({}, { get: (_, key) => (...args) => [key, ...args] }), useApiQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { data, error, isLoading: false }; }, useQueryClient: () => ({}) };
+      if (name.endsWith('/queries')) return { qk: new Proxy({}, { get: (_, key) => (...args) => [key, ...args] }), useApiQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { data, error, isLoading: false }; }, useApiInfiniteQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { error, isLoading: false }; }, useQueryClient: () => ({}) };
       if (name.endsWith('/filters')) return { useFilterStore: fn => fn({ ownerId: 'filter-owner' }) };
       if (name.endsWith('/cursor-list')) return { CursorList: cursor };
       if (name.endsWith('/confirm-dialog')) return { useConfirm: () => () => {} };
@@ -65,10 +65,27 @@ test('audit predicate applies to later pages without filtering the supplied firs
   assert.equal(list.props.filter({ id: 'later', action: 'other', resource: 'trip', success: true }), false);
   assert.equal(list.props.filter({ id: 'later', action: 'match', resource: 'trip', success: true }), true);
 });
-test('schedule list scopes accumulated pages by owner and filters subsequent rows', () => {
-  const { api, cursor } = load('../app/(shell)/schedules/page.tsx', { states: ['owner-A', 'cairo', false, null, null, null], data: { items: [], nextCursor: 'next' } });
+test('schedule list spans all owners and filters subsequent rows', () => {
+  const { api, cursor } = load('../app/(shell)/schedules/page.tsx', { states: ['cairo', false, null, null, null], data: { items: [], nextCursor: 'next' } });
   const list = find(api.default(), cursor);
-  assert.equal(list.props.scopeKey, 'owner-A');
+  assert.equal(list.props.scopeKey, 'all-owners');
   assert.equal(list.props.filter({ line: { name: 'Alex' }, bus: {}, driver: null }), false);
   assert.equal(list.props.filter({ line: { name: 'Cairo' }, bus: {}, driver: null }), true);
+  assert.equal(list.props.filter({ ownerName: 'Cairo owner', line: { name: 'Alex' }, bus: {}, driver: null }), true);
+});
+
+test('generated trips use the shared cache scoped to the owner, line and schedule', async () => {
+  const schedule = { id: 'schedule-a', ownerId: 'owner-a', lineId: 'line-a', line: { name: 'A' }, bus: {} };
+  const requests = [];
+  const { api, calls } = load('../app/(shell)/schedules/page.tsx', {
+    states: ['', false, null, schedule, null],
+    actions: { fetchScheduleTrips: async (...args) => { requests.push(args); return { ok: true, data: { items: [], nextCursor: null } }; } },
+  });
+  const page = api.default();
+  const occurrence = page.props.children.find((child) => child?.type?.name === 'OccurrencesDialog');
+  occurrence.type(occurrence.props);
+  assert.deepEqual(Array.from(calls[1].key), ['scheduleTrips', 'owner-a', 'line-a', 'schedule-a']);
+  assert.equal(calls[1].options.staleTime, 300_000);
+  await calls[1].fetcher('next-page');
+  assert.deepEqual(requests[0], ['owner-a', 'line-a', 'schedule-a', 'next-page']);
 });

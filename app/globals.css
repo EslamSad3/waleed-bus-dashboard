@@ -493,3 +493,28 @@ input:-webkit-autofill:focus {
   from { opacity: 0; transform: translateY(1rem) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* Dialog copy must remain readable, including nested picker cards that use
+   compact/truncated labels elsewhere in the dashboard. */
+.dashboard-dialog :is(.truncate, .text-ellipsis, [class*="line-clamp-"]) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.dashboard-dialog button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-dialog button:is(.h-9, .h-11, .h-12) {
+  height: auto;
+  min-height: 2.75rem;
+}
+
+.dashboard-dialog footer > div {
+  flex-wrap: wrap;
+}

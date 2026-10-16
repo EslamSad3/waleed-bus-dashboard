@@ -120,15 +120,15 @@ export function Dialog({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[90dvh] w-full flex-col overflow-clip rounded-t-[2rem] border border-white/80 bg-white shadow-[0_28px_90px_rgba(14,11,44,.28)] outline-none motion-safe:animate-[dialog-in_200ms_ease-out] sm:rounded-[2rem]",
-          size === "sm" && "sm:max-w-lg",
-          size === "md" && "sm:max-w-2xl",
-          size === "lg" && "sm:max-w-4xl",
+          "dashboard-dialog relative flex max-h-[90dvh] min-w-0 w-full flex-col overflow-clip rounded-t-[2rem] border border-white/80 bg-white shadow-[0_28px_90px_rgba(14,11,44,.28)] outline-none motion-safe:animate-[dialog-in_200ms_ease-out] sm:rounded-[2rem]",
+          size === "sm" && "sm:max-w-2xl",
+          size === "md" && "sm:max-w-4xl",
+          size === "lg" && "sm:max-w-6xl",
           size === "xl" && "sm:max-w-[min(96rem,calc(100vw-2rem))]",
         )}
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e4ecf2] bg-[#f8fbfd]/95 px-5 py-5 sm:px-7">
-          <div>
+          <div className="min-w-0 [overflow-wrap:anywhere]">
             <h2 id={titleId} className="text-xl font-extrabold text-[#00134c] sm:text-2xl">{title}</h2>
             {description ? <p id={descriptionId} className="mt-1 text-sm leading-6 text-[#687886]">{description}</p> : null}
           </div>
@@ -141,7 +141,7 @@ export function Dialog({
             <X className="size-5" aria-hidden="true" />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"><ValidationScope validation={validation}>{children}</ValidationScope></div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-5 [overflow-wrap:anywhere] sm:px-7 sm:py-6"><ValidationScope validation={validation}>{children}</ValidationScope></div>
         {footer ? <footer className="shrink-0 border-t border-[#e4ecf2] bg-white px-5 py-4 sm:px-7"><ValidationScope validation={validation} showUnbound={false}>{footer}</ValidationScope></footer> : null}
       </div>
     </div>,

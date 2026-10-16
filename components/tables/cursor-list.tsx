@@ -60,7 +60,7 @@ function isSameFirstPage<T>(previous: T[] | undefined, next: T[], keyOf: (item: 
 
 /**
  * Cursor-paged list (Principle III): opaque `nextCursor`, default limit from the
- * caller, "عرض المزيد" affordance, never page counts. Filters apply over loaded
+ * caller, automatic cursor prefetch behind the grid pagination. Filters apply over loaded
  * pages only — the backend exposes cursor+limit and nothing else.
  *
  * This component is the SINGLE owner of the accumulated pages (the grid below is
@@ -198,7 +198,7 @@ export function CursorList<T>({
 
   const columns: CommunityColumnDef<T>[] = [
     ...valueColumns,
-    ...(withActions
+    ...(withActions && !valueColumns.some((column) => column.colId === "actions")
       ? [
           {
             colId: "actions",

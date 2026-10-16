@@ -1,39 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { AgGridTable } from "@/components/tables/ag-grid-table";
 import { CursorList } from "@/components/tables/cursor-list";
 import type { CommunityColumnDef } from "@/components/tables/ag-grid-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableSkeleton } from "@/components/ui/skeletons";
-import { OwnerPicker } from "@/components/owners/owner-picker";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
-  fetchOwnerSchedulesPage,
+  fetchSystemSchedulesPage,
   deleteSchedule,
   fetchScheduleTrips,
   type TripSchedule,
+  type SystemTripSchedule,
 } from "@/lib/actions/schedules";
 import { TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { CreateScheduleDialog } from "@/components/schedules/create-schedule-dialog";
 import { EditScheduleDialog } from "@/components/schedules/edit-schedule-dialog";
 import { Dialog } from "@/components/ui/dialog";
-import { useFilterStore } from "@/stores/filters";
-import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
+import { qk, useApiInfiniteQuery, useApiQuery, useQueryClient } from "@/lib/queries";
 import { t } from "@/lib/i18n/t";
-import { CalendarDays, Plus, Pencil, Trash2, ListFilter, AlertCircle } from "lucide-react";
+import { CalendarDays, Plus, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export default function SchedulesPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const storeOwnerId = useFilterStore((s) => s.ownerId);
-  const setStoreOwnerId = useFilterStore((s) => s.setOwnerId);
-
-  const [selectedOwnerId, setSelectedOwnerId] = useState(storeOwnerId ?? "");
-  const ownerId = selectedOwnerId || storeOwnerId || "";
-
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<TripSchedule | null>(null);
@@ -41,16 +35,16 @@ export default function SchedulesPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data: page, isLoading, error } = useApiQuery(
-    qk.schedules(ownerId || "none"),
-    () => fetchOwnerSchedulesPage(ownerId, null),
-    { enabled: Boolean(ownerId) },
+    qk.schedules("all"),
+    () => fetchSystemSchedulesPage(null),
   );
 
   const searchPredicate = useCallback(
-    (s: TripSchedule) => {
+    (s: SystemTripSchedule) => {
       if (!search.trim()) return true;
       const q = search.trim().toLowerCase();
       return (
+        Boolean(s.ownerName?.toLowerCase().includes(q)) ||
         (s.line?.name && s.line.name.toLowerCase().includes(q)) ||
         Boolean(s.bus?.plateNumber && s.bus.plateNumber.toLowerCase().includes(q)) ||
         Boolean(s.driver?.name && s.driver.name.toLowerCase().includes(q))
@@ -73,6 +67,7 @@ export default function SchedulesPage() {
       if (res.ok) {
         setDeleteError(null);
         void queryClient.invalidateQueries({ queryKey: ["schedules"] });
+        queryClient.removeQueries({ queryKey: qk.scheduleTrips(schedule.ownerId, schedule.lineId, schedule.id) });
       } else {
         setDeleteError(res.message);
       }
@@ -84,8 +79,14 @@ export default function SchedulesPage() {
     setOccurrencesSchedule(schedule);
   }, []);
 
-  const columns: CommunityColumnDef<TripSchedule>[] = useMemo(
+  const columns: CommunityColumnDef<SystemTripSchedule>[] = useMemo(
     () => [
+      {
+        field: "ownerName",
+        headerName: t("common.fields.owner"),
+        width: 180,
+        valueGetter: (params) => params.data?.ownerName ?? t("common.value.withoutName"),
+      },
       {
         field: "line",
         headerName: t("schedules.columns.line"),
@@ -174,7 +175,12 @@ export default function SchedulesPage() {
       {
         colId: "actions",
         headerName: t("schedules.columns.actions"),
-        width: 140,
+        width: 160,
+        minWidth: 160,
+        pinned: "left",
+        sortable: false,
+        filter: false,
+        exportable: false,
         cellRenderer: (params: { data: TripSchedule }) => (
           <div className="flex items-center gap-1">
             <Button
@@ -183,6 +189,7 @@ export default function SchedulesPage() {
               size="sm"
               onClick={() => openOccurrences(params.data)}
               title={t("schedules.tabs.occurrences")}
+              aria-label={t("schedules.tabs.occurrences")}
             >
               <CalendarDays className="size-4" />
             </Button>
@@ -192,6 +199,7 @@ export default function SchedulesPage() {
               size="sm"
               onClick={() => setEditingSchedule(params.data)}
               title={t("common.actions.edit")}
+              aria-label={t("common.actions.edit")}
             >
               <Pencil className="size-4" />
             </Button>
@@ -201,6 +209,7 @@ export default function SchedulesPage() {
               size="sm"
               onClick={() => void handleDelete(params.data)}
               title={t("common.actions.delete")}
+              aria-label={t("common.actions.delete")}
             >
               <Trash2 className="size-4 text-red-500" />
             </Button>
@@ -221,32 +230,19 @@ export default function SchedulesPage() {
         <Button
           type="button"
           onClick={() => setCreateOpen(true)}
-          disabled={!ownerId}
         >
           <Plus className="size-4" /> {t("schedules.createButton")}
         </Button>
       </div>
 
       <div className="rounded-2xl border border-[#dce8ef] bg-white p-4 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-2">
-          <OwnerPicker
-            ownerId={ownerId}
-            onOwnerChange={(next) => {
-              setSelectedOwnerId(next);
-              setStoreOwnerId(next);
-              setCreateOpen(false);
-              setEditingSchedule(null);
-              setOccurrencesSchedule(null);
-              setDeleteError(null);
-            }}
-          />
+        <div>
           <Input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("schedules.filter.searchPlaceholder")}
             aria-label={t("schedules.filter.searchPlaceholder")}
-            disabled={!ownerId}
           />
         </div>
       </div>
@@ -263,21 +259,17 @@ export default function SchedulesPage() {
         </p>
       ) : null}
 
-      {!ownerId ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500">
-          {t("schedules.pickOwnerNotice")}
-        </div>
-      ) : isLoading ? (
+      {isLoading ? (
         <TableSkeleton rows={6} columns={6} />
       ) : (
-        <CursorList<TripSchedule>
+        <CursorList<SystemTripSchedule>
           gridId="schedules-list"
-          scopeKey={ownerId}
+          scopeKey="all-owners"
           initialItems={page?.items ?? []}
           initialCursor={page?.nextCursor ?? null}
           filter={searchPredicate}
           loadMore={(cursor) =>
-            fetchOwnerSchedulesPage(ownerId, cursor).then((res) => {
+            fetchSystemSchedulesPage(cursor).then((res) => {
               if (!res.ok) throw new Error(res.message);
               return res.data;
             })
@@ -285,34 +277,6 @@ export default function SchedulesPage() {
           keyOf={(row) => row.id}
           columnDefs={columns}
           emptyMessage={t("schedules.empty")}
-          renderItem={(s) => (
-            <div className="flex items-center justify-between border-b border-slate-100 p-3">
-              <div>
-                <p className="font-semibold text-slate-900">{s.line.name}</p>
-                <p className="text-xs text-slate-500">
-                  {s.departTime} · {s.bus.plateNumber} · {s.driver?.name ?? t("schedules.noDriver")}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openOccurrences(s)}
-                >
-                  <CalendarDays className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingSchedule(s)}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-              </div>
-            </div>
-          )}
         />
       )}
 
@@ -320,7 +284,6 @@ export default function SchedulesPage() {
         <CreateScheduleDialog
           open={createOpen}
           onClose={() => setCreateOpen(false)}
-          lockedOwnerId={ownerId || undefined}
         />
       )}
 
@@ -350,55 +313,46 @@ function OccurrencesDialog({
   schedule: TripSchedule;
   onClose: () => void;
 }) {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id, null)
-      .then((res) => {
-        if (cancelled) return;
-        setLoading(false);
-        if (res.ok) {
-          setTrips(res.data.items);
-          setCursor(res.data.nextCursor);
-        } else {
-          setError(res.message);
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setLoading(false);
-        setError(err instanceof Error ? err.message : String(err));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [schedule.ownerId, schedule.lineId, schedule.id]);
-
-  async function handleLoadMore() {
-    if (!cursor || loadingMore) return;
-    setError(null);
-    setLoadingMore(true);
-    try {
-      const res = await fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id, cursor);
-      if (res.ok) {
-        setTrips((prev) => [...prev, ...res.data.items]);
-        setCursor(res.data.nextCursor);
-      } else {
-        setError(res.message);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoadingMore(false);
-    }
-  }
+  const query = useApiInfiniteQuery(
+    qk.scheduleTrips(schedule.ownerId, schedule.lineId, schedule.id),
+    (cursor) => fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id, cursor),
+    { staleTime: 5 * 60_000 },
+  );
+  const trips = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const nextCursor = query.data?.pages.at(-1)?.nextCursor ?? null;
+  const columns: CommunityColumnDef<Trip>[] = [
+    {
+      field: "departAt",
+      headerName: t("schedules.columns.departureTime"),
+      flex: 1,
+      minWidth: 240,
+      valueFormatter: ({ value }) => new Date(String(value)).toLocaleString("ar-EG", {
+        timeZone: "Africa/Cairo", year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      }),
+    },
+    {
+      field: "status",
+      headerName: t("schedules.columns.status"),
+      width: 160,
+      valueFormatter: ({ value }) => TRIP_STATUS_AR[value as Trip["status"]] ?? String(value),
+    },
+    {
+      colId: "actions",
+      headerName: t("schedules.columns.actions"),
+      pinned: "left",
+      width: 180,
+      sortable: false,
+      filter: false,
+      exportable: false,
+      cellRenderer: ({ data }: { data: Trip }) => (
+        <Link href={`/trips/${data.id}?ownerId=${schedule.ownerId}&lineId=${schedule.lineId}`}
+          className="text-xs font-bold text-sky-600 hover:underline">
+          {t("common.actions.openDetails")}
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <Dialog
@@ -416,67 +370,22 @@ function OccurrencesDialog({
           {schedule.departTime} · {schedule.bus.plateNumber}
         </div>
 
-        {error ? (
-          <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </p>
+        <AgGridTable<Trip>
+          gridId="schedule-occurrences"
+          rows={trips}
+          columnDefs={columns}
+          nextCursor={nextCursor}
+          loadMore={async () => { await query.fetchNextPage(); }}
+          loading={query.isLoading || query.isFetchingNextPage}
+          errorMessage={query.error?.message}
+          emptyMessage={t("schedules.occurrencesEmpty")}
+          getRowId={(trip) => trip.id}
+        />
+        {query.error && !trips.length ? (
+          <Button type="button" variant="outline" onClick={() => void query.refetch()}>
+            {t("common.actions.retry")}
+          </Button>
         ) : null}
-
-        {loading ? (
-          <p className="text-center text-sm text-slate-500">{t("common.loading.page")}</p>
-        ) : trips.length === 0 ? (
-          <p className="text-center text-sm text-slate-500">{t("schedules.occurrencesEmpty")}</p>
-        ) : (
-          <div className="max-h-80 overflow-y-auto space-y-2">
-            {trips.map((trip) => (
-              <div
-                key={trip.id}
-                className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-sm"
-              >
-                <div>
-                  <p className="font-bold text-slate-900">
-                    {new Date(trip.departAt).toLocaleDateString("ar-EG", {
-                      timeZone: "Africa/Cairo",
-                      weekday: "short",
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {t("schedules.timePrefix")}{" "}
-                    {new Date(trip.departAt).toLocaleTimeString("ar-EG", {
-                      timeZone: "Africa/Cairo",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    · {t("schedules.statusPrefix")} {TRIP_STATUS_AR[trip.status]}
-                  </p>
-                </div>
-                <Link
-                  href={`/trips/${trip.id}?ownerId=${schedule.ownerId}&lineId=${schedule.lineId}`}
-                  className="text-xs font-bold text-sky-600 hover:underline"
-                >
-                  {t("common.actions.openDetails")}
-                </Link>
-              </div>
-            ))}
-
-            {cursor ? (
-              <div className="pt-2 text-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void handleLoadMore()}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? t("common.loading.more") : t("agGridTable.loadMore")}
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        )}
 
         <div className="flex justify-end pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

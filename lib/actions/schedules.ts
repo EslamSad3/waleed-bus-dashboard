@@ -5,6 +5,8 @@ import {
   type CursorPage,
 } from "@/lib/actions/http";
 import type { Trip } from "@/lib/actions/trips";
+import { fetchFleetOwnersPage } from "@/lib/actions/fleet-owners";
+import { t } from "@/lib/i18n/t";
 
 export type SkippedOccurrence = {
   tripId: string;
@@ -73,6 +75,72 @@ export type ScheduleListFilters = {
   driverUserId?: string;
   isActive?: boolean;
 };
+
+export type SystemTripSchedule = TripSchedule & { ownerName: string | null };
+
+type ScheduleIndexCursor = {
+  owners: { id: string; name: string | null }[];
+  ownerCursor: string | null;
+  directoryDone: boolean;
+  scheduleCursor: string | null;
+};
+
+/**
+ * The API currently exposes owner-scoped schedules only. Walk both real
+ * cursors without loading every schedule into memory or issuing a fan-out.
+ * Keep the remaining owner page in the continuation so later owner-directory
+ * insertions do not shift an array offset and skip an owner.
+ */
+export async function fetchSystemSchedulesPage(
+  cursor: string | null = null,
+): Promise<ActionResult<CursorPage<SystemTripSchedule>>> {
+  let state: ScheduleIndexCursor = {
+    owners: [], ownerCursor: null, directoryDone: false, scheduleCursor: null,
+  };
+  if (cursor) {
+    try {
+      const parsed = JSON.parse(cursor) as ScheduleIndexCursor;
+      if (!parsed || !Array.isArray(parsed.owners) ||
+        !parsed.owners.every((owner) => owner && typeof owner.id === "string" &&
+          (owner.name === null || typeof owner.name === "string")) ||
+        typeof parsed.directoryDone !== "boolean" ||
+        !(parsed.ownerCursor === null || typeof parsed.ownerCursor === "string") ||
+        !(parsed.scheduleCursor === null || typeof parsed.scheduleCursor === "string")) {
+        throw new Error("Invalid schedule index cursor");
+      }
+      state = parsed;
+    } catch {
+      return { ok: false, message: t("common.error.somethingWentWrong") };
+    }
+  }
+
+  while (state.owners.length || !state.directoryDone) {
+    if (!state.owners.length) {
+      const owners = await fetchFleetOwnersPage(state.ownerCursor);
+      if (!owners.ok) return owners;
+      state.owners = owners.data.items.map(({ id, name }) => ({ id, name: name ?? null }));
+      state.ownerCursor = owners.data.nextCursor;
+      state.directoryDone = owners.data.nextCursor === null;
+      if (!state.owners.length) continue;
+    }
+
+    const owner = state.owners[0];
+    const schedules = await fetchOwnerSchedulesPage(owner.id, state.scheduleCursor);
+    if (!schedules.ok) return schedules;
+    state.scheduleCursor = schedules.data.nextCursor;
+    if (!state.scheduleCursor) state.owners.shift();
+    if (schedules.data.items.length) {
+      return {
+        ok: true,
+        data: {
+          items: schedules.data.items.map((schedule) => ({ ...schedule, ownerName: owner.name })),
+          nextCursor: state.owners.length || !state.directoryDone ? JSON.stringify(state) : null,
+        },
+      };
+    }
+  }
+  return { ok: true, data: { items: [], nextCursor: null } };
+}
 
 /** Fetch schedules across all lines of an owner company. */
 export function fetchOwnerSchedulesPage(

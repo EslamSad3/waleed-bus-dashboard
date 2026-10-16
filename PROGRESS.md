@@ -1,5 +1,14 @@
 # PROGRESS — Bus Platform Super-Admin Dashboard
 
+## Schedules across owners, pagination and cached generated trips (2026-10-16)
+
+- `/schedules` no longer reads the saved owner filter or requires an owner selection. It lists schedules across owners, identifies the owner in a column, and retains the owner picker inside creation only. Edit/delete/generated-trip actions use the selected row's own owner and line.
+- One actions column contains calendar, edit and delete. Shared tables no longer append a duplicate actions column when the caller supplies one. The separate load-more button is removed; grid pagination automatically prefetches the next cursor batch, preserves loaded rows and exposes retry after failures.
+- Generated trips now use the shared infinite-query cache, keyed by owner/line/schedule, retaining all fetched pages across dialog close/reopen for five minutes. Schedule create/edit invalidates affected occurrence caches; deleting a schedule removes its cache. The dialog also uses table pagination.
+- Shared dialog sizes increased, with wrapping titles, descriptions, nested compact labels and buttons instead of ellipses. Verified using a temporary local fixture at narrow/mobile and desktop widths; the fixture was removed before build. Native inputs/selects retain their platform behavior.
+- API gap/workaround: the backend exposes only owner-scoped schedule lists. The dashboard walks the owner-directory and schedule cursors sequentially without unbounded fan-out or loading the entire dataset. This requires the existing `fleet-owners.read` directory permission in addition to schedules read. A future permissioned cross-owner schedule endpoint would remove that extra lookup/dependency; no backend files changed.
+- Verified: 71/71 dashboard tests (including cursor traversal, one actions column, automatic pagination, retry, cached reopen and invalidation), typecheck, lint (zero errors; existing permissions hook warning), i18n (1914 keys), 73 validation checks, and production build. Authenticated live schedule operations were not performed. No push or deployment.
+
 Constitution: v1.0.1 (amended 2026-09-11: proxy.ts rename, email login, {id,email,appRole}) at `.specify/memory/constitution.md`.
 PRD: `PRD.md` (single source of truth). Backend: `../bus_api` (do not modify).
 

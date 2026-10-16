@@ -97,6 +97,7 @@ export function EditScheduleDialog({
     }
 
     void queryClient.invalidateQueries({ queryKey: ["schedules"] });
+    void queryClient.invalidateQueries({ queryKey: ["schedule-trips", ownerId, lineId] });
     onUpdated?.(result.data);
     onClose();
   }
