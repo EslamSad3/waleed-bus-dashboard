@@ -68,6 +68,7 @@ export function BookingOrderSection({
 
       <p className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.passengerPolicy")}</p>
       <p className="text-sm text-amber-800">{tr("bookings.detail.orderSection.adminPolicy")}</p>
+      {order ? <p className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.bookingReference")}: <span dir="ltr" className="break-all font-mono">{order.id}</span></p> : null}
       {order ? <p className="font-bold text-[#00134c]">{tr("bookings.detail.orderSection.statusLabel")}: {statusLabels[bookingOrderStatus(order)]}</p> : null}
       {isPending ? <p role="status" className="text-sm text-[#5e6b78]">{tr("bookings.detail.orderSection.loading")}</p> : null}
       {error ? <p role="alert" className="text-sm text-red-600">{tr("bookings.detail.orderSection.loadFailed")}</p> : null}

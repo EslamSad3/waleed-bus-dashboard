@@ -305,3 +305,11 @@ level under a fleet owner any more, and a trip line is **one direction**.
 - Group detail shows the aggregate order status (including historical/admin partial cancellation), optional additional contacts, and Arabic guidance: passengers must cancel the entire order and rebook. Staff per-child cancellation/reinstatement and payment/refund overrides retain their explicit administrative scope.
 - Detail mutations invalidate the parent-order cache as well as the booking/list, keeping group totals/statuses fresh. The API admin detail now includes additionalPhone.
 - Verified booking status/idempotency and cached-detail regressions, typecheck, lint (existing unrelated permissions hook warning), i18n check and production build.
+
+
+## 2026-10-16 — Unified passenger booking contract
+
+- Passenger API is `/bookings` for one or several seats, with one public booking ID and a passenger array. Passenger `/booking-orders` routes are removed.
+- Dashboard continues to use the permissioned `/admin/booking-orders` operational contract. The detail card displays the public booking reference, all companions and total seats/fare; labels describe one booking rather than separate passenger orders.
+- Passenger whole-booking cancellation/rebooking policy and staff per-passenger overrides remain explicit. The latter can produce historical/administrative partial status and mixed settlement states.
+- Verification is recorded with the implementation handoff after the local gates finish.
