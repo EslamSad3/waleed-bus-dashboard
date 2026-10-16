@@ -1,5 +1,12 @@
 # PROGRESS — Bus Platform Super-Admin Dashboard
 
+## Generated-trip calendar follows trip edits (2026-10-16)
+
+- The generated-trips calendar now shows each dated trip's current bus plate, assigned driver, route/endpoints, ordered stops with Cairo dates/times, departure and status. It no longer displays the recurring template's plate as though it applied to every occurrence; detail links use each trip's own owner/line scope.
+- Successful trip edits patch matching rows on every cached calendar page immediately, then invalidate the calendar for authoritative refresh. Trip deletion removes only the affected row; rejected mutations leave it untouched. Bus, driver, route and station edits also invalidate calendar and trip-detail dependencies without merging unrelated resource shapes into trip rows.
+- The API's occurrence list is intentionally slim and omits stop/time details. The dashboard hydrates each cursor batch through the existing trip-detail cache with at most three concurrent reads. Five-minute calendar caching and grid pagination remain; individual-day overrides do not rewrite the recurring schedule defaults.
+- Verified: 78/78 dashboard tests, typecheck, lint (zero errors; existing permissions-page warning), i18n (1916 keys), 73 validation checks and production build. Tests cover later-page cache updates, deletion, failed writes, reference invalidation, bounded hydration and current per-trip cell/link values. No backend changes or live trip mutations; prepared for the previously requested main-branch push.
+
 ## Schedules across owners, pagination and cached generated trips (2026-10-16)
 
 - `/schedules` no longer reads the saved owner filter or requires an owner selection. It lists schedules across owners, identifies the owner in a column, and retains the owner picker inside creation only. Edit/delete/generated-trip actions use the selected row's own owner and line.

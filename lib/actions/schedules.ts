@@ -1,6 +1,7 @@
 import {
   apiGet,
   apiSend,
+  mapWithConcurrency,
   type ActionResult,
   type CursorPage,
 } from "@/lib/actions/http";
@@ -235,4 +236,18 @@ export function fetchScheduleTrips(
   return apiGet<CursorPage<Trip>>(
     `/api/fleet-owners/${ownerId}/trip-lines/${lineId}/schedules/${scheduleId}/trips${qs}`,
   );
+}
+
+/** Calendar rows need each trip's effective stops/times, absent from slim lists. */
+export async function fetchScheduleCalendarPage(
+  ownerId: string,
+  lineId: string,
+  scheduleId: string,
+  cursor: string | null,
+  loadTrip: (trip: Trip) => Promise<Trip>,
+): Promise<ActionResult<CursorPage<Trip>>> {
+  const page = await fetchScheduleTrips(ownerId, lineId, scheduleId, cursor);
+  if (!page.ok) return page;
+  const items = await mapWithConcurrency(page.data.items, 3, loadTrip);
+  return { ok: true, data: { items, nextCursor: page.data.nextCursor } };
 }

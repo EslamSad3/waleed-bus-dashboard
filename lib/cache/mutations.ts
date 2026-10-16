@@ -54,6 +54,8 @@ export type MutationImpact = {
   keys: readonly (readonly unknown[])[];
   /** Key families to invalidate by prefix (filtered / dependent views). */
   prefixes: readonly (readonly unknown[])[];
+  /** Families containing the same resource, safe to patch across cached pages. */
+  patchPrefixes?: readonly (readonly unknown[])[];
   /** Ids to remove from every key above. */
   removeIds?: readonly string[];
   /** The affected record's id, used to match existing cached rows. */
@@ -77,7 +79,8 @@ export function tripImpact(input: {
     keys,
     // A trip change is visible through its line, its owner, the flat index, the
     // detail page, and the booking/feedback screens that read the same record.
-    prefixes: [["trips"], ["trips-index"], ["trip"], ["trip-line-choices"], ["trip-feedback"], ["trip-driver-feedback"]],
+    prefixes: [["trips"], ["trips-index"], ["trip"], ["trip-line-choices"], ["trip-feedback"], ["trip-driver-feedback"], ["schedule-trips"]],
+    patchPrefixes: [["schedule-trips"]],
     mode,
     ...(mode === "remove" ? { removeIds: [trip.id] } : { row: { id: trip.id } }),
   };
@@ -97,7 +100,7 @@ export function driverImpact(input: {
   return {
     keys,
     // Bus-assignment displays and every driver history page read the same rows.
-    prefixes: [["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"], ["bus"]],
+    prefixes: [["drivers"], ["owner-drivers"], ["driver"], ["driver-assignments"], ["driver-trip-rows"], ["driver-ratings"], ["bus"], ["trip"], ["schedule-trips"], ["schedules"]],
     mode,
     ...(mode === "remove" ? { removeIds: [driver.id] } : { row: { id: driver.id } }),
   };
@@ -118,7 +121,7 @@ function plainImpact<T extends { id: string }>(
 }
 
 export const busImpact = (bus: Pick<Bus, "id" | "ownerId">, mode: "insert" | "update" | "remove") =>
-  plainImpact([qk.buses(bus.ownerId), qk.bus(bus.ownerId, bus.id), qk.systemBuses], [["buses"], ["bus"], ["bus-trips"]], mode, bus.id);
+  plainImpact([qk.buses(bus.ownerId), qk.bus(bus.ownerId, bus.id), qk.systemBuses], [["buses"], ["bus"], ["bus-trips"], ["trip"], ["schedule-trips"], ["schedules"]], mode, bus.id);
 
 /**
  * Owner account create/profile/status changes also touch the driver surfaces:
@@ -147,7 +150,7 @@ export const memberImpact = (ownerId: string, member: Pick<Member, "id">, mode: 
   plainImpact([qk.ownerMembers(ownerId)], [["owner-members"]], mode, member.id);
 
 export const tripLineImpact = (ownerId: string, line: Pick<TripLine, "id">, mode: "insert" | "update" | "remove") =>
-  plainImpact([qk.tripLines(ownerId), qk.tripLine(ownerId, line.id), qk.tripLineChoices(ownerId)], [["trip-lines"], ["trip-line"]], mode, line.id);
+  plainImpact([qk.tripLines(ownerId), qk.tripLine(ownerId, line.id), qk.tripLineChoices(ownerId)], [["trip-lines"], ["trip-line"], ["trip"], ["schedule-trips"], ["schedules"]], mode, line.id);
 
 export const bookingImpact = (ownerId: string | null, booking: Pick<Booking, "id">, mode: "insert" | "update" | "remove") =>
   plainImpact([qk.bookings(ownerId), qk.booking(ownerId, booking.id), qk.adminBookings, qk.adminBooking(booking.id)], [["bookings"], ["booking"], ["admin-bookings"], ["admin-booking"]], mode, booking.id);
@@ -172,7 +175,7 @@ export const serviceConfigImpact = (entry: Pick<ServiceConfigEntry, "id">) =>
 
 /** Reference data (stops, localities, markaz, governorates, brands, tiers). */
 export const referenceImpact = (id: string, family: string, mode: "insert" | "update" | "remove") =>
-  plainImpact([], [[family], ["markaz"], ["localities"], ["governorates"], ["brands"], ["vip-tiers"], ["stops"]], mode, id);
+  plainImpact([], [[family], ["markaz"], ["localities"], ["governorates"], ["brands"], ["vip-tiers"], ["stops"], ["trip"], ["schedule-trips"]], mode, id);
 
 /** Invalidate a whole family when a returned row is too partial to draw. */
 export const evictImpact = (...prefixes: (readonly unknown[])[]): MutationImpact => ({
@@ -202,7 +205,7 @@ export function applyMutationCache<T, R extends { id: string } = { id: string }>
 ): void {
   if (!result.ok) return;
 
-  const { keys, prefixes, removeIds, row, mode } = impact;
+  const { keys, prefixes, patchPrefixes = [], removeIds, row, mode } = impact;
   const returned = options.row ?? result.data;
   const returnedObject = returned !== null && typeof returned === "object" && !Array.isArray(returned)
     ? returned as Record<string, unknown>
@@ -220,6 +223,9 @@ export function applyMutationCache<T, R extends { id: string } = { id: string }>
     if (isPage<Record<string, unknown>>(cached)) {
       return { ...cached, items: patch(cached.items) };
     }
+    if (typeof cached === "object" && cached !== null && "pages" in cached && Array.isArray(cached.pages)) {
+      return { ...cached, pages: cached.pages.map(patch) };
+    }
     if (typeof cached === "object" && cached !== null && "id" in cached) {
       if (removeIds?.includes(cached.id as string)) return undefined;
       if (update && cached.id === id) return { ...cached, ...returnedObject };
@@ -230,6 +236,7 @@ export function applyMutationCache<T, R extends { id: string } = { id: string }>
   for (const key of keys) {
     if (client.getQueryState(key) !== undefined) client.setQueryData(key, patch);
   }
+  for (const prefix of patchPrefixes) client.setQueriesData({ queryKey: prefix }, patch);
 
   // Filtered variants and dependent summaries cannot be patched reliably, so
   // mark them stale and refetch active queries in the background.

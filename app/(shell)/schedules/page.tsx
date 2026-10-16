@@ -11,11 +11,11 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import {
   fetchSystemSchedulesPage,
   deleteSchedule,
-  fetchScheduleTrips,
+  fetchScheduleCalendarPage,
   type TripSchedule,
   type SystemTripSchedule,
 } from "@/lib/actions/schedules";
-import { TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
+import { fetchTrip, TRIP_STATUS_AR, type Trip } from "@/lib/actions/trips";
 import { CreateScheduleDialog } from "@/components/schedules/create-schedule-dialog";
 import { EditScheduleDialog } from "@/components/schedules/edit-schedule-dialog";
 import { Dialog } from "@/components/ui/dialog";
@@ -313,14 +313,59 @@ function OccurrencesDialog({
   schedule: TripSchedule;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
   const query = useApiInfiniteQuery(
     qk.scheduleTrips(schedule.ownerId, schedule.lineId, schedule.id),
-    (cursor) => fetchScheduleTrips(schedule.ownerId, schedule.lineId, schedule.id, cursor),
+    (cursor) => fetchScheduleCalendarPage(schedule.ownerId, schedule.lineId, schedule.id, cursor,
+      (trip) => queryClient.fetchQuery({
+        queryKey: qk.trip(trip.ownerId, trip.lineId, trip.id),
+        queryFn: async () => {
+          const result = await fetchTrip(trip.ownerId, trip.lineId, trip.id);
+          if (!result.ok) throw new Error(result.message);
+          return result.data;
+        },
+      })),
     { staleTime: 5 * 60_000 },
   );
   const trips = query.data?.pages.flatMap((page) => page.items) ?? [];
   const nextCursor = query.data?.pages.at(-1)?.nextCursor ?? null;
   const columns: CommunityColumnDef<Trip>[] = [
+    {
+      colId: "line",
+      headerName: t("schedules.columns.line"),
+      minWidth: 240,
+      wrapText: true,
+      autoHeight: true,
+      valueGetter: ({ data }) => data
+        ? `${data.line?.name ?? "—"} · ${data.origin ?? "—"} ← ${data.destination ?? "—"}` : "",
+    },
+    {
+      colId: "bus",
+      headerName: t("schedules.columns.bus"),
+      width: 160,
+      valueGetter: ({ data }) => data?.bus?.plateNumber ?? data?.bus?.registrationNumber ?? t("common.value.withoutName"),
+    },
+    {
+      colId: "driver",
+      headerName: t("schedules.columns.driver"),
+      width: 180,
+      wrapText: true,
+      autoHeight: true,
+      valueGetter: ({ data }) => data?.driver?.name ?? t("common.value.unassigned"),
+    },
+    {
+      colId: "stops",
+      headerName: t("schedules.columns.stops"),
+      minWidth: 360,
+      wrapText: true,
+      autoHeight: true,
+      valueGetter: ({ data }) => [...(data?.stops ?? [])].sort((a, b) => a.stopOrder - b.stopOrder)
+        .map((stop) => `${stop.stopOrder}. ${stop.name} · ${stop.scheduledAt
+          ? new Date(stop.scheduledAt).toLocaleString("ar-EG", {
+            timeZone: "Africa/Cairo", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+          }) : "—"}`).join("\n"),
+      cellStyle: { whiteSpace: "pre-line", paddingBlock: "8px" },
+    },
     {
       field: "departAt",
       headerName: t("schedules.columns.departureTime"),
@@ -346,7 +391,7 @@ function OccurrencesDialog({
       filter: false,
       exportable: false,
       cellRenderer: ({ data }: { data: Trip }) => (
-        <Link href={`/trips/${data.id}?ownerId=${schedule.ownerId}&lineId=${schedule.lineId}`}
+        <Link href={`/trips/${data.id}?ownerId=${data.ownerId}&lineId=${data.lineId}`}
           className="text-xs font-bold text-sky-600 hover:underline">
           {t("common.actions.openDetails")}
         </Link>
@@ -362,12 +407,11 @@ function OccurrencesDialog({
       }}
       title={t("schedules.tabs.occurrences")}
       description={t("schedules.occurrencesNotice")}
-      size="lg"
+      size="xl"
     >
       <div className="space-y-4">
         <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
-          <span className="font-bold">{schedule.line.name}</span> ·{" "}
-          {schedule.departTime} · {schedule.bus.plateNumber}
+          {t("schedules.occurrencesCurrentData")}
         </div>
 
         <AgGridTable<Trip>

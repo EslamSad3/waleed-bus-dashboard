@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
 const require = createRequire(import.meta.url);
-function load(file, { states = [], data, error, actions = {} } = {}) {
+function load(file, { states = [], data, infiniteData, error, actions = {} } = {}) {
   const mod = { exports: {} }, calls = [];
   let index = 0;
   const component = () => null;
@@ -18,7 +18,7 @@ function load(file, { states = [], data, error, actions = {} } = {}) {
     require(name) {
       if (name === 'react/jsx-runtime') return require(name);
       if (name === 'react') return { useState(initial) { const value = index < states.length ? states[index] : typeof initial === 'function' ? initial() : initial; index++; return [value, () => {}]; }, useMemo: fn => fn(), useCallback: fn => fn, useEffect: () => {} };
-      if (name.endsWith('/queries')) return { qk: new Proxy({}, { get: (_, key) => (...args) => [key, ...args] }), useApiQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { data, error, isLoading: false }; }, useApiInfiniteQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { error, isLoading: false }; }, useQueryClient: () => ({}) };
+      if (name.endsWith('/queries')) return { qk: new Proxy({}, { get: (_, key) => (...args) => [key, ...args] }), useApiQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { data, error, isLoading: false }; }, useApiInfiniteQuery: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return { data: infiniteData, error, isLoading: false }; }, useQueryClient: () => ({}) };
       if (name.endsWith('/filters')) return { useFilterStore: fn => fn({ ownerId: 'filter-owner' }) };
       if (name.endsWith('/cursor-list')) return { CursorList: cursor };
       if (name.endsWith('/confirm-dialog')) return { useConfirm: () => () => {} };
@@ -79,7 +79,7 @@ test('generated trips use the shared cache scoped to the owner, line and schedul
   const requests = [];
   const { api, calls } = load('../app/(shell)/schedules/page.tsx', {
     states: ['', false, null, schedule, null],
-    actions: { fetchScheduleTrips: async (...args) => { requests.push(args); return { ok: true, data: { items: [], nextCursor: null } }; } },
+    actions: { fetchScheduleCalendarPage: async (...args) => { requests.push(args); return { ok: true, data: { items: [], nextCursor: null } }; } },
   });
   const page = api.default();
   const occurrence = page.props.children.find((child) => child?.type?.name === 'OccurrencesDialog');
@@ -87,5 +87,26 @@ test('generated trips use the shared cache scoped to the owner, line and schedul
   assert.deepEqual(Array.from(calls[1].key), ['scheduleTrips', 'owner-a', 'line-a', 'schedule-a']);
   assert.equal(calls[1].options.staleTime, 300_000);
   await calls[1].fetcher('next-page');
-  assert.deepEqual(requests[0], ['owner-a', 'line-a', 'schedule-a', 'next-page']);
+  assert.deepEqual(requests[0].slice(0, 4), ['owner-a', 'line-a', 'schedule-a', 'next-page']);
+  assert.equal(typeof requests[0][4], 'function');
+});
+
+test('calendar cells and detail links use the individual trip, not the schedule defaults', () => {
+  const schedule = { id: 'schedule', ownerId: 'schedule-owner', lineId: 'schedule-line', line: { name: 'Template' }, bus: { plateNumber: 'OLD' } };
+  const trip = { id: 'trip', ownerId: 'actual-owner', lineId: 'actual-line', bus: { plateNumber: 'NEW' },
+    driver: { name: 'Current driver' }, line: { name: 'Current line' }, origin: 'A', destination: 'B',
+    stops: [{ stopOrder: 2, name: 'B', scheduledAt: '2026-10-16T09:00:00Z' }, { stopOrder: 1, name: 'A', scheduledAt: '2026-10-16T08:00:00Z' }] };
+  const { api } = load('../app/(shell)/schedules/page.tsx', { states: ['', false, null, schedule, null], infiniteData: { pages: [{ items: [trip], nextCursor: null }] } });
+  const occurrence = api.default().props.children.find((child) => child?.type?.name === 'OccurrencesDialog');
+  const dialog = occurrence.type(occurrence.props);
+  const table = dialog.props.children.props.children.find((child) => child?.props?.gridId === 'schedule-occurrences');
+  const columns = table.props.columnDefs;
+  const value = (id) => columns.find((col) => col.colId === id).valueGetter({ data: trip });
+  assert.equal(value('bus'), 'NEW');
+  assert.equal(value('driver'), 'Current driver');
+  assert.match(value('line'), /Current line.*A.*B/);
+  assert.ok(value('stops').indexOf('A') < value('stops').indexOf('B'));
+  assert.ok(value('stops').split('\n').every((line) => line.includes('·') && line.length > 15));
+  const link = columns.find((col) => col.colId === 'actions').cellRenderer({ data: trip });
+  assert.equal(link.props.href, '/trips/trip?ownerId=actual-owner&lineId=actual-line');
 });
