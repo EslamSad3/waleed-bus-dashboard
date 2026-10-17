@@ -1,5 +1,13 @@
 # PROGRESS — Bus Platform Super-Admin Dashboard
 
+## Owner insights KPI panel (2026-10-17)
+
+- The owner detail screen now shows a KPI panel above the owner sections (`GET /api/fleet-owners/insights` proxied to `/fleet-owners/insights`), rendered only with `fleet-owners.trips.read` and always sending `x-owner-id` through `apiGet`. Eleven cards: completed/cancelled/upcoming trips, confirmed/cancelled bookings, seats sold, total/collected/pending revenue, and bus/driver rating averages with vote counts.
+- Period picker: "all time" (default, `?period=all`) or a from/to date range (`?from=&to=`). Range edits stay local until both dates are filled and ordered (`to >= from`); an incomplete range shows an inline Arabic hint and the panel keeps the last applied period, so no failed request is issued. The applied period is part of the TanStack query key (`qk.ownerInsights`).
+- Backend revenue values are decimal strings and are formatted (ar-EG locale + `ج.م` label) for display only — no arithmetic. Ratings may be null and reuse the existing `RatingCell` "not rated yet" state.
+- Added `lib/actions/insights.ts` (typed response, pure `insightsQuery`, `fetchOwnerInsights`), `components/owners/owner-insights.tsx`, Arabic copy under `owners.insights.*`, `errors.INVALID_INSIGHTS_PERIOD` / `errors.OWNER_ID_REQUIRED` copy with both codes registered in `AR_ERROR_MAP`, and a hermetic test for `insightsQuery` + the request path/header (`test/owner-insights-query.test.mjs`).
+- Verified: 113/113 hermetic dashboard tests, typecheck, lint (zero errors; existing permissions-page hook warning), i18n check (1945 keys), all 73 field-validation checks, and production build. No live walkthrough against a running backend was made for this panel; no backend changes.
+
 ## Shared fleet-owner API alignment (2026-10-17)
 
 - Dashboard remains for `platform_staff` and `super_admin`. The generic BFF now uses the same live platform-session admission as `/api/auth/me`, so valid owner/driver/passenger cookies cannot access shared company endpoints through the dashboard proxy. Origin checks, refresh rotation and Arabic error mapping remain; an expired target request returns to admission before a new role can be used.

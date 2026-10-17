@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { OwnerSections } from "@/components/owners/owner-sections";
+import { OwnerInsights } from "@/components/owners/owner-insights";
 import {
   deleteFleetOwner,
   discardFleetOwnerPicture,
@@ -241,6 +242,8 @@ export default function FleetOwnerDetailPage({
           </dl>
         </div>
       </section>
+
+      {can(access, "fleet-owners.trips.read") ? <OwnerInsights ownerId={id} /> : null}
 
       <OwnerSections ownerId={id} access={access} />
 

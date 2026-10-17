@@ -126,6 +126,8 @@ export const qk = {
   ownerBookings: (ownerId: string) => ["owner-bookings", ownerId] as const,
   ownerReports: (ownerId: string) => ["owner-reports", ownerId] as const,
   ownerFeedbackSummary: (ownerId: string) => ["owner-feedback-summary", ownerId] as const,
+  /** Owner KPI panel per period (`GET /fleet-owners/insights` with x-owner-id). */
+  ownerInsights: (ownerId: string, periodKey: string) => ["owner-insights", ownerId, periodKey] as const,
   ownerFeedback: (ownerId: string) => ["owner-feedback", ownerId] as const,
   auditLogs: (cursor?: string | null) => ["audit-logs", cursor ?? "root"] as const,
   schedules: (ownerId: string, lineId?: string) => ["schedules", ownerId, lineId ?? "all"] as const,

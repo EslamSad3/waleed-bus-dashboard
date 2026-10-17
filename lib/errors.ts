@@ -85,6 +85,10 @@ export const AR_ERROR_MAP: Record<string, string> = {
   DRIVER_SCHEDULE_CONFLICT: t("errors.DRIVER_SCHEDULE_CONFLICT"),
   INVALID_SCHEDULE: t("errors.INVALID_SCHEDULE"),
 
+  // --- owner insights ---
+  OWNER_ID_REQUIRED: t("errors.OWNER_ID_REQUIRED"),
+  INVALID_INSIGHTS_PERIOD: t("errors.INVALID_INSIGHTS_PERIOD"),
+
   // --- trip lines, trips, feedback ---
   LINE_HAS_TRIPS: t("errors.LINE_HAS_TRIPS"),
   STOP_IN_USE: t("errors.STOP_IN_USE"),

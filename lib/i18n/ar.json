@@ -2315,7 +2315,9 @@
     "COMPANY_ROLE_NOT_GLOBAL": "الدور ده خاص بأعضاء الشركة، وماينفعش يتعيّن كدور عام للمستخدم.",
     "BUS_SCHEDULE_CONFLICT": "العربية مرتبطة بجدول رحلات متكرر آخر في نفس الموعد",
     "DRIVER_SCHEDULE_CONFLICT": "السائق مرتبط بجدول رحلات متكرر آخر في نفس الموعد",
-    "INVALID_SCHEDULE": "بيانات جدول الرحلة غير صحيحة"
+    "INVALID_SCHEDULE": "بيانات جدول الرحلة غير صحيحة",
+    "INVALID_INSIGHTS_PERIOD": "فترة المؤشرات غير صحيحة — راجع يوم البداية والنهاية",
+    "OWNER_ID_REQUIRED": "لازم تختار شركة ملاك عشان تشوف مؤشراتها"
   },
   "ordinals": {
     "1": "الأول في القائمه",
@@ -2403,6 +2405,27 @@
     },
     "feedback": {
       "feedTitle": "تقييمات الركاب وملاحظاتهم"
+    },
+    "insights": {
+      "title": "مؤشرات الشركة",
+      "periodNav": "اختيار الفترة",
+      "periodAll": "كل الفترات",
+      "periodRange": "فترة محددة",
+      "from": "من يوم",
+      "to": "لحد يوم",
+      "invalidRange": "اختار يوم البداية ويوم النهاية، والنهاية مش قبل البداية",
+      "tripsCompleted": "رحلات مكملة",
+      "tripsCancelled": "رحلات ملغاة",
+      "tripsUpcoming": "رحلات جاية",
+      "bookingsConfirmed": "حجوزات مؤكدة",
+      "bookingsCancelled": "حجوزات ملغاة",
+      "seatsSold": "مقاعد اتباعت",
+      "revenueTotal": "إجمالي الإيراد",
+      "revenueCollected": "إيراد محصّل",
+      "revenuePending": "إيراد لسه محصّلش",
+      "ratingsBus": "تقييم العربيات",
+      "ratingsDriver": "تقييم السواقين",
+      "currency": "ج.م"
     }
   },
   "feedback": {
