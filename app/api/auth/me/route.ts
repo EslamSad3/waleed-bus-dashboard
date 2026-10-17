@@ -1,26 +1,16 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { busFetch } from "@/lib/api";
-import { ACCESS_COOKIE, identityFromValidatedToken } from "@/lib/auth";
-import { platformPermissions } from "@/lib/access";
-import { isDashboardRole } from "@/lib/auth";
+import { fetchDashboardSession } from "@/lib/dashboard-session";
 import { toArabicError } from "@/lib/errors";
 
-/** Session validation remains live; identity for the store comes from JWT claims. */
+/** Session admission and permissions use the same live boundary as the proxy. */
 export async function GET() {
-  const result = await busFetch<{ id: string; platformPermissions?: unknown }>("/me");
+  const result = await fetchDashboardSession();
   if (!result.ok) {
-    const code = result.status === 401 ? "AUTHENTICATION_FAILED" : result.code;
+    const status = result.status === 0 ? (result.code === "UPSTREAM_TIMEOUT" ? 504 : 503) : result.status;
     return NextResponse.json(
-      { statusCode: result.status, code, message: toArabicError(code, result.status) },
-      { status: result.status === 0 ? 503 : result.status },
+      { statusCode: status, code: result.code, message: toArabicError(result.code, status, result.rawMessage) },
+      { status, headers: { "Cache-Control": "no-store" } },
     );
   }
-  // Read after busFetch: it may have refreshed and replaced the access cookie.
-  const accessToken = (await cookies()).get(ACCESS_COOKIE)?.value;
-  const identity = accessToken ? identityFromValidatedToken(accessToken) : null;
-  if (!identity || identity.id !== result.data.id || !isDashboardRole(identity.appRole)) {
-    return NextResponse.json({ statusCode: 401, code: "AUTHENTICATION_FAILED", message: toArabicError("AUTHENTICATION_FAILED") }, { status: 401 });
-  }
-  return NextResponse.json({ statusCode: 200, data: { ...identity, permissions: platformPermissions(result.data.platformPermissions) } });
+  return NextResponse.json({ statusCode: 200, data: result.data }, { headers: { "Cache-Control": "no-store" } });
 }

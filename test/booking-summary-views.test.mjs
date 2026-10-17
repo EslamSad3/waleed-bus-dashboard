@@ -29,7 +29,7 @@ function load(file, { rows = [row], states = [] } = {}) {
         useApiQuery: () => ({ isLoading: false }), useDataQuery: () => ({ isLoading: false }), useQueryClient: () => ({}) };
       if (name.endsWith('/t')) return { t: (key) => key };
       if (name.endsWith('/field-validation')) return { schemaErrors: () => ({}), useFieldValidation: () => ({}) };
-      if (name.endsWith('/access')) return { can: () => false };
+      if (name.endsWith('/access')) return { can: (identity, key) => Boolean(identity && (identity.appRole === 'super_admin' || identity.permissions?.includes(key))) };
       if (name.endsWith('/nav-permissions')) return { canNavigate: (_access, href) => href === '/bookings' };
       if (name.endsWith('/confirm-dialog')) return { useConfirm: () => async () => false };
       if (name.endsWith('/filters')) return { useFilterStore: (fn) => fn({ setOwnerId() {} }) };
@@ -63,7 +63,7 @@ test('bookings grid renders one booking with four seats and opens its group inst
 
 test('owner booking table uses the same grouped contract and full seat totals', () => {
   const { api, calls } = load('../components/owners/owner-sections.tsx', { states: ['bookings', false] });
-  const section = api.OwnerSections({ ownerId: 'owner-a' });
+  const section = api.OwnerSections({ ownerId: 'owner-a', access: { appRole: 'platform_staff', permissions: ['bookings.read'] } });
   const child = find(section, (el) => el.type?.name === 'OwnerBookings');
   const table = find(child.type(child.props), (el) => el.props?.gridId === 'owner-bookings');
   assert.equal(calls[0][0].ownerId, 'owner-a');

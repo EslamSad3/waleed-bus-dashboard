@@ -1,5 +1,13 @@
 # PROGRESS — Bus Platform Super-Admin Dashboard
 
+## Shared fleet-owner API alignment (2026-10-17)
+
+- Dashboard remains for `platform_staff` and `super_admin`. The generic BFF now uses the same live platform-session admission as `/api/auth/me`, so valid owner/driver/passenger cookies cannot access shared company endpoints through the dashboard proxy. Origin checks, refresh rotation and Arabic error mapping remain; an expired target request returns to admission before a new role can be used.
+- Owner account create/edit/delete and trip-line controls follow staff permissions. Owner detail sections mount only when their actual read permission is present; grouped operational bookings correctly use `bookings.read`.
+- Fare readers see saved prices and an Arabic read-only hint. Fare writers retain full revision-aware editing. Shared line creation omits fares for unprivileged staff (inactive draft), while metadata/stop edits avoid unauthorized fare writes. Copy now describes one direction per line.
+- Browser checks used a temporary local fixture API: restricted and authorized platform-staff controls, saved fare display, editing/discard, and mobile/desktop RTL layouts. No live backend data was modified. Fixture services were stopped and the temporary script removed.
+- Verified: 110/110 hermetic dashboard tests, typecheck, lint (zero errors; existing permissions-page hook warning), i18n check, all 73 field-validation checks, and production build. No backend changes, push or deployment.
+
 ## One dashboard booking per checkout (2026-10-16)
 
 - The admin API lists operational passenger/seat records. `/bookings` now hydrates each distinct parent checkout through the existing permissioned detail endpoint and renders one row with the public booking ID, original seat count, aggregate total, all passenger names/phones, and aggregate booking/payment states. Independent legacy bookings remain independent even when their passenger/trip match another checkout.

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { fetchDashboardSession } from "@/lib/dashboard-session";
 import { busFetch } from "@/lib/api";
 import { originAllowed } from "@/lib/config";
 import { arabiciseDetails, toArabicError } from "@/lib/errors";
@@ -25,6 +26,15 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     return NextResponse.json(
       { statusCode: 403, code: "FORBIDDEN", message: t("common.error.forbidden") },
       { status: 403 },
+    );
+  }
+
+  const session = await fetchDashboardSession();
+  if (!session.ok) {
+    const status = session.status === 0 ? (session.code === "UPSTREAM_TIMEOUT" ? 504 : 503) : session.status;
+    return NextResponse.json(
+      { statusCode: status, code: session.code, message: toArabicError(session.code, status, session.rawMessage) },
+      { status, headers: { "Cache-Control": "no-store" } },
     );
   }
 
@@ -84,7 +94,8 @@ async function forward(req: NextRequest, ctx: Ctx, method: string) {
     }
   }
 
-  const result = await busFetch(path, { method, body, rawBody, ownerId });
+  // A target 401 must return to this admission gate before a newly rotated role can be used.
+  const result = await busFetch(path, { method, body, rawBody, ownerId, retryAuth: false });
 
   if (!result.ok) {
     // status 0 = the backend was never reached: timeouts are 504 (retryable),

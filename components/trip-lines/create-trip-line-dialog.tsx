@@ -8,6 +8,8 @@ import { schemaErrors, requiredField } from "@/lib/field-validation";
 
 import { useFieldValidation } from "@/components/ui/field-validation";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Plus, Route, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,6 +59,8 @@ export function CreateTripLineDialog({
   onCreated?: (line: TripLine) => void;
 }) {
   const queryClient = useQueryClient();
+  const access = useDashboardAccess();
+  const writableFares = can(access, "fares.update");
   const [pickedOwnerId, setPickedOwnerId] = useState("");
   // A locked owner (opened from a company tab) wins over anything picked here.
   const ownerId = lockedOwnerId ?? pickedOwnerId;
@@ -115,9 +119,10 @@ export function CreateTripLineDialog({
     setError(null);
   }
 
-  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), nameEn: nameEn.trim() || null, code: code.trim(), stops: stopsPayload(stops), fares: faresPayload(pairs, prices) }), ownerId: requiredField(ownerId) }));
+  const validation = useFieldValidation(() => ({ ...schemaErrors(schemas.createTripLineSchema, { name: name.trim(), nameEn: nameEn.trim() || null, code: code.trim(), stops: stopsPayload(stops), ...(writableFares ? { fares: faresPayload(pairs, prices) } : {}) }), ownerId: requiredField(ownerId) }));
 
   async function submit() {
+    if (!can(access, "fleet-owners.lines.create")) return;
     if (!validation.validate()) return;
 
     setError(null);
@@ -127,7 +132,7 @@ export function CreateTripLineDialog({
       nameEn: nameEn.trim() || null,
       code: code.trim() || null,
       stops: stopsPayload(stops),
-      fares: faresPayload(pairs, prices),
+      ...(writableFares ? { fares: faresPayload(pairs, prices) } : {}),
     });
     setSaving(false);
     if (!result.ok) return setError(validation.failure(result));
@@ -148,7 +153,7 @@ export function CreateTripLineDialog({
         <p className="hidden text-xs text-slate-500 sm:block">{t("pricing.footerHint")}</p>
         <div className="flex flex-1 gap-2 sm:flex-none">
           <Button type="button" variant="secondary" className="flex-1 sm:flex-none" disabled={saving} onClick={() => { resetForm(); onClose(); }}>{t("common.actions.cancel")}</Button>
-          <Button type="submit" form="create-trip-line" className="flex-1 sm:flex-none" loading={saving} disabled={saving}><Check className="size-4" />{saving ? t("common.loading.saving") : t("tripLines.createDialog.submit")}</Button>
+          <Button type="submit" form="create-trip-line" className="flex-1 sm:flex-none" loading={saving} disabled={saving || !can(access, "fleet-owners.lines.create")}><Check className="size-4" />{saving ? t("common.loading.saving") : t("tripLines.createDialog.submit")}</Button>
         </div>
       </div>}>
       <form id="create-trip-line" noValidate className="space-y-5" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
@@ -229,7 +234,8 @@ export function CreateTripLineDialog({
           </div>
         </section>
 
-        <FareMatrix pairs={pairs} prices={prices} onChange={setPrices} />
+        <FareMatrix pairs={pairs} prices={writableFares ? prices : {}} onChange={setPrices} readOnly={!writableFares} />
+        {!writableFares ? <p className="text-sm text-[#687886]">{t("pricing.draftWithoutFares")}</p> : null}
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#dce8ef] bg-[#f8fbfd] px-4 py-3 text-[#00134c]">
           <span className="flex items-center gap-2 text-xs text-[#687886]"><MapPin className="size-4" />{t("tripLines.stopsDialog.summary")}</span>
           <strong>{routeSummary}</strong>

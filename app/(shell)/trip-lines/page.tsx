@@ -1,5 +1,7 @@
 "use client";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { useMemo, useState } from "react";
 import { Eye, Pencil, Plus, Power, Trash2 } from "lucide-react";
 import type { ICellRendererParams } from "ag-grid-community";
@@ -27,6 +29,7 @@ import { t } from "@/lib/i18n/t";
  * in place through the shared line editor.
  */
 export default function TripLinesPage() {
+  const access = useDashboardAccess();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { data: page, isLoading, error } = useApiQuery(
@@ -42,12 +45,14 @@ export default function TripLinesPage() {
   const ownerNames = useMemo(() => new Map(ownerNameEntries ?? []), [ownerNameEntries]);
 
   async function toggleLine(line: TripLineListItem) {
+    if (!can(access, "fleet-owners.lines.update")) return;
     const result = await updateOwnerTripLine(line.ownerId, line.id, { isActive: !line.isActive });
     if (!result.ok) return;
     applyMutationCache(queryClient, tripLineImpact(line.ownerId, line, "update"), result);
   }
 
   async function removeLine(line: TripLineListItem) {
+    if (!can(access, "fleet-owners.lines.delete")) return;
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("tripLines.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteOwnerTripLine(line.ownerId, line.id);
     if (!result.ok) return;
@@ -101,7 +106,7 @@ export default function TripLinesPage() {
           <h1 className="page-title">{t("tripLines.title")}</h1>
           <p className="page-description">{t("tripLines.description")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("tripLines.newLine")}</Button>
+        {can(access, "fleet-owners.lines.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" /> {t("tripLines.newLine")}</Button> : null}
       </div>
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : null}
       {isLoading ? (
@@ -150,11 +155,11 @@ export default function TripLinesPage() {
               label={t("tripLines.list.rowActions", { lineName: line.name })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/trip-lines/${line.id}?ownerId=${line.ownerId}` },
-                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setLineForEdit(line) },
-                line.isActive
-                  ? { label: t("common.actions.disable"), icon: Power, tone: "warning", onSelect: () => toggleLine(line) }
-                  : { label: t("common.actions.enable"), icon: Power, tone: "success", onSelect: () => toggleLine(line) },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => removeLine(line) },
+                ...(can(access, "fleet-owners.lines.update") ? [{ label: t("common.actions.edit"), icon: Pencil, onSelect: () => setLineForEdit(line) }] : []),
+                ...(can(access, "fleet-owners.lines.update") ? [line.isActive
+                  ? { label: t("common.actions.disable"), icon: Power, tone: "warning" as const, onSelect: () => toggleLine(line) }
+                  : { label: t("common.actions.enable"), icon: Power, tone: "success" as const, onSelect: () => toggleLine(line) }] : []),
+                ...(can(access, "fleet-owners.lines.delete") ? [{ label: t("common.actions.delete"), icon: Trash2, tone: "danger" as const, onSelect: () => removeLine(line) }] : []),
               ]}
             />
           )}
@@ -163,8 +168,8 @@ export default function TripLinesPage() {
 
       {/* Unlocked: the owner company is picked inside the modal, so creating
           never requires leaving this page first. */}
-      <CreateTripLineDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditTripLineDialog line={lineForEdit} onClose={() => setLineForEdit(null)} />
+      <CreateTripLineDialog open={createOpen && can(access, "fleet-owners.lines.create")} onClose={() => setCreateOpen(false)} />
+      <EditTripLineDialog line={can(access, "fleet-owners.lines.update") ? lineForEdit : null} onClose={() => setLineForEdit(null)} />
     </div>
   );
 }

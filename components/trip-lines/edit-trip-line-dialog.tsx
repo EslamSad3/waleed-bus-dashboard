@@ -1,5 +1,7 @@
 "use client";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -71,6 +73,9 @@ function LoadEditor({ line, onClose }: { line: TripLine | TripLineListItem; onCl
 }
 
 function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
+  const access = useDashboardAccess();
+  const writableFares = can(access, "fares.update");
+  const writableLine = can(access, "fleet-owners.lines.update");
   const queryClient = useQueryClient();
   const { data: allStops } = useApiQuery<Stop[]>(qk.stops, fetchStops);
   const [name, setName] = useState(line.name);
@@ -105,7 +110,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
 
   const validation = useFieldValidation(() => ({
     ...schemaErrors(schemas.updateTripLineSchema, { name: name.trim(), nameEn: nameEn.trim() || null, code: code.trim() || null, isActive }),
-    ...schemaErrors(schemas.updateLineStopsSchema, { stops: stopsPayload(editStops), fares: faresPayload(pairs, prices), expectedPricingRevision: loadedTable?.pricingRevision }),
+    ...schemaErrors(schemas.updateLineStopsSchema, { stops: stopsPayload(editStops), ...(writableFares ? { fares: faresPayload(pairs, prices) } : {}), expectedPricingRevision: loadedTable?.pricingRevision }),
   }));
 
   function addStop() {
@@ -142,14 +147,15 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
     const nextNameEn = nameEn.trim() || null;
     const metaChanged = name.trim() !== line.name || nextNameEn !== (line.nameEn ?? null) || nextCode !== (line.code ?? null) || isActive !== line.isActive;
     const stopsChanged = JSON.stringify(stopsPayload(editStops)) !== JSON.stringify(stopsPayload(initialStops));
-    const pricesChanged = pairs.some(p => prices[fareKey(p)] !== originalPrices[fareKey(p)]);
+    if ((metaChanged || stopsChanged) && !writableLine) return;
+    const pricesChanged = writableFares && pairs.some(p => prices[fareKey(p)] !== originalPrices[fareKey(p)]);
     if (!metaChanged && !stopsChanged && !pricesChanged) return onClose();
 
     if (stopsChanged || pricesChanged) {
-      const pricing = { fares: faresPayload(pairs, prices), expectedPricingRevision: loadedTable.pricingRevision };
+      const pricing = { expectedPricingRevision: loadedTable.pricingRevision, ...(writableFares ? { fares: faresPayload(pairs, prices) } : {}) };
       const result = stopsChanged
         ? await updateOwnerTripLineStops(line.ownerId, line.id, stopsPayload(editStops), { notify: false }, pricing)
-        : await saveLineFares(line.ownerId, line.id, pricing, { notify: false });
+        : await saveLineFares(line.ownerId, line.id, { ...pricing, fares: faresPayload(pairs, prices) }, { notify: false });
       if (!result.ok) {
         toast.error(t("common.error.somethingWentWrong"), { description: result.message, duration: 6000 });
         return setError(validation.failure(result));
@@ -245,7 +251,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
           <br />
           <strong>{editStops.length >= 2 ? `${editStops[0].stop.name} ← ${editStops[editStops.length - 1].stop.name}` : t("tripLines.incomplete")}</strong>
         </div>
-        {faresLoading ? <p role="status">{t("pricing.loading")}</p> : loadedTable ? <FareMatrix pairs={pairs} prices={prices} onChange={setPrices} /> : <p role="alert">{faresError?.message ?? t("pricing.loadFailed")}</p>}
+        {faresLoading ? <p role="status">{t("pricing.loading")}</p> : loadedTable ? <><FareMatrix pairs={pairs} prices={writableFares ? prices : originalPrices} onChange={setPrices} readOnly={!writableFares} />{!writableFares ? <p className="text-sm text-[#687886]">{t("pricing.readOnlyHint")}</p> : null}</> : <p role="alert">{faresError?.message ?? t("pricing.loadFailed")}</p>}
         <AsyncButton variant="secondary" onClick={async () => {
           const [result, latestLine] = await Promise.all([fetchLineFares(line.ownerId, line.id), fetchOwnerTripLine(line.ownerId, line.id)]);
           if (!latestLine.ok) return setError(latestLine.message);
@@ -259,7 +265,7 @@ function Editor({ line, onClose }: { line: TripLine; onClose: () => void }) {
         <p className="text-xs text-[#687886]">{t("tripLines.stopsDialog.saveHint")}</p>
         <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-5 sm:flex-row sm:justify-end">
           <Button variant="secondary" onClick={onClose}>{t("common.actions.cancel")}</Button>
-          <AsyncButton onClick={saveAll} disabled={!loadedTable || faresLoading}>{t("common.actions.saveChanges")}</AsyncButton>
+          <AsyncButton onClick={saveAll} disabled={!loadedTable || faresLoading || (!writableLine && !writableFares)}>{t("common.actions.saveChanges")}</AsyncButton>
         </div>
       </div>
     </Dialog>

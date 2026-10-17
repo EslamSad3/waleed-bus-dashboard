@@ -1,5 +1,7 @@
 "use client";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { use, useEffect, useState } from "react";
 import { MapPin, Pencil, Route, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -42,6 +44,7 @@ export default function TripLineDetailPage({
   searchParams: Promise<{ ownerId?: string }>;
 }) {
   const { id } = use(params);
+  const access = useDashboardAccess();
   const { ownerId: scopeOwnerId } = use(searchParams);
   const router = useRouter();
   const confirm = useConfirm();
@@ -64,13 +67,14 @@ export default function TripLineDetailPage({
   }, [ownerId]);
 
   async function toggle() {
-    if (!line) return;
+    if (!line || !can(access, "fleet-owners.lines.update")) return;
     const result = await updateOwnerTripLine(ownerId, id, { isActive: !line.isActive });
     if (!result.ok) return setError(result.message);
     patchDetail(queryClient, qk.tripLine(ownerId, id), result.data);
   }
 
   async function remove() {
+    if (!can(access, "fleet-owners.lines.delete")) return;
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("tripLines.detail.deleteConfirm.description"), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteOwnerTripLine(ownerId, id);
     if (!result.ok) return setError(result.message);
@@ -112,11 +116,11 @@ export default function TripLineDetailPage({
           <p className="page-description">{t("tripLines.detail.description")}</p>
         </div>
         <div className="flex flex-wrap gap-2 max-md:w-full">
-          <AsyncButton variant="secondary" className="max-md:w-full" onClick={toggle}>
+          {can(access, "fleet-owners.lines.update") ? <AsyncButton variant="secondary" className="max-md:w-full" onClick={toggle}>
             {line.isActive ? t("tripLines.detail.actions.disableLine") : t("tripLines.detail.actions.enable")}
-          </AsyncButton>
-          <Button className="max-md:w-full" onClick={() => setEditing(true)}><Pencil className="size-4" /> {t("tripLines.detail.actions.editMeta")}</Button>
-          <AsyncButton variant="destructive" className="max-md:w-full" onClick={remove}><Trash2 className="size-4" /> {t("tripLines.detail.actions.deleteLine")}</AsyncButton>
+          </AsyncButton> : null}
+          {can(access, "fleet-owners.lines.update") ? <Button className="max-md:w-full" onClick={() => setEditing(true)}><Pencil className="size-4" /> {t("tripLines.detail.actions.editMeta")}</Button> : null}
+          {can(access, "fleet-owners.lines.delete") ? <AsyncButton variant="destructive" className="max-md:w-full" onClick={remove}><Trash2 className="size-4" /> {t("tripLines.detail.actions.deleteLine")}</AsyncButton> : null}
         </div>
       </div>
 
@@ -180,7 +184,7 @@ export default function TripLineDetailPage({
         </p>
       </section>
 
-      <EditTripLineDialog line={editing ? line : null} onClose={() => setEditing(false)} />
+      <EditTripLineDialog line={editing && can(access, "fleet-owners.lines.update") ? line : null} onClose={() => setEditing(false)} />
     </div>
   );
 }

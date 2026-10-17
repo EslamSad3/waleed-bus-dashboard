@@ -66,6 +66,7 @@ import {
   type TripFeedbackRow,
 } from "@/lib/actions/feedback";
 import { t } from "@/lib/i18n/t";
+import { can, type DashboardAccess } from "@/lib/access";
 import { qk, useApiQuery, useQueryClient } from "@/lib/queries";
 import { applyMutationCache, memberImpact } from "@/lib/cache/mutations";
 
@@ -93,8 +94,10 @@ const SECTIONS: { key: OwnerSectionKey; label: string }[] = [
  * second "company" level any more — the owner user IS the company, so each
  * section reads `/fleet-owners/{ownerId}/…` directly.
  */
-export function OwnerSections({ ownerId }: { ownerId: string }) {
+export function OwnerSections({ ownerId, access }: { ownerId: string; access: DashboardAccess | null }) {
   const [section, setSection] = useState<OwnerSectionKey>("buses");
+  const permitted = SECTIONS.filter(entry => can(access, entry.key === "bookings" ? "bookings.read" : `fleet-owners.${entry.key === "trip-lines" ? "lines" : entry.key}.read`));
+  const activeSection = permitted.some(entry => entry.key === section) ? section : permitted[0]?.key;
   const setScopedOwnerId = useFilterStore((state) => state.setOwnerId);
 
   // This screen IS one company, so publish it as the current scope: the detail
@@ -106,27 +109,27 @@ export function OwnerSections({ ownerId }: { ownerId: string }) {
   return (
     <section className="space-y-4">
       <nav aria-label={t("owners.sections.aria")} className="flex gap-2 overflow-x-auto pb-1">
-        {SECTIONS.map((entry) => (
+        {permitted.map((entry) => (
           <button
             key={entry.key}
             type="button"
             onClick={() => setSection(entry.key)}
-            aria-current={section === entry.key ? "true" : undefined}
+            aria-current={activeSection === entry.key ? "true" : undefined}
             className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium ${
-              section === entry.key ? "bg-[#059ff8] text-white" : "bg-white text-[#1a1a1a] hover:bg-[#d6eeff]"
+              activeSection === entry.key ? "bg-[#059ff8] text-white" : "bg-white text-[#1a1a1a] hover:bg-[#d6eeff]"
             }`}
           >
             {entry.label}
           </button>
         ))}
       </nav>
-      {section === "buses" ? <OwnerBuses ownerId={ownerId} /> : null}
-      {section === "drivers" ? <OwnerDrivers ownerId={ownerId} /> : null}
-      {section === "trip-lines" ? <OwnerTripLines ownerId={ownerId} /> : null}
-      {section === "schedules" ? <OwnerSchedules ownerId={ownerId} /> : null}
-      {section === "trips" ? <OwnerTrips ownerId={ownerId} /> : null}
-      {section === "bookings" ? <OwnerBookings ownerId={ownerId} /> : null}
-      {section === "feedback" ? <OwnerFeedback ownerId={ownerId} /> : null}
+      {activeSection === "buses" ? <OwnerBuses ownerId={ownerId} /> : null}
+      {activeSection === "drivers" ? <OwnerDrivers ownerId={ownerId} /> : null}
+      {activeSection === "trip-lines" ? <OwnerTripLines ownerId={ownerId} /> : null}
+      {activeSection === "schedules" ? <OwnerSchedules ownerId={ownerId} /> : null}
+      {activeSection === "trips" ? <OwnerTrips ownerId={ownerId} /> : null}
+      {activeSection === "bookings" ? <OwnerBookings ownerId={ownerId} /> : null}
+      {activeSection === "feedback" ? <OwnerFeedback ownerId={ownerId} /> : null}
     </section>
   );
 }

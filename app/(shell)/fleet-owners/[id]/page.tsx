@@ -6,6 +6,8 @@ import { schemaErrors } from "@/lib/field-validation";
 
 import { useFieldValidation } from "@/components/ui/field-validation";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,7 @@ export default function FleetOwnerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const access = useDashboardAccess();
   const router = useRouter();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
@@ -71,6 +74,7 @@ export default function FleetOwnerDetailPage({
   }, [id, setStoreOwnerId]);
 
   function openEdit() {
+    if (!can(access, "fleet-owners.update")) return;
     validation.reset();
     if (!owner) return;
     setName(owner.name ?? "");
@@ -86,6 +90,7 @@ export default function FleetOwnerDetailPage({
   const validation = useFieldValidation(() => schemaErrors(schemas.updateFleetOwnerSchema, { name: name.trim(), nickname: nickname.trim() || undefined, phone: phone.trim() || undefined, nationalId: nationalId.trim(), isActive }));
 
   async function save() {
+    if (!can(access, "fleet-owners.update")) return;
     if (!validation.validate()) return;
     if (!owner) return;
     const parsed = updateFleetOwnerSchema.safeParse({
@@ -130,6 +135,7 @@ export default function FleetOwnerDetailPage({
   }
 
   async function removeOwner() {
+    if (!can(access, "fleet-owners.delete")) return;
     setError(null);
     if (
       !(await confirm({
@@ -178,9 +184,9 @@ export default function FleetOwnerDetailPage({
           >
             {owner.isActive ? t("common.status.active") : t("common.status.inactive")}
           </span>
-          <Button type="button" variant="secondary" onClick={openEdit}>
+          {can(access, "fleet-owners.update") ? <Button type="button" variant="secondary" onClick={openEdit}>
             <Pencil className="size-4" aria-hidden="true" /> {t("common.actions.edit")}
-          </Button>
+          </Button> : null}
         </div>
       </div>
       {error && !editOpen ? (
@@ -236,10 +242,10 @@ export default function FleetOwnerDetailPage({
         </div>
       </section>
 
-      <OwnerSections ownerId={id} />
+      <OwnerSections ownerId={id} access={access} />
 
       <Dialog validation={validation}
-        open={editOpen}
+        open={editOpen && can(access, "fleet-owners.update")}
         onOpenChange={setEditOpen}
         title={t("fleetOwners.detail.editDialog.title")}
         description={t("fleetOwners.detail.editDialog.description")}
@@ -309,14 +315,14 @@ export default function FleetOwnerDetailPage({
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 border-t border-[#e4ecf2] pt-4 sm:flex-row">
-            <Button
+            {can(access, "fleet-owners.delete") ? <Button
               type="button"
               variant="danger"
               onClick={() => void removeOwner()}
               disabled={saving}
             >
               {t("fleetOwners.detail.deleteOwner")}
-            </Button>
+            </Button> : null}
             <Button
               type="button"
               variant="secondary"

@@ -69,3 +69,21 @@ without cross-referencing.
 
 `pnpm lint` · `pnpm typecheck` · `pnpm i18n:check` · `pnpm build`, plus a browser
 smoke test of `/login` and the owner screen copy.
+
+
+## Shared API access amendment — 2026-10-17
+
+The backend now permits owners to manage their own company and platform actors
+to administer accessible companies. Dashboard admission remains limited to
+`platform_staff` and `super_admin`, as explicitly requested. Generic dashboard
+proxy routes independently validate the live session and platform role before
+forwarding reads or mutations; a rotated token is checked again on the next
+request rather than reused under a previous role decision.
+
+Owner account CRUD, line actions and company-section reads use live platform
+permissions for presentation. Fare editing additionally requires `fares.update`;
+readers see saved prices without edit/save controls. Line creators without the
+fare grant submit an inactive draft without fares. Metadata and stop edits omit
+fare writes when unauthorized, retaining optimistic revision checks on stop edits.
+All routes, cursor envelopes, Arabic validation and backend permission checks stay
+in force. No owner dashboard or backend modification is introduced.

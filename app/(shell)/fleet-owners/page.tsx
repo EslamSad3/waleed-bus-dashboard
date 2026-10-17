@@ -6,6 +6,8 @@ import { schemaErrors } from "@/lib/field-validation";
 
 import { useFieldValidation } from "@/components/ui/field-validation";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -237,6 +239,7 @@ function EditFleetOwnerDialog({ open, owner, onClose }: { open: boolean; owner: 
 }
 
 export default function FleetOwnersPage() {
+  const access = useDashboardAccess();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
@@ -251,6 +254,7 @@ export default function FleetOwnersPage() {
   }
 
   async function removeOwner(owner: FleetOwnerAccount) {
+    if (!can(access, "fleet-owners.delete")) return;
     if (!(await confirm({ title: t("common.actions.deleteConfirmTitle"), description: t("fleetOwners.deleteConfirm.description", { value: owner.name || owner.nickname || owner.phoneNumber }), confirmLabel: t("common.actions.delete"), destructive: true }))) return;
     const result = await deleteFleetOwner(owner.id);
     if (!result.ok) return;
@@ -281,9 +285,9 @@ export default function FleetOwnersPage() {
       <div className="page-heading">
         <div className="min-w-0 flex-1">
           <h1 className="page-title">{t("fleetOwners.title")}</h1>
-          <p className="page-description">{t("fleetOwners.description")}</p>
+          <p className="page-description">{can(access, "fleet-owners.create") || can(access, "fleet-owners.update") || can(access, "fleet-owners.delete") ? t("fleetOwners.description") : t("fleetOwners.readOnlyDescription")}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>{t("fleetOwners.newOwner")}</Button>
+        {can(access, "fleet-owners.create") ? <Button onClick={() => setCreateOpen(true)}>{t("fleetOwners.newOwner")}</Button> : null}
       </div>
 
       {error ? <p role="alert" className="text-sm text-red-600">{error.message}</p> : isPending ? (
@@ -307,15 +311,15 @@ export default function FleetOwnersPage() {
               label={t("fleetOwners.list.rowActions", { value: owner.name ?? owner.phoneNumber ?? "" })}
               actions={[
                 { label: t("common.actions.openDetails"), icon: Eye, href: `/fleet-owners/${owner.id}` },
-                { label: t("common.actions.edit"), icon: Pencil, onSelect: () => setOwnerForEdit(owner) },
-                { label: t("common.actions.delete"), icon: Trash2, tone: "danger", onSelect: () => void removeOwner(owner) },
+                ...(can(access, "fleet-owners.update") ? [{ label: t("common.actions.edit"), icon: Pencil, onSelect: () => setOwnerForEdit(owner) }] : []),
+                ...(can(access, "fleet-owners.delete") ? [{ label: t("common.actions.delete"), icon: Trash2, tone: "danger" as const, onSelect: () => void removeOwner(owner) }] : []),
               ]}
             />
           )}
         />
       )}
-      <CreateFleetOwnerDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      <EditFleetOwnerDialog open={Boolean(ownerForEdit)} owner={ownerForEdit} onClose={() => setOwnerForEdit(null)} />
+      {can(access, "fleet-owners.create") ? <CreateFleetOwnerDialog open={createOpen} onClose={() => setCreateOpen(false)} /> : null}
+      {can(access, "fleet-owners.update") ? <EditFleetOwnerDialog open={Boolean(ownerForEdit)} owner={ownerForEdit} onClose={() => setOwnerForEdit(null)} /> : null}
     </div>
   );
 }

@@ -181,7 +181,7 @@ export const updateOwnerTripLine = (
  * already ran, keep the stops they had (the server freezes them first); every
  * other trip follows the new stops.
  */
-export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[], opts?: NotifyOptions, pricing?: { fares: FareInput[]; expectedPricingRevision: number }) =>
+export const updateOwnerTripLineStops = (ownerId: string, lineId: string, stops: LineStopInput[], opts?: NotifyOptions, pricing?: { fares?: FareInput[]; expectedPricingRevision: number }) =>
   notifyResult(
     t("tripLines.toast.stopsSaved"),
     apiSend<TripLine>(`${lineBase(ownerId)}/${lineId}/stops`, "PATCH", { stops, ...pricing }),

@@ -53,7 +53,7 @@ export function FareMatrix({ pairs, prices, onChange, readOnly = false }: {
     <div className="flex flex-col gap-3 border-b border-[#e4ecf2] bg-[#f8fbfd] p-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 flex-1 items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e3f1fc] text-[#00134c]"><Coins className="size-5" /></span>
-        <div><h3 className="font-extrabold text-[#00134c]">{t("pricing.title")}</h3><p className="mt-1 max-w-xl text-sm leading-6 text-[#687886]">{t("pricing.hint")}</p></div>
+        <div><h3 className="font-extrabold text-[#00134c]">{t("pricing.title")}</h3><p className="mt-1 max-w-xl text-sm leading-6 text-[#687886]">{readOnly ? t("pricing.readOnlyMatrixHint") : t("pricing.hint")}</p></div>
       </div>
       <span role="status" className={`flex shrink-0 items-center gap-1.5 self-start rounded-full px-3 py-1.5 text-xs font-bold ${complete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
         {complete ? <CheckCircle2 className="size-3.5" /> : null}{t("pricing.progress", { filled, total: pairs.length })}

@@ -1,5 +1,7 @@
 "use client";
 
+import { can } from "@/lib/access";
+import { useDashboardAccess } from "@/lib/use-dashboard-access";
 import { useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ export function LineFaresEditor({ ownerId, lineId, table, onReload }: {
   ownerId: string; lineId: string; table: FareTable; onReload: () => Promise<unknown>;
 }) {
   const queryClient = useQueryClient();
+  const writable = can(useDashboardAccess(), "fares.update");
   const [loaded, setLoaded] = useState(table);
   const [original, setOriginal] = useState(() => pricesOf(table));
   const [prices, setPrices] = useState(original);
@@ -42,6 +45,7 @@ export function LineFaresEditor({ ownerId, lineId, table, onReload }: {
   const validation = useFieldValidation(() => schemaErrors(schemas.saveLineFaresSchema, payload));
 
   async function save() {
+    if (!writable) return;
     setError(null);
     if (!validation.validate()) return;
     const result = await saveLineFares(ownerId, lineId, payload, { notify: false });
@@ -60,9 +64,14 @@ export function LineFaresEditor({ ownerId, lineId, table, onReload }: {
     setPrices(original); setError(null); validation.reset();
   }
 
+  if (!writable) return <div className="space-y-2">
+    <FareMatrix pairs={table.pairs} prices={pricesOf(table)} readOnly />
+    <p className="text-sm text-[#687886]">{t("pricing.readOnlyHint")}</p>
+  </div>;
+
   return <ValidationScope validation={validation}>
     <div className="space-y-2">
-      <FareMatrix pairs={loaded.pairs} prices={prices} onChange={setPrices} />
+      <FareMatrix pairs={loaded.pairs} prices={prices} onChange={setPrices} readOnly={false} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#cfe1ec] bg-[#f8fbfd] px-4 py-3">
         <div className="min-w-0 flex-1 text-sm">
           {error ? <p role="alert" className="text-destructive">{error}</p>
